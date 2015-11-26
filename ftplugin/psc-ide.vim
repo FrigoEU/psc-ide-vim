@@ -1,9 +1,7 @@
-" TODO
-command! PSCstart call PSCstart()
-function! PSCstart()
-  silent !clear
-  system("psc-ide-server")
-endfunction
+if !has('python') && !has('python3')
+  echo 'tern requires python support'
+  finish
+endif
 
 " Get current working directory of psc-ide-server
 command! PSCcwd call PSCcwd()
@@ -44,6 +42,7 @@ function! PSCtype()
   let identifier = s:GetWordUnderCursor()
   let input = {'command': 'type', 'params': {'search': identifier, 'filters': []}}
 
+  silent PSCload
   let resp = system("psc-ide -p 4242", s:jsonEncode(input))
   let decoded = s:jsonDecode(resp)
 
@@ -98,6 +97,8 @@ command! PSCcomplete call PSCGetCompletions(expand(<cword>))
 "returns list of {module, identifier, type}
 function! PSCGetCompletions(s)
   let input = {'command': 'complete', 'params': {'filters': [s:prefixFilter(a:s)], 'matcher': s:flexMatcher(a:s)}}
+
+  silent PSCload
   let resp = system("psc-ide -p 4242", s:jsonEncode(input))
   let decoded = s:jsonDecode(resp)
 
@@ -208,3 +209,33 @@ fun! s:jsonDecodePreserve(s)
   let null = s:jsonNULL()
   return eval(s:CleanEnd(a:s))
 endf
+
+"-- INIT ------------------------------------------------------
+
+let s:plug = expand("<sfile>:p:h:h")
+let s:script = s:plug . '/script/pscide.py'
+if has('python')
+  execute 'pyfile ' . fnameescape(s:script)
+elseif has('python3')
+  execute 'py3file ' . fnameescape(s:script)
+endif
+
+if has('python')
+  python pscide_findServer()
+elseif has('python3')
+  python3 pscide_findServer()
+endif
+
+
+augroup PscideShutDown
+  autocmd VimLeavePre * call s:Shutdown()
+augroup END
+
+function! s:Shutdown()
+  if has('python')
+    py pscide_killServer()
+  elseif has('python3')
+    py3 pscide_killServer()
+  endif
+endfunction
+
