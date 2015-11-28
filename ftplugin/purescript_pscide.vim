@@ -1,7 +1,7 @@
-if !has('python') && !has('python3')
-  echo 'tern requires python support'
-  finish
-endif
+" if !has('python') && !has('python3')
+"   echo 'psc-ide requires python support'
+"   finish
+" endif
 
 " Get current working directory of psc-ide-server
 command! PSCcwd call PSCcwd()
@@ -10,6 +10,17 @@ function! PSCcwd()
   let resp = system("psc-ide -p 4242", s:jsonEncode(input))
   let decoded = s:jsonDecode(resp)
   echom decoded["result"]
+endfunction
+
+command! PSCstart call PSCstart()
+function! PSCstart()
+  let resp = system("psc-ide-server -p 4242 &")
+endfunction
+
+command! PSCend call PSCend()
+function! PSCend()
+  let input = {'command': 'quit'}
+  let resp = system("psc-ide -p 4242", s:jsonEncode(input))
 endfunction
 
 " Load module of current buffer + its dependencies into psc-ide-server
@@ -212,19 +223,20 @@ endf
 
 "-- INIT ------------------------------------------------------
 
-let s:plug = expand("<sfile>:p:h:h")
-let s:script = s:plug . '/script/pscide.py'
-if has('python')
-  execute 'pyfile ' . fnameescape(s:script)
-elseif has('python3')
-  execute 'py3file ' . fnameescape(s:script)
-endif
+" let s:plug = expand("<sfile>:p:h:h")
+" let s:script = s:plug . '/script/pscide.py'
+" if has('python')
+"   execute 'pyfile ' . fnameescape(s:script)
+" elseif has('python3')
+"   execute 'py3file ' . fnameescape(s:script)
+" endif
 
-if has('python')
-  python pscide_findServer()
-elseif has('python3')
-  python3 pscide_findServer()
-endif
+silent PSCstart
+" if has('python')
+"   python pscide_findServer()
+" elseif has('python3')
+"   python3 pscide_findServer()
+" endif
 
 
 augroup PscideShutDown
@@ -232,10 +244,10 @@ augroup PscideShutDown
 augroup END
 
 function! s:Shutdown()
-  if has('python')
-    py pscide_killServer()
-  elseif has('python3')
-    py3 pscide_killServer()
-  endif
+  silent PSCend
+  " if has('python')
+  "   py pscide_killServer()
+  " elseif has('python3')
+  "   py3 pscide_killServer()
+  " endif
 endfunction
-
