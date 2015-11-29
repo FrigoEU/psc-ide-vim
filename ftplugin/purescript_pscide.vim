@@ -43,16 +43,24 @@ endfunction
 " Load module of current buffer + its dependencies into psc-ide-server
 command! PSCIDEload call PSCIDEload()
 function! PSCIDEload()
-  let firstl = getline(1)
-  " Find the module we're currently in
-  let matches = matchlist(firstl, 'module\s\(\S*\)\s')
+  " Find the module we're currently in. Don't know how to get the length of
+  " the current buffer so just looking at the first 20 lines, should be enough
+  let module = ''
+  let iteration = 0
+  while module == '' && iteration < 20
+    let iteration += 1
+    let line = getline(iteration)
+    let matches = matchlist(line, 'module\s\(\S*\)')
+    if len(matches) > 0
+      let module = matches[1]
+    endif
+  endwhile
 
-  if (len(matches) == 0)
+  if module == ''
     echom "No valid module declaration found"
     return
   endif
 
-  let module = matches[1]
   let input = {'command': 'load', 'params': {'modules': [], 'dependencies': [module]}}
 
   let resp = system("psc-ide -p 4242", s:jsonEncode(input))
@@ -61,7 +69,7 @@ function! PSCIDEload()
   if (decoded['resultType'] ==# "success")
     echom decoded['result']
   else
-    echom "Failed to load module: " . module
+    echom "Failed to load module: " . module . ". Error: " decoded["result"]
   endif
 endfunction
 
