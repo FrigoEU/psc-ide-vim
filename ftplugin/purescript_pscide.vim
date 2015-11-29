@@ -1,32 +1,50 @@
-" if !has('python') && !has('python3')
-"   echo 'psc-ide requires python support'
-"   finish
-" endif
+" START ----------------------------------------------------------------------
+command! PSCIDEstart call PSCIDEstart()
+function! PSCIDEstart()
+  let iteration = 0
+  let list = []
+  let dir = ''
+  echom "starting psc-ide-server"
 
-" Get current working directory of psc-ide-server
-command! PSCcwd call PSCcwd()
-function! PSCcwd()
-  let input = {'command': 'cwd'}
-  let resp = system("psc-ide -p 4242", s:jsonEncode(input))
-  let decoded = s:jsonDecode(resp)
-  echom decoded["result"]
+  " Climbing up on the file tree until we find a bower.json
+  while (len(list) == 0 && iteration < 10)
+    let iteration += 1
+    if iteration == 1
+      let pattern = '.'
+    elseif iteration == 2
+      let pattern = '..'
+    else
+      let pattern = (has('win16') || has('win32') || has('win64')) ? pattern + '\..' : pattern + '/..'
+    endif
+
+    let list = globpath(pattern, "bower.json", 1, 1)
+  endwhile
+
+  if len(list) > 0
+    let dir = fnamemodify(list[0], ':p:h')
+  else
+    echom "No bower.json found, couldn't start psc-ide-server"
+    return
+  endif
+
+  let command = (has('win16') || has('win32') || has('win64')) ? ("start /b psc-ide-server -p 4242 -d " . dir) : ("psc-ide-server -p 4242 -d " . dir . " &")
+  let resp = system(command)
 endfunction
 
-command! PSCstart call PSCstart()
-function! PSCstart()
-  let resp = system("psc-ide-server -p 4242 &")
-endfunction
-
-command! PSCend call PSCend()
-function! PSCend()
+" END ------------------------------------------------------------------------
+" Tell the psc-ide-server to quit
+command! PSCIDEend call PSCIDEend()
+function! PSCIDEend()
   let input = {'command': 'quit'}
   let resp = system("psc-ide -p 4242", s:jsonEncode(input))
 endfunction
 
+" LOAD -----------------------------------------------------------------------
 " Load module of current buffer + its dependencies into psc-ide-server
-command! PSCload call PSCload()
-function! PSCload()
+command! PSCIDEload call PSCIDEload()
+function! PSCIDEload()
   let firstl = getline(1)
+  " Find the module we're currently in
   let matches = matchlist(firstl, 'module\s\(\S*\)\s')
 
   if (len(matches) == 0)
@@ -47,30 +65,82 @@ function! PSCload()
   endif
 endfunction
 
-" Get type of word under cursor
-command! PSCtype call PSCtype()
-function! PSCtype()
-  let identifier = s:GetWordUnderCursor()
-  let input = {'command': 'type', 'params': {'search': identifier, 'filters': []}}
-
-  silent PSCload
+" CWD ------------------------------------------------------------------------
+" Get current working directory of psc-ide-server
+command! PSCIDEcwd call PSCIDEcwd()
+function! PSCIDEcwd()
+  let input = {'command': 'cwd'}
   let resp = system("psc-ide -p 4242", s:jsonEncode(input))
   let decoded = s:jsonDecode(resp)
+  echom "PSC-IDE: Current working directory: " . decoded["result"]
+endfunction
 
-  if decoded['resultType'] ==# 'success' && len(decoded['result']) > 0
-    echom s:format(decoded['result'][0])
-  else
-    echom 'Failed to get type info for: ' . identifier
+" TYPE -----------------------------------------------------------------------
+" Get type of word under cursor
+command! PSCIDEtype call PSCIDEtype()
+function! PSCIDEtype()
+  let identifier = s:GetWordUnderCursor()
+
+  let resp = s:callPscIde({'command': 'type', 'params': {'search': identifier, 'filters': []}}, 'Failed to get type info for: ' . identifier)
+
+  if resp['resultType'] ==# 'success'
+    if len(resp["result"]) > 0
+      " echom 'PSC-IDE: Type: '
+      for e in resp["result"]
+        echom s:format(e)
+      endfor
+    else
+      echom "PSC-IDE: No type information found for " . identifier
+    endif
   endif
 endfunction
 
-aug PSC
-  au!
-  au BufNewFile,BufRead *.purs setlocal omnifunc=PSComni
-aug PSC
-doau PSC BufRead
+" PURSUIT --------------------------------------------------------------------
+command! PSCIDEpursuit call PSCIDEpursuit()
+function! PSCIDEpursuit()
+  let identifier = s:GetWordUnderCursor()
 
-function! PSComni(findstart,base)
+  let resp = s:callPscIde({'command': 'pursuit', 'params': {'query': identifier, 'type': "completion"}}, 'Failed to get pursuit info for: ' . identifier)
+
+  if resp['resultType'] ==# 'success'
+    if len(resp["result"]) > 0
+      " echom 'PSC-IDE: Pursuit results:'
+      for e in resp["result"]
+        echom s:formatpursuit(e)
+      endfor
+    else
+      echom "PSC-IDE: No results found on Pursuit"
+    endif
+  endif
+endfunction
+
+" LIST -----------------------------------------------------------------------
+command! PSCIDElist call PSCIDElist()
+function! PSCIDElist()
+  let resp = s:callPscIde({'command': 'list', 'params': {'type': 'loadedModules'}}, 'Failed to get loaded modules')
+
+  if resp['resultType'] ==# 'success'
+    if len(resp["result"]) > 0
+      " echom 'PSC-IDE: Loaded modules: '
+      for m in resp["result"]
+        echom m
+      endfor
+    else
+      echom "PSC-IDE: No loaded modules found"
+  endif
+endfunction
+
+
+" SET UP OMNICOMPLETION ------------------------------------------------------
+aug PSCIDE
+  au!
+  au BufNewFile,BufRead *.purs setlocal omnifunc=PSCIDEomni
+aug PSCIDE
+doau PSCIDE BufRead
+
+" OMNICOMPLETION FUNCTION ----------------------------------------------------
+"Omnicompletion function
+function! PSCIDEomni(findstart,base)
   let col   = col(".")
   let line  = getline(".")
 
@@ -86,8 +156,9 @@ function! PSComni(findstart,base)
   else
     echom "completing second round: " . a:base
 
-    let entries = PSCGetCompletions(a:base)
+    let entries = PSCIDEGetCompletions(a:base)
 
+    "Popuplating the omnicompletion list
     let result = []
     if type(entries)==type([])
       for entry in entries
@@ -104,19 +175,13 @@ function! PSComni(findstart,base)
   endif
 endfunction
 
-command! PSCcomplete call PSCGetCompletions(expand(<cword>))
+" GET COMPLETIONS ------------------------------------------------------------
 "returns list of {module, identifier, type}
-function! PSCGetCompletions(s)
-  let input = {'command': 'complete', 'params': {'filters': [s:prefixFilter(a:s)], 'matcher': s:flexMatcher(a:s)}}
+function! PSCIDEGetCompletions(s)
+  let resp = s:callPscIde({'command': 'complete', 'params': {'filters': [s:prefixFilter(a:s)], 'matcher': s:flexMatcher(a:s)}}, 'Failed to get completions for: ' . a:s)
 
-  silent PSCload
-  let resp = system("psc-ide -p 4242", s:jsonEncode(input))
-  let decoded = s:jsonDecode(resp)
-
-  if decoded['resultType'] ==# 'success'
-    return decoded['result']
-  else
-    echom 'Failed to get completions for: ' . a:s
+  if resp['resultType'] ==# 'success'
+    return resp["result"]
   endif
 endfunction
 
@@ -131,8 +196,23 @@ endfunction
 function! s:format(record)
   return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['identifier']) . ' :: ' . s:StripNewlines(a:record['type']))
 endfunction
+function! s:formatpursuit(record)
+  return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['ident']) . ' :: ' . s:StripNewlines(a:record['type']))
+endfunction
 
-"------- Utility functions -----------------------------
+" PSCIDE HELPER FUNCTION -----------------------------------------------------
+function! s:callPscIde(input, errorm)
+  silent PSCIDEload
+  let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
+  let decoded = s:jsonDecode(resp)
+
+  if decoded['resultType'] !=# 'success'
+    echom a:errorm
+  endif
+  return decoded
+endfunction
+
+" UTILITY FUNCTIONS ----------------------------------------------------------
 function! s:StripNewlines(s)
   return substitute(a:s, '\s*\n\s*', ' ', 'g')
 endfunction
@@ -145,6 +225,25 @@ function! s:GetWordUnderCursor()
   return expand("<cword>")
 endfunction
 
+" INIT -----------------------------------------------------------------------
+silent PSCIDEstart
+
+augroup PscideShutDown
+  autocmd VimLeavePre * call s:Shutdown()
+augroup END
+
+function! s:Shutdown()
+  silent PSCIDEend
+endfunction
+
+
+
+
+
+
+" JSON ENCODING/DECODING -----------------------------------------------------
+" MarcWeber/vim-addon-json-encoding
+"
 " Vim was ahead of its time :-) It spoke JSON before the Web discovered it -
 " Well almost.
 " Vim does not know about:
@@ -221,33 +320,3 @@ fun! s:jsonDecodePreserve(s)
   return eval(s:CleanEnd(a:s))
 endf
 
-"-- INIT ------------------------------------------------------
-
-" let s:plug = expand("<sfile>:p:h:h")
-" let s:script = s:plug . '/script/pscide.py'
-" if has('python')
-"   execute 'pyfile ' . fnameescape(s:script)
-" elseif has('python3')
-"   execute 'py3file ' . fnameescape(s:script)
-" endif
-
-silent PSCstart
-" if has('python')
-"   python pscide_findServer()
-" elseif has('python3')
-"   python3 pscide_findServer()
-" endif
-
-
-augroup PscideShutDown
-  autocmd VimLeavePre * call s:Shutdown()
-augroup END
-
-function! s:Shutdown()
-  silent PSCend
-  " if has('python')
-  "   py pscide_killServer()
-  " elseif has('python3')
-  "   py3 pscide_killServer()
-  " endif
-endfunction
