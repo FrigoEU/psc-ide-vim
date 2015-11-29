@@ -19,7 +19,7 @@ At the time of writing, psc-ide works on the identifiers exported by your module
 * :PSCIDEpursuit : Prints the info found on pursuit for the identifier under the cursor. Doesn't support fully qualified names.
 * :PSCIDElist : Prints the loaded modules
 
-## Other features
+## Omnicompletion
 * Omnicompletion gets possibilities based on the word under your cursor, and shows the types.
 
 ## Prerequisites
