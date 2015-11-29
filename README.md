@@ -3,9 +3,9 @@
 A vim plugin that interfaces with Purescript's editor support server psc-ide.
 
 ## Setup
+Installing the plugin via Vundle/NeoBundle/etc:
 
-Installing the plugin via Vundle/NeoBundle/etc: 
-    NeoBundle "frigoeu/psc-ide-vim"
+`NeoBundle "frigoeu/psc-ide-vim"`
 
 ## Important
 At the time of writing, psc-ide works on the identifiers exported by your modules and the one you're importing. This causes completions and type info to not be available for local or unexported identifiers. Secondly, if you add new identifiers and you want psc-ide to make use of them, these identifiers need to be compiled into the output/ folder.
@@ -23,6 +23,6 @@ At the time of writing, psc-ide works on the identifiers exported by your module
 * Omnicompletion should work out of the box.
 
 ## Prerequisites
-1. Have psc-ide-server installed and available on your path
-2. Have port 4242 free
-3. Have a bower.json file on the root path of your project. The plugin will climb upward on the file tree until it finds bower.json.
+* Have psc-ide-server installed and available on your path
+* Have port 4242 free
+* Have a bower.json file on the root path of your project. The plugin will climb upward on the file tree until it finds bower.json.
