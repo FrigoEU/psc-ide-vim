@@ -20,7 +20,7 @@ At the time of writing, psc-ide works on the identifiers exported by your module
 * :PSCIDElist : Prints the loaded modules
 
 ## Other features
-* Omnicompletion should work out of the box.
+* Omnicompletion gets possibilities based on the word under your cursor, and shows the types.
 
 ## Prerequisites
 * Have psc-ide-server installed and available on your path
