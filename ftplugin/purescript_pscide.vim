@@ -162,7 +162,7 @@ function! PSCIDEomni(findstart,base)
     "Looking for the start of the identifier that we want to complete
     return start-1
   else
-    echom "completing second round: " . a:base
+    "echom 'completing second round: ' . a:base
 
     let entries = PSCIDEGetCompletions(a:base)
 
