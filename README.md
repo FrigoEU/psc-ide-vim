@@ -1,23 +1,20 @@
 # psc-ide-vim
-
-A vim plugin that interfaces with Purescript's editor support server psc-ide.
+A vim plugin that interfaces with kRITZCREEK/psc-ide: Purescript's editor support server.
 
 ## Setup
 Installing the plugin via Vundle/NeoBundle/etc:
 
 `NeoBundle "frigoeu/psc-ide-vim"`
 
-## Important
-At the time of writing, psc-ide works on the identifiers exported by your modules and the one you're importing. This causes completions and type info to not be available for local or unexported identifiers. Secondly, if you add new identifiers and you want psc-ide to make use of them, these identifiers need to be compiled into the output/ folder.
-
 ## Commands 
-* :PSCIDEtype : Returns the type of the expression under the cursor. Doesn't support fully qualified names.
-* :PSCIDEstart : Starts psc-ide-server on port 4242 and your project root directory (found by recursively walking up the tree until we find bower.json). Gets called automatically when opening a .purs file.
-* :PSCIDEstop : Stops psc-ide-server. Gets called automatically when exiting VIM.
-* :PSCIDEload : Loads the current module and it's dependencies into psc-ide-server. Gets called automatically before each relevant command. So far this seems to be not too bad for performance. If you do have issues, let me know.
-* :PSCIDEcwd : Prints the current working directory of psc-ide-server
+* :PSCIDEtype : Returns the type of the expression under the cursor (Doesn't support fully qualified names).
+* :PSCIDEcwd : Prints the current working directory of psc-ide-server.
 * :PSCIDEpursuit : Prints the info found on pursuit for the identifier under the cursor. Doesn't support fully qualified names.
-* :PSCIDElist : Prints the loaded modules
+* :PSCIDElist : Prints the loaded modules.
+
+* :PSCIDEstart : Starts psc-ide-server on port 4242 and your project root directory (found by recursively walking up the tree until we find bower.json). Gets called automatically when trying to interact with the server, so you shouldn't need to call this yourself. If you have a psc-ide-server running already, this plugin will use that server for it's commands.
+* :PSCIDEstop : Stops psc-ide-server. Gets called automatically when exiting VIM.
+* :PSCIDEload : Loads the current module and it's dependencies into psc-ide-server. Gets called automatically whenever you open/switch to a purescript file. As psc-ide reloads new versions of the module for you, you also shouldn't need to call this yourself.
 
 ## Omnicompletion
 * Omnicompletion gets possibilities based on the word under your cursor, and shows the types.

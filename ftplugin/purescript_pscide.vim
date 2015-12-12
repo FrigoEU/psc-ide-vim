@@ -1,6 +1,19 @@
 " START ----------------------------------------------------------------------
+if !exists('s:pscidestarted')
+  let s:pscidestarted = 0
+endif
+if !exists('s:pscideexternal')
+  let s:pscideexternal = 0
+endif
+
+"Looks for bower.json, assumes that's the root directory, starts
+"psc-ide-server in the background
+"Returns Nothing
 command! PSCIDEstart call PSCIDEstart()
 function! PSCIDEstart()
+  if s:pscidestarted == 1 
+    return
+  endif
   let iteration = 0
   let list = []
   let dir = ''
@@ -29,14 +42,19 @@ function! PSCIDEstart()
 
   let command = (has('win16') || has('win32') || has('win64')) ? ("start /b psc-ide-server -p 4242 -d " . dir) : ("psc-ide-server -p 4242 -d " . dir . " &")
   let resp = system(command)
+  let s:pscidestarted = 1
 endfunction
 
 " END ------------------------------------------------------------------------
 " Tell the psc-ide-server to quit
 command! PSCIDEend call PSCIDEend()
 function! PSCIDEend()
+  if s:pscideexternal == 1
+    return
+  endif
   let input = {'command': 'quit'}
   let resp = system("psc-ide -p 4242", s:jsonEncode(input))
+  let s:pscidestarted = 0
 endfunction
 
 " LOAD -----------------------------------------------------------------------
@@ -209,10 +227,42 @@ function! s:formatpursuit(record)
 endfunction
 
 " PSCIDE HELPER FUNCTION -----------------------------------------------------
+" Issues the commands to the server
+" Is responsible for keeping track of whether or not we have a running server
+" and (re)starting it if not
+" Also serializes and deserializes from/to JSON
 function! s:callPscIde(input, errorm)
-  silent PSCIDEload
+  "silent PSCIDEload
   let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
+  if resp =~ "Couldn't connect to psc-ide-server"
+    "No server, let's try and (re)start it
+    let s:pscidestarted = 0
+    PSCIDEstart
+
+    let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
+    if resp =~ "Couldn't connect to psc-ide-server"
+      "Tried but failed to start the server
+      let s:pscidestarted = 0
+      echom "No PSC IDE Server running and failed to start one"
+    else 
+      "Succesfully started server
+      silent! PSCIDEload
+      echom "Succesfully started psc-ide-server!"
+      let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
+    endif
+  endif
+
   let decoded = s:jsonDecode(resp)
+
+  if decoded['resultType'] ==# 'success' && s:pscidestarted == 0 && s:pscideexternal == 0
+    "We are getting a succesful response but we didn't start the server
+    "ourselves -> exteral server present
+    "We're logging this in a variable so we don't shut down the external
+    "server on shutdown
+    let s:pscidestarted = 1
+    let s:pscideexternal = 1
+    silent! PSCIDEload
+  endif
 
   if decoded['resultType'] !=# 'success'
     echom a:errorm
@@ -234,12 +284,22 @@ function! s:GetWordUnderCursor()
 endfunction
 
 " INIT -----------------------------------------------------------------------
-silent PSCIDEstart
+" Automatically load the module we just opened
+augroup PscIdeAutoLoad
+  au!
+  autocmd BufEnter *.purs call s:AutoLoad()
+augroup END
+function! s:AutoLoad()
+  if s:pscidestarted == 1
+    silent! PSCIDEload
+  endif
+endfunction
 
+" Automatically close the server when leaving vim
 augroup PscideShutDown
+  au!
   autocmd VimLeavePre * call s:Shutdown()
 augroup END
-
 function! s:Shutdown()
   silent PSCIDEend
 endfunction
