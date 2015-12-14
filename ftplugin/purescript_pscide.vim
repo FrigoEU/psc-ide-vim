@@ -121,6 +121,31 @@ function! PSCIDEtype()
   endif
 endfunction
 
+" Experiment: Substitute suggestion into file --------------------------------
+command! PSCIDEsubstitute call PSCIDEsubstitute()
+function! PSCIDEsubstitute()
+  let lnr = line(".")
+  let bnr = bufnr("%")
+  let llist = getloclist(0)
+
+  for entry in llist
+    if entry.lnum == lnr && entry.bufnr == bnr
+      let found = entry
+    endif
+  endfor
+
+  if exists("found")
+    let matches = matchlist(found.text, 'explicit\sform\:\(.*\)See')
+    if len(matches) > 0
+      call setline(lnr, matches[1])
+    else
+      echom "PSCIDEsubstitute: No suggestion found on current line 1"
+    endif
+  else
+    echom "PSCIDEsubstitute: No suggestion found on current line 2"
+  endif
+endfunction
+
 " PURSUIT --------------------------------------------------------------------
 command! PSCIDEpursuit call PSCIDEpursuit()
 function! PSCIDEpursuit()
