@@ -138,9 +138,16 @@ function! PSCIDEsubstitute()
     let matches = matchlist(found.text, 'explicit\sform\:\(.*\)See')
     if len(matches) > 0
       call setline(lnr, matches[1])
-    else
-      echom "PSCIDEsubstitute: No suggestion found on current line 1"
+      return
     endif
+
+    let matches = matchlist(found.text, 'inferred\stype\sof\s\(.*\)\swas\:\(.*\)in\svalue')
+    if len(matches) > 0
+      call append(lnr-1, matches[1] . " :: " . matches[2])
+      return
+    endif
+    
+    echom "PSCIDEsubstitute: No suggestion found on current line 1"
   else
     echom "PSCIDEsubstitute: No suggestion found on current line 2"
   endif
