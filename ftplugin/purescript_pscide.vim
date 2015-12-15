@@ -153,6 +153,30 @@ function! PSCIDEsubstitute()
       return
     endif
     
+    let unusedMatches = matchlist(found.text, 'unused\sreferences\:\s\(\w\+\s\)')
+    if len(unusedMatches) > 0
+      call remove(unusedMatches, 0)
+      let unused = filter(unusedMatches, "v:val != ''")
+      echom "unused" . string(unused)
+      let importListPattern = '\((.*)\)'
+      let importListMatches = matchlist(getline(lnr), importListPattern)
+      if len(importListMatches) > 0
+        let o = importListMatches[1]
+        echom "o" . o
+        for u in unused
+          let substitution = '\s*,\?' . '\s*' . '\<' . s:CleanEnd(u) . '\>' . '\s*' . '(\?\s*)\?' . '\s*,\?\s*'
+          echom "substitution" . substitution
+          let o = substitute(o, substitution, '', 'gi')
+          echom "o" . o
+        endfor
+        let out = substitute(getline(lnr), importListPattern, o, 'g')
+        call setline(lnr, out)
+      else 
+        echom "failboat"
+      endif
+      return
+    endif
+    
     echom "PSCIDEsubstitute: No suggestion found on current line 1"
   else
     echom "PSCIDEsubstitute: No suggestion found on current line 2"
@@ -314,7 +338,7 @@ function! s:StripNewlines(s)
 endfunction
 
 function! s:CleanEnd(s)
-  return substitute(a:s, '[\n\s]$', '', 'g')
+  return substitute(a:s, '\s*\n*\s*$', '', 'g')
 endfunction
 
 function! s:GetWordUnderCursor()
