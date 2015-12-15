@@ -146,6 +146,12 @@ function! PSCIDEsubstitute()
       call append(lnr-1, matches[1] . " :: " . matches[2])
       return
     endif
+
+    let matches = matchlist(found.text, 'import.*redundant')
+    if len(matches) > 0
+      :normal dd
+      return
+    endif
     
     echom "PSCIDEsubstitute: No suggestion found on current line 1"
   else
