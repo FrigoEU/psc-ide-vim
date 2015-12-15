@@ -163,9 +163,19 @@ function! PSCIDEsubstitute()
       if len(importListMatches) > 0
         let o = importListMatches[1]
         for u in unused
-          let substitution = '\s*,\?' . '\s*' . '\<' . s:CleanEnd(u) . '\>' . '\s*' . '(\?\s*)\?' . '\s*,\?\s*'
-          let o = substitute(o, substitution, '', 'gi')
+          let substitution = '\s*' . 
+                           \ '\<' . 
+                           \ s:CleanEnd(u) . 
+                           \ '\>' . 
+                           \ '\s*' . 
+                           \ '\((.\{-})\)\?' .
+                           \ '\C' 
+          echom "substitution" . substitution
+          let o = substitute(o, substitution, '', '')
         endfor
+        let o = substitute(o, '(\s*,\s*', '(', 'g')
+        let o = substitute(o, '\s*,\s*)', ')', 'g')
+        let o = substitute(o, ',\s*,', ',', 'g')
         let out = substitute(getline(lnr), importListPattern, o, 'g')
         call setline(lnr, out)
       else 
