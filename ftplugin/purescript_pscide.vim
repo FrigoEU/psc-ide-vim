@@ -135,7 +135,7 @@ function! PSCIDEsubstitute()
   endfor
 
   if exists("found")
-    let matches = matchlist(found.text, 'explicit\sform\:\(.*\)See')
+    let matches = matchlist(found.text, 'explicit\sform\:\s\?\(.*\)\s\?See')
     if len(matches) > 0
       call setline(lnr, matches[1])
       return
@@ -143,7 +143,7 @@ function! PSCIDEsubstitute()
 
     let matches = matchlist(found.text, 'inferred\stype\sof\s\(.*\)\swas\:\(.*\)in\svalue')
     if len(matches) > 0
-      call append(lnr-1, matches[1] . " :: " . matches[2])
+      call append(lnr-1, matches[1] . " ::" . matches[2])
       return
     endif
 
