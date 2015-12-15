@@ -157,22 +157,19 @@ function! PSCIDEsubstitute()
     if len(unusedMatches) > 0
       call remove(unusedMatches, 0)
       let unused = filter(unusedMatches, "v:val != ''")
-      echom "unused" . string(unused)
       let importListPattern = '\((.*)\)'
       let importListMatches = matchlist(getline(lnr), importListPattern)
+
       if len(importListMatches) > 0
         let o = importListMatches[1]
-        echom "o" . o
         for u in unused
           let substitution = '\s*,\?' . '\s*' . '\<' . s:CleanEnd(u) . '\>' . '\s*' . '(\?\s*)\?' . '\s*,\?\s*'
-          echom "substitution" . substitution
           let o = substitute(o, substitution, '', 'gi')
-          echom "o" . o
         endfor
         let out = substitute(getline(lnr), importListPattern, o, 'g')
         call setline(lnr, out)
       else 
-        echom "failboat"
+        " Bad times, we can't find the import list
       endif
       return
     endif
