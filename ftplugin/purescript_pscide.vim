@@ -170,7 +170,6 @@ function! PSCIDEsubstitute()
                            \ '\s*' . 
                            \ '\((.\{-})\)\?' .
                            \ '\C' 
-          echom "substitution" . substitution
           let o = substitute(o, substitution, '', '')
         endfor
         let o = substitute(o, '(\s*,\s*', '(', 'g')
