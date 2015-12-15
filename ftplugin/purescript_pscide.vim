@@ -153,10 +153,11 @@ function! PSCIDEsubstitute()
       return
     endif
     
-    let unusedMatches = matchlist(found.text, 'unused\sreferences\:\s\(\w\+\s\)')
+    let unusedMatches = matchlist(found.text, 'unused\sreferences\:' . '\s' . '\(\(\w\+\s\)\+\)' . 'See')
     if len(unusedMatches) > 0
-      call remove(unusedMatches, 0)
-      let unused = filter(unusedMatches, "v:val != ''")
+      let unusedToSplit = unusedMatches[1]
+      let unusedSplit = split(unusedToSplit, " ")
+      let unused = filter(unusedSplit, "v:val != ''")
       let importListPattern = '\((.*)\)'
       let importListMatches = matchlist(getline(lnr), importListPattern)
 
@@ -165,16 +166,16 @@ function! PSCIDEsubstitute()
         for u in unused
           let substitution = '\s*' . 
                            \ '\<' . 
-                           \ s:CleanEnd(u) . 
+                           \ u . 
                            \ '\>' . 
                            \ '\s*' . 
                            \ '\((.\{-})\)\?' .
                            \ '\C' 
           let o = substitute(o, substitution, '', '')
         endfor
+        let o = substitute(o, ',\s*,\+', ',', 'g')
         let o = substitute(o, '(\s*,\s*', '(', 'g')
         let o = substitute(o, '\s*,\s*)', ')', 'g')
-        let o = substitute(o, ',\s*,', ',', 'g')
         let out = substitute(getline(lnr), importListPattern, o, 'g')
         call setline(lnr, out)
       else 
