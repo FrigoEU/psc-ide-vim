@@ -199,7 +199,6 @@ function! PSCIDEpursuit()
 
   if resp['resultType'] ==# 'success'
     if len(resp["result"]) > 0
-      " echom 'PSC-IDE: Pursuit results:'
       for e in resp["result"]
         echom s:formatpursuit(e)
       endfor
@@ -292,7 +291,7 @@ function! s:format(record)
   return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['identifier']) . ' :: ' . s:StripNewlines(a:record['type']))
 endfunction
 function! s:formatpursuit(record)
-  return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['ident']) . ' :: ' . s:StripNewlines(a:record['type']))
+  return "In " . s:CleanEnd(s:StripNewlines(a:record["package"])) . " " . s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['ident']) . ' :: ' . s:StripNewlines(a:record['type']))
 endfunction
 
 " PSCIDE HELPER FUNCTION -----------------------------------------------------
