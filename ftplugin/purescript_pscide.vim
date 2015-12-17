@@ -141,7 +141,7 @@ function! PSCIDEsubstitute()
       return
     endif
 
-    let matches = matchlist(found.text, 'inferred\stype\sof\s\(.*\)\swas\:\(.*\)in\svalue')
+    let matches = matchlist(found.text, 'inferred' . '\s' . 'type' . '\s' . 'of'. '\s' . '\(.*\)' . '\s' . 'was\:' . '\(.*\)'. 'in' . '\s'. 'value')
     if len(matches) > 0
       call append(lnr-1, matches[1] . " ::" . matches[2])
       return
