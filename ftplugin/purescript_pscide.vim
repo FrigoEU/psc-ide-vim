@@ -1,3 +1,10 @@
+" Syntastic initialization ---------------------------------------------------
+if exists('g:syntastic_extra_filetypes')
+  call add(g:syntastic_extra_filetypes, 'purescript')
+else
+  let g:syntastic_extra_filetypes = ['purescript']
+endif
+
 " START ----------------------------------------------------------------------
 if !exists('s:pscidestarted')
   let s:pscidestarted = 0
@@ -82,7 +89,7 @@ function! PSCIDEload()
   let input = {'command': 'load', 'params': {'modules': [], 'dependencies': [module]}}
 
   let resp = system("psc-ide -p 4242", s:jsonEncode(input))
-  let decoded = s:jsonDecode(resp)
+  let decoded = s:_decode_JSON(resp)
 
   if (decoded['resultType'] ==# "success")
     echom decoded['result']
@@ -97,7 +104,7 @@ command! PSCIDEcwd call PSCIDEcwd()
 function! PSCIDEcwd()
   let input = {'command': 'cwd'}
   let resp = system("psc-ide -p 4242", s:jsonEncode(input))
-  let decoded = s:jsonDecode(resp)
+  let decoded = s:_decode_JSON(resp)
   echom "PSC-IDE: Current working directory: " . decoded["result"]
 endfunction
 
@@ -121,9 +128,10 @@ function! PSCIDEtype()
   endif
 endfunction
 
-" Experiment: Substitute suggestion into file --------------------------------
-command! PSCIDEsubstitute call PSCIDEsubstitute()
-function! PSCIDEsubstitute()
+" APPLYSUGGESTION ------------------------------------------------------
+" Apply suggestion in loclist to buffer --------------------------------
+command! PSCIDEapplySuggestion call PSCIDEapplySuggestion()
+function! PSCIDEapplySuggestion()
   let lnr = line(".")
   let bnr = bufnr("%")
   let llist = getloclist(0)
@@ -320,7 +328,7 @@ function! s:callPscIde(input, errorm)
     endif
   endif
 
-  let decoded = s:jsonDecode(resp)
+  let decoded = s:_decode_JSON(resp)
 
   if decoded['resultType'] ==# 'success' && s:pscidestarted == 0 && s:pscideexternal == 0
     "We are getting a succesful response but we didn't start the server
@@ -377,40 +385,19 @@ endfunction
 
 
 
-" JSON ENCODING/DECODING -----------------------------------------------------
-" MarcWeber/vim-addon-json-encoding
-"
-" Vim was ahead of its time :-) It spoke JSON before the Web discovered it -
-" Well almost.
-" Vim does not know about:
-" true,false,null
-" 
-" Thus those values are represented as Vim functions.
-"
-" Because it can parse JSON natively when assigning true, false, null to
-" values this is probably the fastest way to interface with external tools.
-" The default implementation assigns:
-" true  -> 1 (=vim value for true)
-" false -> 0 (=vim value for false)
-" null  -> 0 (=vims return value for procedures which is semantically
-" similar to null - Yes, this is an arbitrary choice)
 fun! s:jsonNULL()
-  " return function("s:jsonNULL")
   return {'json_special_value': 'null'}
 endf
 fun! s:jsonTrue()
-  " return function("s:jsonTrue")
   return {'json_special_value': 'true'}
 endf
 fun! s:jsonFalse()
-  " return function("s:jsonFalse")
   return {'json_special_value': 'false'}
 endf
 fun! s:jsonToJSONBool(i)
   return  a:i ? s:jsonTrue() : s:jsonFalse()
 endf
 
-" optional arg: if true then append \n to , of top level dict
 fun! s:jsonEncode(thing, ...)
   let nl = a:0 > 0 ? (a:1 ? "\n" : "") : ""
   if type(a:thing) == type("")
@@ -438,21 +425,27 @@ fun! s:jsonEncode(thing, ...)
   endif
 endf
 
-" if you want s:jsonEncode(s:jsonDecode(str)) == str
-" then you have to assign true to s:jsonTrue() etc.
-" I don't have a use case so I use Vim encoding
+function! s:_decode_JSON(json) abort
+    if a:json ==# ''
+        return []
+    endif
 
-fun! s:jsonDecode(s)
-  let true = 1
-  let false = 0
-  let null = 0
-  return eval(s:CleanEnd(a:s))
-endf
+    if substitute(a:json, '\v\"%(\\.|[^"\\])*\"|true|false|null|[+-]?\d+%(\.\d+%([Ee][+-]?\d+)?)?', '', 'g') !~# "[^,:{}[\\] \t]"
+        " JSON artifacts
+        let true = 1
+        let false = 0
+        let null = ''
 
-fun! s:jsonDecodePreserve(s)
-  let true = s:jsonTrue()
-  let false = s:jsonFalse()
-  let null = s:jsonNULL()
-  return eval(s:CleanEnd(a:s))
-endf
+        try
+            let object = eval(a:json)
+        catch
+            " malformed JSON
+            let object = ''
+        endtry
+    else
+        let object = ''
+    endif
+
+    return object
+endfunction 
 
