@@ -426,18 +426,19 @@ fun! s:jsonEncode(thing, ...)
 endf
 
 function! s:_decode_JSON(json) abort
+  let cleaned = s:CleanEnd(a:json)
     if a:json ==# ''
         return []
     endif
 
-    if substitute(a:json, '\v\"%(\\.|[^"\\])*\"|true|false|null|[+-]?\d+%(\.\d+%([Ee][+-]?\d+)?)?', '', 'g') !~# "[^,:{}[\\] \t]"
+    if substitute(cleaned, '\v\"%(\\.|[^"\\])*\"|true|false|null|[+-]?\d+%(\.\d+%([Ee][+-]?\d+)?)?', '', 'g') !~# "[^,:{}[\\] \t]"
         " JSON artifacts
         let true = 1
         let false = 0
         let null = ''
 
         try
-            let object = eval(a:json)
+            let object = eval(cleaned)
         catch
             " malformed JSON
             let object = ''
