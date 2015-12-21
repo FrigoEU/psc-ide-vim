@@ -1,9 +1,12 @@
+let g:psc_ide_log_level = 0
+
 " Syntastic initialization ---------------------------------------------------
 if exists('g:syntastic_extra_filetypes')
   call add(g:syntastic_extra_filetypes, 'purescript')
 else
   let g:syntastic_extra_filetypes = ['purescript']
 endif
+
 
 " START ----------------------------------------------------------------------
 if !exists('s:pscidestarted')
@@ -21,6 +24,22 @@ function! PSCIDEstart()
   if s:pscidestarted == 1 
     return
   endif
+  echom "starting psc-ide-server"
+
+  let dir = s:findFileRecur('bower.json')
+
+  if dir == ''
+    echom "No bower.json found, couldn't start psc-ide-server"
+    return
+  endif
+
+  let command = (has('win16') || has('win32') || has('win64')) ? ("start /b psc-ide-server -p 4242 -d " . dir) : ("psc-ide-server -p 4242 -d " . dir . " &")
+  let resp = system(command)
+  let s:pscidestarted = 1
+endfunction
+
+" Find file recursively ----------------------------------------------------
+function! s:findFileRecur(filename)
   let iteration = 0
   let list = []
   let dir = ''
@@ -37,19 +56,14 @@ function! PSCIDEstart()
       let pattern = (has('win16') || has('win32') || has('win64')) ? pattern + '\..' : pattern + '/..'
     endif
 
-    let list = globpath(pattern, "bower.json", 1, 1)
+    let list = globpath(pattern, a:filename, 1, 1)
   endwhile
 
   if len(list) > 0
-    let dir = fnamemodify(list[0], ':p:h')
+    return fnamemodify(list[0], ':p:h')
   else
-    echom "No bower.json found, couldn't start psc-ide-server"
-    return
+    return ''
   endif
-
-  let command = (has('win16') || has('win32') || has('win64')) ? ("start /b psc-ide-server -p 4242 -d " . dir) : ("psc-ide-server -p 4242 -d " . dir . " &")
-  let resp = system(command)
-  let s:pscidestarted = 1
 endfunction
 
 " END ------------------------------------------------------------------------
@@ -89,12 +103,17 @@ function! PSCIDEload()
   let input = {'command': 'load', 'params': {'modules': [], 'dependencies': [module]}}
 
   let resp = system("psc-ide -p 4242", s:jsonEncode(input))
+
+  call s:log("PSCIDEload: Raw Response: " . resp, 3)
+
   let decoded = s:_decode_JSON(resp)
 
+  call s:log("PSCIDEload: Decoded Response: " . string(decoded), 3)
+
   if (decoded['resultType'] ==# "success")
-    echom decoded['result']
+    call s:log("PSCIDEload: Succesfully loaded modules" . decoded["result"], 0)
   else
-    echom "Failed to load module: " . module . ". Error: " decoded["result"]
+    call s:log("PSCIDEload: Failed to load module: " . module . ". Error: " decoded["result"], 0)
   endif
 endfunction
 
@@ -270,9 +289,6 @@ function! PSCIDEomni(findstart,base)
         endif
       endfor
     endif
-    "for r in result
-      "echom s:jsonEncode(r)
-    "endfor
     return result
   endif
 endfunction
@@ -280,9 +296,11 @@ endfunction
 " GET COMPLETIONS ------------------------------------------------------------
 "returns list of {module, identifier, type}
 function! PSCIDEGetCompletions(s)
+  call s:log('PSCIDEGetCompletions: Looking for completions for: ' . a:s, 3)
   let resp = s:callPscIde({'command': 'complete', 'params': {'filters': [s:prefixFilter(a:s)], 'matcher': s:flexMatcher(a:s)}}, 'Failed to get completions for: ' . a:s)
 
   if resp['resultType'] ==# 'success'
+    call s:log('PSCIDEGetCompletions: Found Entries: ' . string(resp["result"]), 3)
     return resp["result"]
   endif
 endfunction
@@ -308,40 +326,46 @@ endfunction
 " and (re)starting it if not
 " Also serializes and deserializes from/to JSON
 function! s:callPscIde(input, errorm)
-  "silent PSCIDEload
   let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
-  if resp =~ "Couldn't connect to psc-ide-server"
+  if resp =~ "onnection refused"
+    call s:log("callPscIde: Connection refused on first attempt", 1)
     "No server, let's try and (re)start it
     let s:pscidestarted = 0
     PSCIDEstart
 
     let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
-    if resp =~ "Couldn't connect to psc-ide-server"
+    if resp =~ "onnection refused"
       "Tried but failed to start the server
       let s:pscidestarted = 0
-      echom "No PSC IDE Server running and failed to start one"
+      call s:log("callPscIde: Connection refused on second attempt", 1)
     else 
       "Succesfully started server
-      silent! PSCIDEload
-      echom "Succesfully started psc-ide-server!"
+      "silent! PSCIDEload
+      PSCIDEload
+      call s:log("callPscIde: Succesfully started psc-ide-server!", 1)
       let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
     endif
   endif
 
-  let decoded = s:_decode_JSON(resp)
+  call s:log("callPscIde: Raw response: " . resp, 3)
+
+  let decoded = s:_decode_JSON(s:CleanEnd(s:StripNewlines(resp)))
+
+  call s:log("callPscIde: Decoded response: " . string(decoded), 3)
 
   if decoded['resultType'] ==# 'success' && s:pscidestarted == 0 && s:pscideexternal == 0
     "We are getting a succesful response but we didn't start the server
     "ourselves -> exteral server present
     "We're logging this in a variable so we don't shut down the external
     "server on shutdown
+    call s:log("callPscIde: Succesfully connected to externally running psc-ide-server", 1)
     let s:pscidestarted = 1
     let s:pscideexternal = 1
     silent! PSCIDEload
   endif
 
   if decoded['resultType'] !=# 'success'
-    echom a:errorm
+    call s:log("callPscIde: Error: " . a:errorm, 0)
   endif
   return decoded
 endfunction
@@ -357,6 +381,12 @@ endfunction
 
 function! s:GetWordUnderCursor()
   return expand("<cword>")
+endfunction
+
+function! s:log(str, level)
+  if g:psc_ide_log_level >= a:level
+    echom a:str
+  endif
 endfunction
 
 " INIT -----------------------------------------------------------------------
