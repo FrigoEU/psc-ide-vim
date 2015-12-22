@@ -24,7 +24,7 @@ function! PSCIDEstart()
   if s:pscidestarted == 1 
     return
   endif
-  echom "starting psc-ide-server"
+  echom "PSCIDEstart: Starting psc-ide-server"
 
   let dir = s:findFileRecur('bower.json')
 
@@ -38,12 +38,11 @@ function! PSCIDEstart()
   let s:pscidestarted = 1
 endfunction
 
-" Find file recursively ----------------------------------------------------
+" Find file recursively, return folder ----------------------------------------------------
 function! s:findFileRecur(filename)
   let iteration = 0
   let list = []
   let dir = ''
-  echom "starting psc-ide-server"
 
   " Climbing up on the file tree until we find a bower.json
   while (len(list) == 0 && iteration < 10)
@@ -82,6 +81,25 @@ endfunction
 " Load module of current buffer + its dependencies into psc-ide-server
 command! PSCIDEload call PSCIDEload()
 function! PSCIDEload()
+  let module = s:extractModule()
+
+  if module == ''
+    echom "No valid module declaration found"
+    return
+  endif
+
+  let input = {'command': 'load', 'params': {'modules': [], 'dependencies': [module]}}
+
+  let resp = s:callPscIde(input, "Failed to load module " . module)
+
+  if type(resp) == type({}) && resp['resultType'] ==# "success"
+    call s:log("PSCIDEload: Succesfully loaded modules: " . string(resp["result"]), 0)
+  else
+    call s:log("PSCIDEload: Failed to load module: " . module . ". Error: " string(resp["result"]), 0)
+  endif
+endfunction
+
+function! s:extractModule()
   " Find the module we're currently in. Don't know how to get the length of
   " the current buffer so just looking at the first 20 lines, should be enough
   let module = ''
@@ -95,36 +113,18 @@ function! PSCIDEload()
     endif
   endwhile
 
-  if module == ''
-    echom "No valid module declaration found"
-    return
-  endif
-
-  let input = {'command': 'load', 'params': {'modules': [], 'dependencies': [module]}}
-
-  let resp = system("psc-ide -p 4242", s:jsonEncode(input))
-
-  call s:log("PSCIDEload: Raw Response: " . resp, 3)
-
-  let decoded = s:_decode_JSON(resp)
-
-  call s:log("PSCIDEload: Decoded Response: " . string(decoded), 3)
-
-  if (decoded['resultType'] ==# "success")
-    call s:log("PSCIDEload: Succesfully loaded modules" . decoded["result"], 0)
-  else
-    call s:log("PSCIDEload: Failed to load module: " . module . ". Error: " decoded["result"], 0)
-  endif
+  return module
 endfunction
 
 " CWD ------------------------------------------------------------------------
 " Get current working directory of psc-ide-server
 command! PSCIDEcwd call PSCIDEcwd()
 function! PSCIDEcwd()
-  let input = {'command': 'cwd'}
-  let resp = system("psc-ide -p 4242", s:jsonEncode(input))
-  let decoded = s:_decode_JSON(resp)
-  echom "PSC-IDE: Current working directory: " . decoded["result"]
+  let resp = s:callPscIde({'command': 'cwd'}, "Failed to get current working directory")
+
+  if type(resp) == type({}) && resp['resultType'] ==# 'success'
+    echom "PSC-IDE: Current working directory: " . resp["result"]
+  endif
 endfunction
 
 " TYPE -----------------------------------------------------------------------
@@ -135,17 +135,21 @@ function! PSCIDEtype()
 
   let resp = s:callPscIde({'command': 'type', 'params': {'search': identifier, 'filters': []}}, 'Failed to get type info for: ' . identifier)
 
-  if resp['resultType'] ==# 'success'
+  if type(resp) == type({}) && resp['resultType'] ==# 'success'
     if len(resp["result"]) > 0
       " echom 'PSC-IDE: Type: '
       for e in resp["result"]
-        echom s:format(e)
+        echom s:formattype(e)
       endfor
     else
       echom "PSC-IDE: No type information found for " . identifier
     endif
   endif
 endfunction
+function! s:formattype(record)
+  return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['identifier']) . ' :: ' . s:StripNewlines(a:record['type']))
+endfunction
+
 
 " APPLYSUGGESTION ------------------------------------------------------
 " Apply suggestion in loclist to buffer --------------------------------
@@ -224,7 +228,7 @@ function! PSCIDEpursuit()
 
   let resp = s:callPscIde({'command': 'pursuit', 'params': {'query': identifier, 'type': "completion"}}, 'Failed to get pursuit info for: ' . identifier)
 
-  if resp['resultType'] ==# 'success'
+  if type(resp) == type({}) && resp['resultType'] ==# 'success'
     if len(resp["result"]) > 0
       for e in resp["result"]
         echom s:formatpursuit(e)
@@ -234,20 +238,23 @@ function! PSCIDEpursuit()
     endif
   endif
 endfunction
+function! s:formatpursuit(record)
+  return "In " . s:CleanEnd(s:StripNewlines(a:record["package"])) . " " . s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['ident']) . ' :: ' . s:StripNewlines(a:record['type']))
+endfunction
 
 " LIST -----------------------------------------------------------------------
 command! PSCIDElist call PSCIDElist()
 function! PSCIDElist()
   let resp = s:callPscIde({'command': 'list', 'params': {'type': 'loadedModules'}}, 'Failed to get loaded modules')
 
-  if resp['resultType'] ==# 'success'
+  if type(resp) == type({}) && resp['resultType'] ==# 'success'
     if len(resp["result"]) > 0
-      " echom 'PSC-IDE: Loaded modules: '
       for m in resp["result"]
         echom m
       endfor
     else
       echom "PSC-IDE: No loaded modules found"
+    endif
   endif
 endfunction
 
@@ -262,46 +269,42 @@ doau PSCIDE BufRead
 " OMNICOMPLETION FUNCTION ----------------------------------------------------
 "Omnicompletion function
 function! PSCIDEomni(findstart,base)
-  let col   = col(".")
-  let line  = getline(".")
-
-  " search backwards for start of identifier (iskeyword pattern)
-  let start = col
-  while start>0 && (line[start-2] =~ "\\k" || line[start-2] =~ "\\.")
-    let start -= 1
-  endwhile
-
   if a:findstart 
+    let col   = col(".")
+    let line  = getline(".")
+
+    " search backwards for start of identifier (iskeyword pattern)
+    let start = col
+    while start>0 && (line[start-2] =~ "\\k" || line[start-2] =~ "\\.")
+      let start -= 1
+    endwhile
+
     "Looking for the start of the identifier that we want to complete
     return start-1
   else
-    "echom 'completing second round: ' . a:base
+    let str = type(a:base) == type('a') ? a:base : string(a:base)
+    call s:log('PSCIDEOmni: Looking for completions for: ' . str, 3)
 
-    let entries = PSCIDEGetCompletions(a:base)
+    let resp = s:callPscIde({'command': 'complete', 'params': {'filters': [s:prefixFilter(str)], 'matcher': s:flexMatcher(str)}}, 'Failed to get completions for: ' . str)
+
+    if type(resp) == type({}) && resp.resultType ==# 'success'
+      call s:log('PSCIDEOmni: Found Entries: ' . string(resp.result), 3)
+      let entries = resp["result"] "Entries = list of {module, identifier, type}
+    else 
+      let entries = []
+    endif
 
     "Popuplating the omnicompletion list
     let result = []
     if type(entries)==type([])
       for entry in entries
-        if entry['identifier'] =~ '^'.a:base
+        if entry['identifier'] =~ '^' . str
           call add(result, {'word': entry['identifier'], 'menu': s:StripNewlines(entry['type'])
                           \,'info': entry['module'] . "." . entry['identifier']})
         endif
       endfor
     endif
     return result
-  endif
-endfunction
-
-" GET COMPLETIONS ------------------------------------------------------------
-"returns list of {module, identifier, type}
-function! PSCIDEGetCompletions(s)
-  call s:log('PSCIDEGetCompletions: Looking for completions for: ' . a:s, 3)
-  let resp = s:callPscIde({'command': 'complete', 'params': {'filters': [s:prefixFilter(a:s)], 'matcher': s:flexMatcher(a:s)}}, 'Failed to get completions for: ' . a:s)
-
-  if resp['resultType'] ==# 'success'
-    call s:log('PSCIDEGetCompletions: Found Entries: ' . string(resp["result"]), 3)
-    return resp["result"]
   endif
 endfunction
 
@@ -313,58 +316,68 @@ function! s:flexMatcher(s)
   return {"matcher": "flex", "params": {"search": a:s} }
 endfunction
 
-function! s:format(record)
-  return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['identifier']) . ' :: ' . s:StripNewlines(a:record['type']))
-endfunction
-function! s:formatpursuit(record)
-  return "In " . s:CleanEnd(s:StripNewlines(a:record["package"])) . " " . s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['ident']) . ' :: ' . s:StripNewlines(a:record['type']))
-endfunction
-
 " PSCIDE HELPER FUNCTION -----------------------------------------------------
 " Issues the commands to the server
 " Is responsible for keeping track of whether or not we have a running server
 " and (re)starting it if not
 " Also serializes and deserializes from/to JSON
 function! s:callPscIde(input, errorm)
-  let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
-  if resp =~ "onnection refused"
-    call s:log("callPscIde: Connection refused on first attempt", 1)
-    "No server, let's try and (re)start it
-    let s:pscidestarted = 0
-    PSCIDEstart
+  call s:log("callPscIde: Executing command: " . string(a:input), 3)
 
-    let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
-    if resp =~ "onnection refused"
-      "Tried but failed to start the server
-      let s:pscidestarted = 0
-      call s:log("callPscIde: Connection refused on second attempt", 1)
-    else 
-      "Succesfully started server
-      "silent! PSCIDEload
+  if !s:pscidestarted
+    call s:log("callPscIde: No server found, looking for external server", 1)
+
+    let expectedCWD = s:findFileRecur('bower.json')
+    let cwdcommand = {'command': 'cwd'}
+    let cwdresp = s:jsonDecode(system("psc-ide -p 4242 ", s:jsonEncode(cwdcommand)))
+    if type(cwdresp) == type({}) && cwdresp.resultType ==# 'success'
+      call s:log("callPscIde: Found external server with cwd: " . string(cwdresp.result), 1)
+      call s:log("callPscIde: Expecting CWD: " . expectedCWD, 1)
+
+      if expectedCWD != cwdresp.result
+        call s:log("callPscIde: External server on incorrect CWD, closing", 1)
+        PSCIDEend
+        call s:log("callPscIde: Starting new server", 1)
+        PSCIDEstart
+        call s:log("callPscIde: Loading current module", 1)
+        PSCIDEload
+      else
+        call s:log("callPscIde: External server CWD matches with what we need, loading current module", 1)
+        let s:pscidestarted = 1
+        let s:pscideexternal = 1
+        PSCIDEload
+      endif
+    else
+      call s:log("callPscIde: No external server found, starting new server", 1)
+      PSCIDEstart
+      call s:log("callPscIde: Loading current module", 1)
       PSCIDEload
-      call s:log("callPscIde: Succesfully started psc-ide-server!", 1)
-      let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
+    endif
+
+    call s:log("callPscIde: Trying to reach server again", 1)
+
+    let cwdresp2 = s:jsonDecode(system("psc-ide -p 4242 ", s:jsonEncode(cwdcommand)))
+    if type(cwdresp2) == type({}) && cwdresp2.resultType ==# 'success' && cwdresp2.result == expectedCWD
+      call s:log("callPscIde: Server successfully contacted!", 1)
+    else
+      call s:log("callPscIde: Server still can't be contacted, aborting...", 1)
+      return
     endif
   endif
 
+  let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
   call s:log("callPscIde: Raw response: " . resp, 3)
 
-  let decoded = s:_decode_JSON(s:CleanEnd(s:StripNewlines(resp)))
-
-  call s:log("callPscIde: Decoded response: " . string(decoded), 3)
-
-  if decoded['resultType'] ==# 'success' && s:pscidestarted == 0 && s:pscideexternal == 0
-    "We are getting a succesful response but we didn't start the server
-    "ourselves -> exteral server present
-    "We're logging this in a variable so we don't shut down the external
-    "server on shutdown
-    call s:log("callPscIde: Succesfully connected to externally running psc-ide-server", 1)
-    let s:pscidestarted = 1
-    let s:pscideexternal = 1
-    silent! PSCIDEload
+  if resp =~ "onnection refused"  "TODO: This check is probably not crossplatform
+    call s:log("callPscIde: Error: Failed to contact server", 0)
+    let s:pscidestarted = 0
+    let s:pscideexternal = 0
   endif
 
-  if decoded['resultType'] !=# 'success'
+  let decoded = s:jsonDecode(s:CleanEnd(s:StripNewlines(resp)))
+  call s:log("callPscIde: Decoded response: " . string(decoded), 3)
+
+  if type(decoded) != type({}) || decoded['resultType'] !=# 'success'
     call s:log("callPscIde: Error: " . a:errorm, 0)
   endif
   return decoded
@@ -455,7 +468,7 @@ fun! s:jsonEncode(thing, ...)
   endif
 endf
 
-function! s:_decode_JSON(json) abort
+function! s:jsonDecode(json) abort
   let cleaned = s:CleanEnd(a:json)
     if a:json ==# ''
         return []
