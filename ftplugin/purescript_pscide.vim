@@ -1,4 +1,6 @@
-let g:psc_ide_log_level = 0
+if !exists('g:psc_ide_log_level')
+  let g:psc_ide_log_level = 0
+endif
 
 " Syntastic initialization ---------------------------------------------------
 if exists('g:syntastic_extra_filetypes')
