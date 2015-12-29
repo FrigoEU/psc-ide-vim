@@ -97,7 +97,7 @@ function! PSCIDEload()
   if type(resp) == type({}) && resp['resultType'] ==# "success"
     call s:log("PSCIDEload: Succesfully loaded modules: " . string(resp["result"]), 0)
   else
-    call s:log("PSCIDEload: Failed to load module: " . module . ". Error: " string(resp["result"]), 0)
+    call s:log("PSCIDEload: Failed to load module: " . module . ". Error: " . string(resp["result"]), 0)
   endif
 endfunction
 
