@@ -18,7 +18,7 @@ This plugin provides a syntax checker for syntastic. It relies on the --json-err
 * :PSCIDEtype : Returns the type of the expression under the cursor (Doesn't support fully qualified names).
 
 ![:PSCIDEtype gif](http://frigoeu.github.io/gifs/type.gif)
-* :PSCIDEapplySuggestion : Automatically applies suggestions provided by the compiler. This uses the syntastic syntax checker, so syntastic is required for this to work. Errors/warnings are marked as "Style" errors, which have use the "S>" by default, while normal errors/warnings use ">>" by default
+* :PSCIDEapplySuggestion : Automatically applies suggestions provided by the compiler. This uses the syntastic syntax checker, so syntastic is required for this to work. Errors/warnings with suggestions are marked as "Style" errors, which have use the "S>" by default, while normal errors/warnings use ">>" by default
 
 ![:PSCIDEapplySuggestion gif](http://frigoeu.github.io/gifs/applysuggestion.gif)
 * :PSCIDEcaseSplit : Splits variables in a function declaration into its different constructors. Will probably get improved soon so you don't have to input the type yourself
