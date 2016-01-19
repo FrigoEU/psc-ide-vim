@@ -52,8 +52,10 @@ function! s:error(str)
   elseif exists('neomake#utils#ErrorMessage')
     let logger = function('neomake#utils#ErrorMessage')
   endif
-  echom str
-  call logger(str)
+  echom a:str
+  if exists("logger")
+    call logger(a:str)
+  endif
 endfunction
 
 function! ParsePulp(lines)
@@ -108,7 +110,7 @@ function! ParsePulp(lines)
 endfunction
 
 function! s:addEntry(out, err, index, e)
-  let hasSuggestion = type(a:e.suggestion) == type({})
+  let hasSuggestion = exists("a:e.suggestion") && type(a:e.suggestion) == type({})
   let isError = a:err == 1
   let letter = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
   let msg = join([letter, 
