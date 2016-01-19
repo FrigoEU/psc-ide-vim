@@ -19,11 +19,24 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 function! SyntaxCheckers_purescript_pulp_GetLocList() dict
-    return SyntasticMake({
+    let loclist = SyntasticMake({
         \ 'makeprg': self.makeprgBuild({ 'fname': ''
         \                              , 'args': 'build --json-errors' }),
-        \ 'errorformat': '%t:%f:%l:%c:%m',
+        \ 'errorformat': '%t:%f:%l:%c:%n:%m',
         \ 'Preprocess': function('ParsePulp') })
+
+    for e in loclist
+      if e['type'] == 'F'
+        let e['type'] = 'E'
+        let e['subtype'] = 'Style'
+      endif
+      if e['type'] == 'V'
+        let e['type'] = 'W'
+        let e['subtype'] = 'Style'
+      endif
+    endfor
+
+    return loclist
 endfunction
 
 call g:SyntasticRegistry.CreateAndRegisterChecker({
@@ -47,6 +60,10 @@ function! ParsePulp(lines)
   let out = []
   let str = join(a:lines, " ")
 
+  if exists('g:psc_ide_suggestions')
+    let g:psc_ide_suggestions = {}
+  endif
+
   "We need at least {"warnings":[],"errors":[]}
    if len(str) < 20 || str !~# '{' || str !~# '}'
        return out
@@ -60,18 +77,14 @@ function! ParsePulp(lines)
       call s:error('checker purescript/pulp: unrecognized error format 1: ' . str)
       return out
   endif
+  
+  let i = 0
 
   if type(decoded) == type({}) && type(decoded["warnings"]) == type([]) && type(decoded["errors"])
     for e in decoded['warnings']
       try
-        let msg =
-              \ 'W' . ':' .
-              \ e['filename'] . ':' .
-              \ e['position']['startLine'] . ':' .
-              \ e['position']['startColumn'] . ':' .
-              \ s:cleanupMessage(e['message'])
-
-        call add(out, msg)
+        call s:addEntry(out, 0, i, e)
+        let i = i + 1
       catch /\m^Vim\%((\a\+)\)\=:E716/
         call s:error('checker purescript/pulp: unrecognized error format 2: ' . str)
         let out = []
@@ -80,13 +93,8 @@ function! ParsePulp(lines)
     endfor
     for e in decoded['errors']
       try
-        let msg =
-              \ 'E' . ':' .
-              \ e['filename'] . ':' .
-              \ e['position']['startLine'] . ':' .
-              \ e['position']['startColumn'] . ':' .
-              \ s:cleanupMessage(e['message'])
-        call add(out, msg)
+        call s:addEntry(out, 1, i, e)
+        let i = i + 1
       catch /\m^Vim\%((\a\+)\)\=:E716/
         call s:error('checker purescript/pulp: unrecognized error format 3: ' . str)
         let out = []
@@ -97,6 +105,38 @@ function! ParsePulp(lines)
     call s:error('checker purescript/pulp: unrecognized error format 4: ' . str)
   endif
   return out
+endfunction
+
+function! s:addEntry(out, err, index, e)
+  let hasSuggestion = type(a:e.suggestion) == type({})
+  let isError = a:err == 1
+  let letter = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
+  let msg = join([letter, 
+                \ a:e.filename, 
+                \ a:e.position.startLine, 
+                \ a:e.position.startColumn, 
+                \ string(a:index), 
+                \ s:cleanupMessage(a:e.message)], ":")
+
+  call add(a:out, msg)
+
+  if hasSuggestion
+    call s:addSuggestion(a:index, a:e)
+  endif
+endfunction
+
+function! s:addSuggestion(i, e)
+  if !exists('g:psc_ide_suggestions')
+    return
+  endif
+
+  let sugg = {'startLine':   a:e['position']['startLine'], 
+             \'startColumn': a:e['position']['startColumn'], 
+             \'endLine':     a:e['position']['endLine'], 
+             \'endColumn':   a:e['position']['endColumn'], 
+             \'replacement': a:e['suggestion']['replacement']}
+
+   let g:psc_ide_suggestions[string(a:i)] = sugg
 endfunction
 
 function! s:cleanupMessage(str)

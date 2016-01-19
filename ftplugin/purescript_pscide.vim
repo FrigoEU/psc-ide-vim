@@ -2,6 +2,10 @@ if !exists('g:psc_ide_log_level')
   let g:psc_ide_log_level = 0
 endif
 
+if !exists('g:psc_ide_suggestions')
+  let g:psc_ide_suggestions = {}
+endif
+
 " Syntastic initialization ---------------------------------------------------
 if exists('g:syntastic_extra_filetypes')
   call add(g:syntastic_extra_filetypes, 'purescript')
@@ -129,6 +133,37 @@ function! PSCIDEcwd()
   endif
 endfunction
 
+" CASESPLIT
+" Hover cursor over variable in function declaration -> pattern match on all
+" different cases of the variable
+command! PSCIDEcaseSplit call PSCIDEcaseSplit()
+function! PSCIDEcaseSplit()
+  let lnr = line(".")
+  let line = getline(lnr)
+
+  let word = s:GetWordUnderCursor()
+  let b = match(line, word)
+  let e = matchend(line, word)
+
+  let t = input("Type: ")
+
+  call s:log('PSCIDEcaseSplit: ', 3)
+  call s:log('line: ' . line, 3)
+  call s:log('start position: ' . string(b), 3)
+  call s:log('end position: ' . string(e), 3)
+  call s:log('type: ' . t, 3)
+
+  let command = {'command': 'caseSplit', 'params': {'line': line, 'begin': b, 'end': e, 'type': t}}
+
+  let resp = s:callPscIde(command, 'Failed to split case for: ' . word)
+
+  if type(resp) == type({}) && resp['resultType'] ==# 'success' && type(resp.result) == type([])     
+    call s:log('PSCIDEcaseSplit results: ' . string(resp.result), 3)
+    call append(lnr, resp.result)
+    :normal dd
+  endif
+endfunction
+
 " TYPE -----------------------------------------------------------------------
 " Get type of word under cursor
 command! PSCIDEtype call PSCIDEtype()
@@ -152,7 +187,6 @@ function! s:formattype(record)
   return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['identifier']) . ' :: ' . s:StripNewlines(a:record['type']))
 endfunction
 
-
 " APPLYSUGGESTION ------------------------------------------------------
 " Apply suggestion in loclist to buffer --------------------------------
 command! PSCIDEapplySuggestion call PSCIDEapplySuggestion()
@@ -161,65 +195,49 @@ function! PSCIDEapplySuggestion()
   let bnr = bufnr("%")
   let llist = getloclist(0)
 
+  call s:log('PSCIDEapplySuggestion: lineNr: ' . lnr, 3)
+  call s:log('PSCIDEapplySuggestion: BufferNr: ' . bnr, 3)
+  " call s:log('PSCIDEapplySuggestion: suggestions: ' . string(g:psc_ide_suggestions), 3)
+  " call s:log('PSCIDEapplySuggestion: llist: ' . string(llist), 3)
+
   for entry in llist
-    if entry.lnum == lnr && entry.bufnr == bnr
-      let found = entry
+    " call s:log('PSCIDEapplySuggestion: entry.lnum: ' . entry.lnum, 3)
+    " call s:log('PSCIDEapplySuggestion: entry.bufnr: ' . entry.bufnr, 3)
+    " call s:log('PSCIDEapplySuggestion: entry.nr: ' . entry.nr, 3)
+    if entry.lnum == lnr && entry.bufnr == bnr && has_key(g:psc_ide_suggestions, string(entry.nr))
+      let found = g:psc_ide_suggestions[string(entry.nr)]
     endif
   endfor
 
-  if exists("found")
-    let matches = matchlist(found.text, 'explicit\sform\:\s\?\(.*\)\s\?See')
-    if len(matches) > 0
-      call setline(lnr, matches[1])
-      return
-    endif
+  if !exists('found')
+    call s:log('PSCIDEapplySuggestion: No suggestion found', 0)
+    return
+  endif
+  call s:log('PSCIDEapplySuggestion: Suggestion found: ' . string(found), 3)
 
-    let matches = matchlist(found.text, 'inferred' . '\s' . 'type' . '\s' . 'of'. '\s' . '\(.*\)' . '\s' . 'was\:' . '\(.*\)'. 'in' . '\s'. 'value')
-    if len(matches) > 0
-      call append(lnr-1, matches[1] . " ::" . matches[2])
-      return
-    endif
+  while found.endColumn == 1 || getline(found.endLine) == ''
+    call s:log('PSCIDEapplySuggestion: endLine moved from ' . found.endLine . " to " . found.endLine - 1 , 3)
+    let found.endLine = found.endLine - 1
+    let found.endColumn = len(getline(found.endLine)) + 1
+  endwhile
 
-    let matches = matchlist(found.text, 'import.*redundant')
-    if len(matches) > 0
-      :normal dd
-      return
-    endif
-    
-    let unusedMatches = matchlist(found.text, 'unused\sreferences\:' . '\s' . '\(\(\w\+\s\)\+\)' . 'See')
-    if len(unusedMatches) > 0
-      let unusedToSplit = unusedMatches[1]
-      let unusedSplit = split(unusedToSplit, " ")
-      let unused = filter(unusedSplit, "v:val != ''")
-      let importListPattern = '\((.*)\)'
-      let importListMatches = matchlist(getline(lnr), importListPattern)
+  let lines = getline(found.startLine, found.endLine)
+  call s:log('PSCIDEapplySuggestion: Lines to replace: ' . string(lines), 3)
 
-      if len(importListMatches) > 0
-        let o = importListMatches[1]
-        for u in unused
-          let substitution = '\s*' . 
-                           \ '\<' . 
-                           \ u . 
-                           \ '\>' . 
-                           \ '\s*' . 
-                           \ '\((.\{-})\)\?' .
-                           \ '\C' 
-          let o = substitute(o, substitution, '', '')
-        endfor
-        let o = substitute(o, ',\s*,\+', ',', 'g')
-        let o = substitute(o, '(\s*,\s*', '(', 'g')
-        let o = substitute(o, '\s*,\s*)', ')', 'g')
-        let out = substitute(getline(lnr), importListPattern, o, 'g')
-        call setline(lnr, out)
-      else 
-        " Bad times, we can't find the import list
-      endif
-      return
-    endif
-    
-    echom "PSCIDEsubstitute: No suggestion found on current line 1"
+  let newl = strpart(lines[0], 0, found.startColumn - 1) .
+           \ found.replacement .
+           \ strpart(lines[len(lines) - 1], found.endColumn - 1)
+  call s:log('PSCIDEapplySuggestion: newl: ' . newl, 3)
+
+  let newlines = split(newl, '\n')
+  call s:log('PSCIDEapplySuggestion: newlines: ' . string(newlines), 3)
+
+  if len(newlines) == 1
+    call setline(found.startLine, newlines[0])
   else
-    echom "PSCIDEsubstitute: No suggestion found on current line 2"
+    let command = "normal " . (string(found.endLine - found.startLine + 1) . "dd")
+    :exe command
+    call append(found.startLine - 1, newlines)
   endif
 endfunction
 
