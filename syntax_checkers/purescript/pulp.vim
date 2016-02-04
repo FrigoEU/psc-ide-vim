@@ -110,13 +110,16 @@ function! ParsePulp(lines)
 endfunction
 
 function! s:addEntry(out, err, index, e)
-  let hasSuggestion = exists("a:e.suggestion") && type(a:e.suggestion) == type({})
+  let hasSuggestion = exists("a:e.suggestion") && type(a:e.suggestion) == type({}) &&
+                    \ exists("a:e.position") && type(a:e.position) == type({})
   let isError = a:err == 1
   let letter = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
+  let startL = (exists("a:e.position") && type(a:e.position) == type({})) ? a:e.position.startLine : 1
+  let startC = (exists("a:e.position") && type(a:e.position) == type({})) ? a:e.position.startColumn : 1
   let msg = join([letter, 
                 \ a:e.filename, 
-                \ a:e.position.startLine, 
-                \ a:e.position.startColumn, 
+                \ startL,
+                \ startC,
                 \ string(a:index), 
                 \ s:cleanupMessage(a:e.message)], ":")
 
