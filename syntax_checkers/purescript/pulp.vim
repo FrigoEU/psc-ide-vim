@@ -21,7 +21,7 @@ set cpo&vim
 function! SyntaxCheckers_purescript_pulp_GetLocList() dict
     let loclist = SyntasticMake({
         \ 'makeprg': self.makeprgBuild({ 'fname': ''
-        \                              , 'args': 'build --json-errors' }),
+        \                              , 'args': 'build --no-psa --json-errors' }),
         \ 'errorformat': '%t:%f:%l:%c:%n:%m',
         \ 'Preprocess': function('ParsePulp') })
 

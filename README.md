@@ -10,7 +10,7 @@ Installing the plugin via Vundle/NeoBundle/etc:
 `NeoBundle "frigoeu/psc-ide-vim"`
 
 ## Syntax checking
-This plugin provides a syntax checker for syntastic. It relies on the --json-errors flag of psc, which is only available starting at version 0.8.0.0, and it uses pulp, so make sure that's installed as well.
+This plugin provides a syntax checker for syntastic. It relies on the --json-errors flag of psc, which is only available starting at version 0.8.0.0, and it uses pulp, so make sure you have the most recent version
 
 ![:PSCIDE syntastic gif](http://frigoeu.github.io/gifs/syntastic.gif)
 
