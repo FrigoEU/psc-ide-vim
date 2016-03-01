@@ -273,7 +273,7 @@ function! PSCIDEremoveImportQualifications()
   let captureregex = "import\\s\\(\\S\\+\\)\\s*(.*)"
   let replace = "import \\1"
   let command = "silent %s:" . captureregex . ":" . replace . ":g|norm!``"
-  call s:log('Executing PSCIDEremoveImportQualifications command: ' . command, 0)
+  call s:log('Executing PSCIDEremoveImportQualifications command: ' . command, 3)
   :exe command
 endfunction
 
@@ -291,7 +291,7 @@ function! PSCIDEaddImportQualifications()
     call cursor(found[0], 0)
     let found = searchpos("import", "W")
   endwhile
-  call s:log('Adding import qualifications to : ' . string(foundLines), 0)
+  call s:log('Adding import qualifications to : ' . string(foundLines), 3)
 
   for lnr in foundLines
     call PSCIDEapplySuggestionPrime(lnr, bnr, 1)

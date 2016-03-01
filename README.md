@@ -24,13 +24,19 @@ This plugin provides a syntax checker for syntastic. It relies on the --json-err
 * :PSCIDEcaseSplit : Splits variables in a function declaration into its different constructors. Will probably get improved soon so you don't have to input the type yourself
 
 ![:PSCIDEcaseSplit gif](http://frigoeu.github.io/gifs/casesplit.gif)
+* :PSCIDEaddTypeAnnotation : Add type annotation.
+
+![:PSCIDEaddtype gif](http://frigoeu.github.io/gifs/addtype.gif)
+* :PSCIDEremoveImportQualifications : Remove all qualifications from your imports
+
+![:PSCIDEremoveimport gif](http://frigoeu.github.io/gifs/removeimport.gif)
+* :PSCIDEaddImportQualifications : Applies all import qualification suggestions in one go. Same as :PSCIDEapplySuggestion, but applies it to every line starting with "import"
+
+![:PSCIDEaddimport gif](http://frigoeu.github.io/gifs/addimport.gif)
 
 * :PSCIDEpursuit : Prints the info found on pursuit for the identifier under the cursor. Doesn't support fully qualified names.
 * :PSCIDEcwd : Prints the current working directory of psc-ide-server.
 * :PSCIDElist : Prints the loaded modules.
-* :PSCIDEaddTypeAnnotation : Add type annotation.
-* :PSCIDEremoveImportQualifications : Remove all qualifications from your imports
-* :PSCIDEaddImportQualifications : Applies all import qualification suggestions in one go. Same as :PSCIDEapplySuggestion, but applies it to every line starting with "import"
 
 * :PSCIDEstart : Starts psc-ide-server on port 4242 and your project root directory (found by recursively walking up the tree until we find bower.json). Gets called automatically when trying to interact with the server, so you shouldn't need to call this yourself. If you have a psc-ide-server running already, this plugin will use that server for it's commands.
 * :PSCIDEstop : Stops psc-ide-server. Gets called automatically when exiting VIM.
