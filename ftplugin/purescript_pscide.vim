@@ -122,6 +122,21 @@ function! s:extractModule()
   return module
 endfunction
 
+" Add type annotation
+command! PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation()
+function! PSCIDEaddTypeAnnotation()
+  let identifier = s:GetWordUnderCursor()
+
+  let result = s:getType(identifier)
+
+  if type(result) == type([])
+    let lnr = line(".")
+    call append(lnr - 1, s:StripNewlines(result[0]['identifier']) . ' :: ' . s:StripNewlines(result[0]["type"]))
+  else
+    echom "PSC-IDE: No type information found for " . identifier
+  endif
+endfunction
+
 " CWD ------------------------------------------------------------------------
 " Get current working directory of psc-ide-server
 command! PSCIDEcwd call PSCIDEcwd()
@@ -170,19 +185,27 @@ command! PSCIDEtype call PSCIDEtype()
 function! PSCIDEtype()
   let identifier = s:GetWordUnderCursor()
 
-  let resp = s:callPscIde({'command': 'type', 'params': {'search': identifier, 'filters': []}}, 'Failed to get type info for: ' . identifier)
+  let result = s:getType(identifier)
+
+  if type(result) == type([])
+    for e in result
+      echom s:formattype(e)
+    endfor
+  else
+    echom "PSC-IDE: No type information found for " . identifier
+  endif
+endfunction
+
+function! s:getType(identifier)
+  let resp = s:callPscIde({'command': 'type', 'params': {'search': a:identifier, 'filters': []}}, 'Failed to get type info for: ' . a:identifier)
 
   if type(resp) == type({}) && resp['resultType'] ==# 'success'
     if len(resp["result"]) > 0
-      " echom 'PSC-IDE: Type: '
-      for e in resp["result"]
-        echom s:formattype(e)
-      endfor
-    else
-      echom "PSC-IDE: No type information found for " . identifier
+      return resp["result"]
     endif
   endif
 endfunction
+
 function! s:formattype(record)
   return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['identifier']) . ' :: ' . s:StripNewlines(a:record['type']))
 endfunction
@@ -193,30 +216,30 @@ command! PSCIDEapplySuggestion call PSCIDEapplySuggestion()
 function! PSCIDEapplySuggestion()
   let lnr = line(".")
   let bnr = bufnr("%")
+  call PSCIDEapplySuggestionPrime(lnr, bnr, 0)
+endfunction
+function! PSCIDEapplySuggestionPrime(lnr, bnr, silent)
   let llist = getloclist(0)
 
-  call s:log('PSCIDEapplySuggestion: lineNr: ' . lnr, 3)
-  call s:log('PSCIDEapplySuggestion: BufferNr: ' . bnr, 3)
-  " call s:log('PSCIDEapplySuggestion: suggestions: ' . string(g:psc_ide_suggestions), 3)
-  " call s:log('PSCIDEapplySuggestion: llist: ' . string(llist), 3)
+  call s:log('PSCIDEapplySuggestion: lineNr: ' . a:lnr, 3)
+  call s:log('PSCIDEapplySuggestion: BufferNr: ' . a:bnr, 3)
 
   for entry in llist
-    " call s:log('PSCIDEapplySuggestion: entry.lnum: ' . entry.lnum, 3)
-    " call s:log('PSCIDEapplySuggestion: entry.bufnr: ' . entry.bufnr, 3)
-    " call s:log('PSCIDEapplySuggestion: entry.nr: ' . entry.nr, 3)
-    if entry.lnum == lnr && entry.bufnr == bnr && has_key(g:psc_ide_suggestions, string(entry.nr))
+    if entry.lnum == a:lnr && entry.bufnr == a:bnr && has_key(g:psc_ide_suggestions, string(entry.nr))
       let found = g:psc_ide_suggestions[string(entry.nr)]
     endif
   endfor
 
   if !exists('found')
-    call s:log('PSCIDEapplySuggestion: No suggestion found', 0)
+    if !a:silent
+      call s:log('PSCIDEapplySuggestion: No suggestion found', 0)
+    endif
     return
   endif
   call s:log('PSCIDEapplySuggestion: Suggestion found: ' . string(found), 3)
 
   while found.endColumn == 1 || getline(found.endLine) == ''
-    call s:log('PSCIDEapplySuggestion: endLine moved from ' . found.endLine . " to " . found.endLine - 1 , 3)
+    call s:log('PSCIDEapplySuggestion: endLine moved from ' . found.endLine . " to " . (found.endLine - 1) , 3)
     let found.endLine = found.endLine - 1
     let found.endColumn = len(getline(found.endLine)) + 1
   endwhile
@@ -233,13 +256,50 @@ function! PSCIDEapplySuggestion()
   call s:log('PSCIDEapplySuggestion: newlines: ' . string(newlines), 3)
 
   if len(newlines) == 1
+    call s:log('PSCIDEapplySuggestion: setline(' . found.startLine . ", " . newlines[0] .")", 3)
     call setline(found.startLine, newlines[0])
   else
-    let command = "normal " . (string(found.endLine - found.startLine + 1) . "dd")
+    let command = string(found.startLine) . "," . string(found.endLine) . "d"
+    call s:log('PSCIDEapplySuggestion: exe ' . command , 3)
     :exe command
+    call s:log('PSCIDEapplySuggestion: append(' . (found.startLine - 1) . ", " . string(newlines) . ")", 3)
     call append(found.startLine - 1, newlines)
   endif
 endfunction
+
+" Remove all import qualifications
+command! PSCIDEremoveImportQualifications call PSCIDEremoveImportQualifications()
+function! PSCIDEremoveImportQualifications()
+  let captureregex = "import\\s\\(\\S\\+\\)\\s*(.*)"
+  let replace = "import \\1"
+  let command = "silent %s:" . captureregex . ":" . replace . ":g|norm!``"
+  call s:log('Executing PSCIDEremoveImportQualifications command: ' . command, 0)
+  :exe command
+endfunction
+
+" Add all import qualifications
+command! PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
+function! PSCIDEaddImportQualifications()
+  let foundLines = []
+  let bnr = bufnr("%")
+  let oldCursorPos = getcurpos()
+
+  call cursor(1, 0)
+  let found = searchpos("import", "W")
+  while found != [0,0]
+    let foundLines = insert(foundLines, found[0]) " Insert = unshift -> list is in reverse = what we want because of deleting
+    call cursor(found[0], 0)
+    let found = searchpos("import", "W")
+  endwhile
+  call s:log('Adding import qualifications to : ' . string(foundLines), 0)
+
+  for lnr in foundLines
+    call PSCIDEapplySuggestionPrime(lnr, bnr, 1)
+  endfor
+
+  call cursor(oldCursorPos[1], oldCursorPos[2])
+endfunction
+
 
 " PURSUIT --------------------------------------------------------------------
 command! PSCIDEpursuit call PSCIDEpursuit()
@@ -427,6 +487,7 @@ endfunction
 augroup PscIdeAutoLoad
   au!
   autocmd BufEnter *.purs call s:AutoLoad()
+  autocmd BufWritePost *.purs call s:AutoLoad()
 augroup END
 function! s:AutoLoad()
   if s:pscidestarted == 1
