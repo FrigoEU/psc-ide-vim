@@ -30,7 +30,6 @@ function! PSCIDEstart()
   if s:pscidestarted == 1 
     return
   endif
-  echom "PSCIDEstart: Starting psc-ide-server"
 
   let dir = s:findFileRecur('bower.json')
 
@@ -38,6 +37,8 @@ function! PSCIDEstart()
     echom "No bower.json found, couldn't start psc-ide-server"
     return
   endif
+
+  echom "PSCIDEstart: Starting psc-ide-server at " . dir
 
   let command = (has('win16') || has('win32') || has('win64')) ? ("start /b psc-ide-server -p 4242 -d " . dir) : ("psc-ide-server -p 4242 -d " . dir . " &")
   let resp = system(command)
@@ -79,7 +80,7 @@ function! PSCIDEend()
     return
   endif
   let input = {'command': 'quit'}
-  let resp = system("psc-ide -p 4242", s:jsonEncode(input))
+  let resp = system("psc-ide-client -p 4242", s:jsonEncode(input))
   let s:pscidestarted = 0
 endfunction
 
@@ -409,7 +410,7 @@ function! s:callPscIde(input, errorm)
 
     let expectedCWD = s:findFileRecur('bower.json')
     let cwdcommand = {'command': 'cwd'}
-    let cwdresp = s:jsonDecode(system("psc-ide -p 4242 ", s:jsonEncode(cwdcommand)))
+    let cwdresp = s:jsonDecode(system("psc-ide-client -p 4242 ", s:jsonEncode(cwdcommand)))
     if type(cwdresp) == type({}) && cwdresp.resultType ==# 'success'
       call s:log("callPscIde: Found external server with cwd: " . string(cwdresp.result), 1)
       call s:log("callPscIde: Expecting CWD: " . expectedCWD, 1)
@@ -419,33 +420,29 @@ function! s:callPscIde(input, errorm)
         PSCIDEend
         call s:log("callPscIde: Starting new server", 1)
         PSCIDEstart
-        call s:log("callPscIde: Loading current module", 1)
-        PSCIDEload
       else
-        call s:log("callPscIde: External server CWD matches with what we need, loading current module", 1)
+        call s:log("callPscIde: External server CWD matches with what we need", 1)
         let s:pscidestarted = 1
         let s:pscideexternal = 1
-        PSCIDEload
       endif
     else
       call s:log("callPscIde: No external server found, starting new server", 1)
       PSCIDEstart
-      call s:log("callPscIde: Loading current module", 1)
-      PSCIDEload
     endif
 
     call s:log("callPscIde: Trying to reach server again", 1)
 
-    let cwdresp2 = s:jsonDecode(system("psc-ide -p 4242 ", s:jsonEncode(cwdcommand)))
+    let cwdresp2 = s:jsonDecode(system("psc-ide-client -p 4242 ", s:jsonEncode(cwdcommand)))
     if type(cwdresp2) == type({}) && cwdresp2.resultType ==# 'success' && cwdresp2.result == expectedCWD
-      call s:log("callPscIde: Server successfully contacted!", 1)
+      call s:log("callPscIde: Server successfully contacted! Loading current module.", 1)
+      PSCIDEload
     else
       call s:log("callPscIde: Server still can't be contacted, aborting...", 1)
       return
     endif
   endif
 
-  let resp = system("psc-ide -p 4242 ", s:jsonEncode(a:input))
+  let resp = system("psc-ide-client -p 4242 ", s:jsonEncode(a:input))
   call s:log("callPscIde: Raw response: " . resp, 3)
 
   if resp =~ "onnection refused"  "TODO: This check is probably not crossplatform

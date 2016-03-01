@@ -1,8 +1,9 @@
 # psc-ide-vim
 A vim plugin that interfaces with kRITZCREEK/psc-ide: Purescript's editor support server.
 
-## Disclaimer
-Many things are in flux in the purescript ecosystem at the moment. Both the purescript compiler and psc-ide are moving fast, and at their own pace. This is something that will probably calm down later on, but for now it's pretty easy to break this plugin depending on what version of purescript/psc-ide you're running. I'm personally on commit cb1c755 of purescript (current master), and commit 5734ca9 of psc-ide (HEAD of branch v0.8.1). With those commits, everything should be working pretty well.
+## Versions
+Tag 0.1.0 should be working pretty well with compiler version < 8.1.0. 
+Since 8.1.0 psc-ide is bundled with purescript (yay!). For compiler versions >= 8.1.0 -> Use tag 0.2.0 or higher.
 
 ## Setup
 Installing the plugin via Vundle/NeoBundle/etc:
