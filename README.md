@@ -45,13 +45,16 @@ This plugin provides a syntax checker for syntastic. It relies on the --json-err
 ## Mappings
 No custom mappings are provided, but it's easy to map the above commands to any key mapping you want. My personal setup:
 
-`au FileType purescript nmap <leader>t :PSCIDEtype<CR>`
+```
+au FileType purescript nmap <leader>t :PSCIDEtype<CR>
+au FileType purescript nmap <leader>s :PSCIDEapplySuggestion<CR>
+au FileType purescript nmap <leader>p :PSCIDEpursuit<CR>
+au FileType purescript nmap <leader>c :PSCIDEcaseSplit<CR>
+au FileType purescript nmap <leader>a :PSCIDEaddTypeAnnotation<CR>
+au FileType purescript nmap <leader>qd :PSCIDEremoveImportQualifications<CR>
+au FileType purescript nmap <leader>qa :PSCIDEaddImportQualifications<CR>
+```
 
-`au FileType purescript nmap <leader>s :PSCIDEapplySuggestion<CR>`
-
-`au FileType purescript nmap <leader>p :PSCIDEpursuit<CR>`
-
-`au FileType purescript nmap <leader>c :PSCIDEcaseSplit<CR>`
 
 ## Omnicompletion
 * Omnicompletion gets possibilities based on the word under your cursor, and shows the types.
