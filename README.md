@@ -66,3 +66,10 @@ au FileType purescript nmap <leader>qa :PSCIDEaddImportQualifications<CR>
 * Have psc-ide-server installed and available on your path
 * Have port 4242 free
 * Have a bower.json file on the root path of your project. The plugin will climb upward on the file tree until it finds bower.json.
+
+## Debugging
+Add the following to have psc-ide-vim spit out all logs:
+
+```
+let g:psc_ide_log_level = 3
+```

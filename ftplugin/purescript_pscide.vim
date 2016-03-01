@@ -25,11 +25,12 @@ endif
 "Looks for bower.json, assumes that's the root directory, starts
 "psc-ide-server in the background
 "Returns Nothing
-command! PSCIDEstart call PSCIDEstart()
-function! PSCIDEstart()
+command! PSCIDEstart call PSCIDEstart(0)
+function! PSCIDEstart(silent)
   if s:pscidestarted == 1 
     return
   endif
+  let loglevel = a:silent == 1 ? 1 : 0
 
   let dir = s:findFileRecur('bower.json')
 
@@ -38,10 +39,14 @@ function! PSCIDEstart()
     return
   endif
 
-  echom "PSCIDEstart: Starting psc-ide-server at " . dir
+  call s:log("PSCIDEstart: Starting psc-ide-server at ", loglevel)
 
   let command = (has('win16') || has('win32') || has('win64')) ? ("start /b psc-ide-server -p 4242 -d " . dir) : ("psc-ide-server -p 4242 -d " . dir . " &")
   let resp = system(command)
+
+  call s:log("callPscIde: Sleeping for 100ms so server can start up", 1)
+  :exe "sleep 100m"
+
   let s:pscidestarted = 1
 endfunction
 
@@ -86,23 +91,24 @@ endfunction
 
 " LOAD -----------------------------------------------------------------------
 " Load module of current buffer + its dependencies into psc-ide-server
-command! PSCIDEload call PSCIDEload()
-function! PSCIDEload()
+command! PSCIDEload call PSCIDEload(0)
+function! PSCIDEload(silent)
   let module = s:extractModule()
+  let loglevel = a:silent == 1 ? 1 : 0
 
   if module == ''
-    echom "No valid module declaration found"
+    call s:log("No valid module declaration found", 0)
     return
   endif
 
   let input = {'command': 'load', 'params': {'modules': [], 'dependencies': [module]}}
 
-  let resp = s:callPscIde(input, "Failed to load module " . module)
+  let resp = s:callPscIde(input, "Failed to load module " . module, 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# "success"
-    call s:log("PSCIDEload: Succesfully loaded modules: " . string(resp["result"]), 0)
+    call s:log("PSCIDEload: Succesfully loaded modules: " . string(resp["result"]), loglevel)
   else
-    call s:log("PSCIDEload: Failed to load module: " . module . ". Error: " . string(resp["result"]), 0)
+    call s:log("PSCIDEload: Failed to load module: " . module . ". Error: " . string(resp["result"]), loglevel)
   endif
 endfunction
 
@@ -142,7 +148,7 @@ endfunction
 " Get current working directory of psc-ide-server
 command! PSCIDEcwd call PSCIDEcwd()
 function! PSCIDEcwd()
-  let resp = s:callPscIde({'command': 'cwd'}, "Failed to get current working directory")
+  let resp = s:callPscIde({'command': 'cwd'}, "Failed to get current working directory", 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# 'success'
     echom "PSC-IDE: Current working directory: " . resp["result"]
@@ -171,7 +177,7 @@ function! PSCIDEcaseSplit()
 
   let command = {'command': 'caseSplit', 'params': {'line': line, 'begin': b, 'end': e, 'type': t}}
 
-  let resp = s:callPscIde(command, 'Failed to split case for: ' . word)
+  let resp = s:callPscIde(command, 'Failed to split case for: ' . word, 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# 'success' && type(resp.result) == type([])     
     call s:log('PSCIDEcaseSplit results: ' . string(resp.result), 3)
@@ -198,7 +204,7 @@ function! PSCIDEtype()
 endfunction
 
 function! s:getType(identifier)
-  let resp = s:callPscIde({'command': 'type', 'params': {'search': a:identifier, 'filters': []}}, 'Failed to get type info for: ' . a:identifier)
+  let resp = s:callPscIde({'command': 'type', 'params': {'search': a:identifier, 'filters': []}}, 'Failed to get type info for: ' . a:identifier, 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# 'success'
     if len(resp["result"]) > 0
@@ -307,7 +313,7 @@ command! PSCIDEpursuit call PSCIDEpursuit()
 function! PSCIDEpursuit()
   let identifier = s:GetWordUnderCursor()
 
-  let resp = s:callPscIde({'command': 'pursuit', 'params': {'query': identifier, 'type': "completion"}}, 'Failed to get pursuit info for: ' . identifier)
+  let resp = s:callPscIde({'command': 'pursuit', 'params': {'query': identifier, 'type': "completion"}}, 'Failed to get pursuit info for: ' . identifier, 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# 'success'
     if len(resp["result"]) > 0
@@ -326,7 +332,7 @@ endfunction
 " LIST -----------------------------------------------------------------------
 command! PSCIDElist call PSCIDElist()
 function! PSCIDElist()
-  let resp = s:callPscIde({'command': 'list', 'params': {'type': 'loadedModules'}}, 'Failed to get loaded modules')
+  let resp = s:callPscIde({'command': 'list', 'params': {'type': 'loadedModules'}}, 'Failed to get loaded modules', 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# 'success'
     if len(resp["result"]) > 0
@@ -366,7 +372,7 @@ function! PSCIDEomni(findstart,base)
     let str = type(a:base) == type('a') ? a:base : string(a:base)
     call s:log('PSCIDEOmni: Looking for completions for: ' . str, 3)
 
-    let resp = s:callPscIde({'command': 'complete', 'params': {'filters': [s:prefixFilter(str)], 'matcher': s:flexMatcher(str)}}, 'Failed to get completions for: ' . str)
+    let resp = s:callPscIde({'command': 'complete', 'params': {'filters': [s:prefixFilter(str)], 'matcher': s:flexMatcher(str)}}, 'Failed to get completions for: ' . str, 0)
 
     if type(resp) == type({}) && resp.resultType ==# 'success'
       call s:log('PSCIDEOmni: Found Entries: ' . string(resp.result), 3)
@@ -402,14 +408,15 @@ endfunction
 " Is responsible for keeping track of whether or not we have a running server
 " and (re)starting it if not
 " Also serializes and deserializes from/to JSON
-function! s:callPscIde(input, errorm)
-  call s:log("callPscIde: Executing command: " . string(a:input), 3)
+function! s:callPscIde(input, errorm, retry)
+  call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
 
-  if !s:pscidestarted
-    call s:log("callPscIde: No server found, looking for external server", 1)
+  if s:pscidestarted == 0
 
     let expectedCWD = s:findFileRecur('bower.json')
     let cwdcommand = {'command': 'cwd'}
+
+    call s:log("callPscIde: No server found, looking for external server", 1)
     let cwdresp = s:jsonDecode(system("psc-ide-client -p 4242 ", s:jsonEncode(cwdcommand)))
     if type(cwdresp) == type({}) && cwdresp.resultType ==# 'success'
       call s:log("callPscIde: Found external server with cwd: " . string(cwdresp.result), 1)
@@ -419,7 +426,7 @@ function! s:callPscIde(input, errorm)
         call s:log("callPscIde: External server on incorrect CWD, closing", 1)
         PSCIDEend
         call s:log("callPscIde: Starting new server", 1)
-        PSCIDEstart
+        call PSCIDEstart(1)
       else
         call s:log("callPscIde: External server CWD matches with what we need", 1)
         let s:pscidestarted = 1
@@ -427,15 +434,15 @@ function! s:callPscIde(input, errorm)
       endif
     else
       call s:log("callPscIde: No external server found, starting new server", 1)
-      PSCIDEstart
+      call PSCIDEstart(1)
     endif
 
     call s:log("callPscIde: Trying to reach server again", 1)
-
     let cwdresp2 = s:jsonDecode(system("psc-ide-client -p 4242 ", s:jsonEncode(cwdcommand)))
+
     if type(cwdresp2) == type({}) && cwdresp2.resultType ==# 'success' && cwdresp2.result == expectedCWD
       call s:log("callPscIde: Server successfully contacted! Loading current module.", 1)
-      PSCIDEload
+      call PSCIDEload(1)
     else
       call s:log("callPscIde: Server still can't be contacted, aborting...", 1)
       return
@@ -446,9 +453,18 @@ function! s:callPscIde(input, errorm)
   call s:log("callPscIde: Raw response: " . resp, 3)
 
   if resp =~ "onnection refused"  "TODO: This check is probably not crossplatform
-    call s:log("callPscIde: Error: Failed to contact server", 0)
     let s:pscidestarted = 0
     let s:pscideexternal = 0
+
+    if a:retry
+      call s:log("callPscIde: Error: Failed to contact server", 0)
+    endif
+    if !a:retry
+      " Seems saving often causes psc-ide-server to crash. Haven't been able
+      " to figure out why. It doesn't crash when I run it externally...
+      " Retrying is then the next best thing
+      return s:callPscIde(a:input, a:errorm, 1) " Keeping track of retries so we only retry once
+    endif
   endif
 
   let decoded = s:jsonDecode(s:CleanEnd(s:StripNewlines(resp)))
@@ -488,7 +504,7 @@ augroup PscIdeAutoLoad
 augroup END
 function! s:AutoLoad()
   if s:pscidestarted == 1
-    silent! PSCIDEload
+    silent PSCIDEload
   endif
 endfunction
 

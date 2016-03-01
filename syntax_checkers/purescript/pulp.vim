@@ -39,6 +39,11 @@ function! SyntaxCheckers_purescript_pulp_GetLocList() dict
     return loclist
 endfunction
 
+" function! ParsePulpNoop(lines)
+"   return []
+" endfunction
+
+
 call g:SyntasticRegistry.CreateAndRegisterChecker({
     \ 'filetype': 'purescript',
     \ 'name': 'pulp'})
@@ -62,22 +67,22 @@ function! ParsePulp(lines)
   let out = []
   let str = join(a:lines, " ")
 
-  if exists('g:psc_ide_suggestions')
+  if !exists('g:psc_ide_suggestions')
     let g:psc_ide_suggestions = {}
   endif
 
   "We need at least {"warnings":[],"errors":[]}
    if len(str) < 20 || str !~# '{' || str !~# '}'
-       return out
+     return out
    endif
 
   let matched = matchlist(str, '{.*}')
 
   if len(matched) > 0
-      let decoded = s:_decode_JSON(matched[0])
+    let decoded = s:_decode_JSON(matched[0])
   else
-      call s:error('checker purescript/pulp: unrecognized error format 1: ' . str)
-      return out
+    call s:error('checker purescript/pulp: unrecognized error format 1: ' . str)
+    return out
   endif
   
   let i = 0
