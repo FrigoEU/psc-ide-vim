@@ -35,6 +35,7 @@ This plugin provides a syntax checker for syntastic. It relies on the --json-err
 
 ![:PSCIDEaddimport gif](http://frigoeu.github.io/gifs/addimport.gif)
 
+* :PSCIDEaddClause : Add function template based on type signature
 * :PSCIDEpursuit : Prints the info found on pursuit for the identifier under the cursor. Doesn't support fully qualified names.
 * :PSCIDEcwd : Prints the current working directory of psc-ide-server.
 * :PSCIDElist : Prints the loaded modules.

@@ -155,6 +155,24 @@ function! PSCIDEcwd()
   endif
 endfunction
 
+" ADDCLAUSE
+" Makes template function implementation from signature
+command! PSCIDEaddClause call PSCIDEaddClause()
+function! PSCIDEaddClause()
+  let lnr = line(".")
+  let line = getline(lnr)
+
+  let command = {'command': 'addClause', 'params': {'line': line, 'annotations': s:jsonFalse()}}
+
+  let resp = s:callPscIde(command, "Failed to add clause", 0)
+
+  if type(resp) == type({}) && resp['resultType'] ==# 'success' && type(resp.result) == type([])     
+    call s:log('PSCIDEaddClause results: ' . string(resp.result), 3)
+    call append(lnr, resp.result)
+    :normal dd
+  endif
+endfunction
+
 " CASESPLIT
 " Hover cursor over variable in function declaration -> pattern match on all
 " different cases of the variable
