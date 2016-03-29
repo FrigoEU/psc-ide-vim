@@ -13,6 +13,8 @@ else
   let g:syntastic_extra_filetypes = ['purescript']
 endif
 
+" Temporary file for adding imports ------------------------------------------
+let s:tempfile = tempname()
 
 " START ----------------------------------------------------------------------
 if !exists('s:pscidestarted')
@@ -93,22 +95,16 @@ endfunction
 " Load module of current buffer + its dependencies into psc-ide-server
 command! PSCIDEload call PSCIDEload(0)
 function! PSCIDEload(silent)
-  let module = s:extractModule()
   let loglevel = a:silent == 1 ? 1 : 0
 
-  if module == ''
-    call s:log("No valid module declaration found", 0)
-    return
-  endif
+  let input = {'command': 'load'}
 
-  let input = {'command': 'load', 'params': {'modules': [], 'dependencies': [module]}}
-
-  let resp = s:callPscIde(input, "Failed to load module " . module, 0)
+  let resp = s:callPscIde(input, "Failed to load", 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# "success"
     call s:log("PSCIDEload: Succesfully loaded modules: " . string(resp["result"]), loglevel)
   else
-    call s:log("PSCIDEload: Failed to load module: " . module . ". Error: " . string(resp["result"]), loglevel)
+    call s:log("PSCIDEload: Failed to load. Error: " . string(resp["result"]), loglevel)
   endif
 endfunction
 
@@ -127,6 +123,56 @@ function! s:extractModule()
   endwhile
 
   return module
+endfunction
+
+" Import given identifier
+command! PSCIDEimportIdentifier call PSCIDEimportIdentifier()
+function! PSCIDEimportIdentifier()
+  let ident = s:GetWordUnderCursor()
+
+  call s:log('PSCIDEimportIdentifier', 3)
+  call s:log('ident: ' . ident, 3)
+  call s:log('s:tempfile: ' . s:tempfile, 3)
+
+  if (ident == "")
+    return
+  endif
+
+  let oldlines = getline(1, '$')
+
+  call writefile(oldlines, s:tempfile)
+
+  let input = { 
+        \ 'command': 'import' ,
+        \ 'params': {
+        \   'file': s:tempfile, 
+        \   'importCommand': {
+        \     'importCommand': 'addImport',
+        \     'identifier': ident
+        \ } } }
+
+  let resp = s:callPscIde(input, "Failed to import identifier " . ident, 0)
+
+  if type(resp) == type({}) && resp['resultType'] ==# "success"
+    let line = line(".")
+    let newlines = resp.result
+    let linesdiff = len(newlines) - len(oldlines)
+    let nrOfLinesToInsert = len(oldlines) - 1 + linesdiff
+
+    " Adding one at a time with setline + append to keep line symbols and
+    " cursor as intact as possible
+    for i in range(1, nrOfLinesToInsert)
+      if (i < line)
+        call setline(i, newlines[i - 1])
+      else
+        call append(line - 1, newlines[i - 1])
+      endif
+    endfor
+
+     call s:log("PSCIDEimportIdentifier: Succesfully imported identifier: " . string(resp["result"]), 3)
+  else
+    call s:log("PSCIDEimportIdentifier: Failed to import identifier " . ident . ". Error: " . string(resp["result"]), 0)
+  endif
 endfunction
 
 " Add type annotation
@@ -426,7 +472,7 @@ endfunction
 " Is responsible for keeping track of whether or not we have a running server
 " and (re)starting it if not
 " Also serializes and deserializes from/to JSON
-function! s:callPscIde(input, errorm, retry)
+function! s:callPscIde(input, errorm, isRetry)
   call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
 
   if s:pscidestarted == 0
@@ -474,14 +520,14 @@ function! s:callPscIde(input, errorm, retry)
     let s:pscidestarted = 0
     let s:pscideexternal = 0
 
-    if a:retry
+    if a:isRetry
       call s:log("callPscIde: Error: Failed to contact server", 0)
     endif
-    if !a:retry
+    if !a:isRetry
       " Seems saving often causes psc-ide-server to crash. Haven't been able
       " to figure out why. It doesn't crash when I run it externally...
-      " Retrying is then the next best thing
-      return s:callPscIde(a:input, a:errorm, 1) " Keeping track of retries so we only retry once
+      " retrying is then the next best thing
+      return s:callPscIde(a:input, a:errorm, 1) " Keeping track of retries so we only rerty once
     endif
   endif
 
