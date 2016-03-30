@@ -128,7 +128,10 @@ endfunction
 " Import given identifier
 command! PSCIDEimportIdentifier call PSCIDEimportIdentifier()
 function! PSCIDEimportIdentifier()
-  let ident = s:GetWordUnderCursor()
+  call s:importIdentifier(s:GetWordUnderCursor(), "")
+endfunction
+function! s:importIdentifier(id, module)
+  let ident = a:id
 
   call s:log('PSCIDEimportIdentifier', 3)
   call s:log('ident: ' . ident, 3)
@@ -151,28 +154,70 @@ function! PSCIDEimportIdentifier()
         \     'identifier': ident
         \ } } }
 
+  if a:module != ""
+    let input.params.filters = [{'filter': 'modules', 'params': {'modules': [a:module]}}]
+  endif
+
   let resp = s:callPscIde(input, "Failed to import identifier " . ident, 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# "success"
-    let line = line(".")
+    let nrOfOldlinesUnderLine = line(".") - 1
     let newlines = resp.result
+
     let linesdiff = len(newlines) - len(oldlines)
-    let nrOfLinesToInsert = len(oldlines) - 1 + linesdiff
+    call s:log('linesdiff: ' . linesdiff, 3)
 
-    " Adding one at a time with setline + append to keep line symbols and
+    let nrOfNewlinesUnderLine = nrOfOldlinesUnderLine + linesdiff
+    call s:log('nrOfNewlinesUnderLine: ' . nrOfNewlinesUnderLine, 3)
+
+    let nrOfLinesToReplace = min([nrOfNewlinesUnderLine, nrOfOldlinesUnderLine])
+    call s:log('nrOfLinesToReplace: ' . nrOfLinesToReplace, 3)
+
+    let nrOfLinesToDelete = -min([0, linesdiff])
+    call s:log('nrOfLinesToDelete: ' . nrOfLinesToDelete, 3)
+
+    let nrOfLinesToAppend = max([0, linesdiff])
+    call s:log('nrOfLinesToAppend: ' . nrOfLinesToAppend, 3)
+
+    let oldCursorPos = getcurpos()
+
+    " Adding one at a time with setline + append/delete to keep line symbols and
     " cursor as intact as possible
-    for i in range(1, nrOfLinesToInsert)
-      if (i < line)
-        call setline(i, newlines[i - 1])
-      else
-        call append(line - 1, newlines[i - 1])
-      endif
-    endfor
+    call setline(1, s:take(newlines, nrOfLinesToReplace))
 
-     call s:log("PSCIDEimportIdentifier: Succesfully imported identifier: " . string(resp["result"]), 3)
+    if (nrOfLinesToDelete > 0)
+      let comm = (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d|0"
+      :exe comm
+      call cursor(oldCursorPos[1] - nrOfLinesToDelete, oldCursorPos[2])
+    endif
+    if (nrOfLinesToAppend > 0)
+      let linesToAppend = s:take(s:drop(newlines, nrOfLinesToReplace), nrOfLinesToAppend)
+      call s:log('linesToAppend: ' . string(linesToAppend), 3)
+      call append(nrOfOldlinesUnderLine, linesToAppend)
+    endif
+
+    call s:log("PSCIDEimportIdentifier: Succesfully imported identifier: " . a:module . " ".a:id, 3)
   else
     call s:log("PSCIDEimportIdentifier: Failed to import identifier " . ident . ". Error: " . string(resp["result"]), 0)
   endif
+endfunction
+
+function! s:take(list, j)
+  let newlist = []
+  for i in range(0, a:j - 1)
+    call add(newlist, a:list[i])
+  endfor
+  return newlist
+endfunction
+
+function! s:drop(list, j)
+  let newlist = []
+  for i in range(0, len(a:list) - 1)
+    if i >= a:j
+      call add(newlist, a:list[i])
+    endif
+  endfor
+  return newlist
 endfunction
 
 " Add type annotation
@@ -450,8 +495,9 @@ function! PSCIDEomni(findstart,base)
     if type(entries)==type([])
       for entry in entries
         if entry['identifier'] =~ '^' . str
-          call add(result, {'word': entry['identifier'], 'menu': s:StripNewlines(entry['type'])
-                          \,'info': entry['module'] . "." . entry['identifier']})
+          call add(result, {'word': entry['identifier'], 
+                          \ 'menu': s:StripNewlines(entry['type']),
+                          \ 'info': entry['module'] })
         endif
       endfor
     endif
@@ -581,6 +627,15 @@ function! s:Shutdown()
   silent PSCIDEend
 endfunction
 
+" Automatic import after completion
+function! s:completeDone(item)
+  if (type(a:item) == type({}) && has_key(a:item, 'word') && has_key(a:item, 'info'))
+    call s:importIdentifier(a:item.word, a:item.info)
+  endif
+endfunction
+augroup PscideAfterCompletion
+  autocmd CompleteDone * call s:completeDone(v:completed_item)
+augroup END
 
 
 
