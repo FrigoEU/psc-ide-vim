@@ -160,23 +160,30 @@ function! s:importIdentifier(id, module)
 
   let resp = s:callPscIde(input, "Failed to import identifier " . ident, 0)
 
+  "multiple possibilities
+  if type(resp) == type({}) && resp.resultType ==# "success" && type(resp.result[0]) == type({})
+    let choice = confirm("Multiple possibilities to import " . ident , join(map(resp.result, 'v:val["module"]'), "\n"))
+    if choice
+      call s:importIdentifier(ident, resp.result[choice - 1])
+    endif
+    return
+  endif
+
   if type(resp) == type({}) && resp['resultType'] ==# "success"
-    let nrOfOldlinesUnderLine = line(".") - 1
     let newlines = resp.result
 
     let linesdiff = len(newlines) - len(oldlines)
-    call s:log('linesdiff: ' . linesdiff, 3)
-
+    let nrOfOldlinesUnderLine = line(".") - 1
     let nrOfNewlinesUnderLine = nrOfOldlinesUnderLine + linesdiff
-    call s:log('nrOfNewlinesUnderLine: ' . nrOfNewlinesUnderLine, 3)
-
     let nrOfLinesToReplace = min([nrOfNewlinesUnderLine, nrOfOldlinesUnderLine])
-    call s:log('nrOfLinesToReplace: ' . nrOfLinesToReplace, 3)
-
     let nrOfLinesToDelete = -min([0, linesdiff])
-    call s:log('nrOfLinesToDelete: ' . nrOfLinesToDelete, 3)
-
     let nrOfLinesToAppend = max([0, linesdiff])
+
+    call s:log('linesdiff: ' . linesdiff, 3)
+    call s:log('nrOfOldlinesUnderLine: ' . nrOfOldlinesUnderLine, 3)
+    call s:log('nrOfNewlinesUnderLine: ' . nrOfNewlinesUnderLine, 3)
+    call s:log('nrOfLinesToReplace: ' . nrOfLinesToReplace, 3)
+    call s:log('nrOfLinesToDelete: ' . nrOfLinesToDelete, 3)
     call s:log('nrOfLinesToAppend: ' . nrOfLinesToAppend, 3)
 
     let oldCursorPos = getcurpos()
@@ -186,7 +193,7 @@ function! s:importIdentifier(id, module)
     call setline(1, s:take(newlines, nrOfLinesToReplace))
 
     if (nrOfLinesToDelete > 0)
-      let comm = (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d|0"
+      let comm = 'silent ' . (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d|0"
       :exe comm
       call cursor(oldCursorPos[1] - nrOfLinesToDelete, oldCursorPos[2])
     endif
@@ -495,14 +502,35 @@ function! PSCIDEomni(findstart,base)
     if type(entries)==type([])
       for entry in entries
         if entry['identifier'] =~ '^' . str
-          call add(result, {'word': entry['identifier'], 
-                          \ 'menu': s:StripNewlines(entry['type']),
-                          \ 'info': entry['module'] })
+          let e = {'word': entry['identifier'], 'menu': s:StripNewlines(entry['type']), 'info': entry['module'], 'dup': 1}
+          let existing = s:findInListBy(result, 'word', e['word'])
+
+          if existing != {}
+            let e['menu'] = e['menu'] . ' (' . e['info'] . ')'
+            let existing['menu'] = existing['menu'] . ' (' . existing['info'] . ')'
+          endif
+
+          call add(result, e)
         endif
       endfor
     endif
     return result
   endif
+endfunction
+
+function! s:findInListBy(list, key, str)
+  let i = 0
+  let l = len(a:list)
+  let found = {}
+  
+  while found == {} && i < l
+    if a:list[i][a:key] == a:str
+      let found = a:list[i]
+    endif
+    let i = i + 1
+  endwhile
+
+  return found
 endfunction
 
 function! s:prefixFilter(s) 
