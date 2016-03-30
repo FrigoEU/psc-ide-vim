@@ -502,12 +502,16 @@ function! PSCIDEomni(findstart,base)
     if type(entries)==type([])
       for entry in entries
         if entry['identifier'] =~ '^' . str
-          let e = {'word': entry['identifier'], 'menu': s:StripNewlines(entry['type']), 'info': entry['module'], 'dup': 1}
+          let e = {'word': entry['identifier'], 'menu': s:StripNewlines(entry['type']), 'info': entry['module'], 'dup': 0}
           let existing = s:findInListBy(result, 'word', e['word'])
 
           if existing != {}
             let e['menu'] = e['menu'] . ' (' . e['info'] . ')'
-            let existing['menu'] = existing['menu'] . ' (' . existing['info'] . ')'
+            let e['dup'] = 1
+            if existing['dup'] == 0
+              let existing['menu'] = existing['menu'] . ' (' . existing['info'] . ')'
+              let existing['dup'] = 1
+            endif
           endif
 
           call add(result, e)
