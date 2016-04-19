@@ -1,9 +1,10 @@
+" Options -------------------------------------------------------------------
 if !exists('g:psc_ide_log_level')
-  let g:psc_ide_log_level = 0
+  let g:psc_ide_log_level = 3
 endif
 
-if !exists('g:psc_ide_suggestions')
-  let g:psc_ide_suggestions = {}
+if !exists('g:psc_ide_auto_imports')
+  let g:psc_ide_auto_imports = 0
 endif
 
 " Syntastic initialization ---------------------------------------------------
@@ -13,6 +14,12 @@ else
   let g:syntastic_extra_filetypes = ['purescript']
 endif
 
+" Inits ----------------------------------------------------------------------
+let s:tempfile = tempname()
+
+if !exists('g:psc_ide_suggestions')
+  let g:psc_ide_suggestions = {}
+endif
 
 " START ----------------------------------------------------------------------
 if !exists('s:pscidestarted')
@@ -93,22 +100,16 @@ endfunction
 " Load module of current buffer + its dependencies into psc-ide-server
 command! PSCIDEload call PSCIDEload(0)
 function! PSCIDEload(silent)
-  let module = s:extractModule()
   let loglevel = a:silent == 1 ? 1 : 0
 
-  if module == ''
-    call s:log("No valid module declaration found", 0)
-    return
-  endif
+  let input = {'command': 'load'}
 
-  let input = {'command': 'load', 'params': {'modules': [], 'dependencies': [module]}}
-
-  let resp = s:callPscIde(input, "Failed to load module " . module, 0)
+  let resp = s:callPscIde(input, "Failed to load", 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# "success"
     call s:log("PSCIDEload: Succesfully loaded modules: " . string(resp["result"]), loglevel)
   else
-    call s:log("PSCIDEload: Failed to load module: " . module . ". Error: " . string(resp["result"]), loglevel)
+    call s:log("PSCIDEload: Failed to load. Error: " . string(resp["result"]), loglevel)
   endif
 endfunction
 
@@ -127,6 +128,110 @@ function! s:extractModule()
   endwhile
 
   return module
+endfunction
+
+" Import given identifier
+command! PSCIDEimportIdentifier call PSCIDEimportIdentifier()
+function! PSCIDEimportIdentifier()
+  call s:importIdentifier(s:GetWordUnderCursor(), "")
+endfunction
+function! s:importIdentifier(id, module)
+  let ident = a:id
+
+  call s:log('PSCIDEimportIdentifier', 3)
+  call s:log('ident: ' . ident, 3)
+  call s:log('s:tempfile: ' . s:tempfile, 3)
+
+  if (ident == "")
+    return
+  endif
+
+  let oldlines = getline(1, '$')
+
+  call writefile(oldlines, s:tempfile)
+
+  let input = { 
+        \ 'command': 'import' ,
+        \ 'params': {
+        \   'file': s:tempfile, 
+        \   'importCommand': {
+        \     'importCommand': 'addImport',
+        \     'identifier': ident
+        \ } } }
+
+  if a:module != ""
+    let input.params.filters = [{'filter': 'modules', 'params': {'modules': [a:module]}}]
+  endif
+
+  let resp = s:callPscIde(input, "Failed to import identifier " . ident, 0)
+
+  "multiple possibilities
+  if type(resp) == type({}) && resp.resultType ==# "success" && type(resp.result[0]) == type({})
+    let choices = copy(resp.result)
+    call map (choices, 'v:key. v:val["module"]')
+    let choice = confirm("Multiple possibilities to import " . ident , join(choices, "\n"))
+    if choice
+      call s:importIdentifier(ident, resp.result[choice - 1].module)
+    endif
+    return
+  endif
+
+  if type(resp) == type({}) && resp['resultType'] ==# "success"
+    let newlines = resp.result
+
+    let linesdiff = len(newlines) - len(oldlines)
+    let nrOfOldlinesUnderLine = line(".") - 1
+    let nrOfNewlinesUnderLine = nrOfOldlinesUnderLine + linesdiff
+    let nrOfLinesToReplace = min([nrOfNewlinesUnderLine, nrOfOldlinesUnderLine])
+    let nrOfLinesToDelete = -min([0, linesdiff])
+    let nrOfLinesToAppend = max([0, linesdiff])
+
+    call s:log('linesdiff: ' . linesdiff, 3)
+    call s:log('nrOfOldlinesUnderLine: ' . nrOfOldlinesUnderLine, 3)
+    call s:log('nrOfNewlinesUnderLine: ' . nrOfNewlinesUnderLine, 3)
+    call s:log('nrOfLinesToReplace: ' . nrOfLinesToReplace, 3)
+    call s:log('nrOfLinesToDelete: ' . nrOfLinesToDelete, 3)
+    call s:log('nrOfLinesToAppend: ' . nrOfLinesToAppend, 3)
+
+    let oldCursorPos = getcurpos()
+
+    " Adding one at a time with setline + append/delete to keep line symbols and
+    " cursor as intact as possible
+    call setline(1, s:take(newlines, nrOfLinesToReplace))
+
+    if (nrOfLinesToDelete > 0)
+      let comm = 'silent ' . (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d|0"
+      :exe comm
+      call cursor(oldCursorPos[1] - nrOfLinesToDelete, oldCursorPos[2])
+    endif
+    if (nrOfLinesToAppend > 0)
+      let linesToAppend = s:take(s:drop(newlines, nrOfLinesToReplace), nrOfLinesToAppend)
+      call s:log('linesToAppend: ' . string(linesToAppend), 3)
+      call append(nrOfOldlinesUnderLine, linesToAppend)
+    endif
+
+    call s:log("PSCIDEimportIdentifier: Succesfully imported identifier: " . a:module . " ".a:id, 3)
+  else
+    call s:log("PSCIDEimportIdentifier: Failed to import identifier " . ident . ". Error: " . string(resp["result"]), 0)
+  endif
+endfunction
+
+function! s:take(list, j)
+  let newlist = []
+  for i in range(0, a:j - 1)
+    call add(newlist, a:list[i])
+  endfor
+  return newlist
+endfunction
+
+function! s:drop(list, j)
+  let newlist = []
+  for i in range(0, len(a:list) - 1)
+    if i >= a:j
+      call add(newlist, a:list[i])
+    endif
+  endfor
+  return newlist
 endfunction
 
 " Add type annotation
@@ -402,13 +507,39 @@ function! PSCIDEomni(findstart,base)
     if type(entries)==type([])
       for entry in entries
         if entry['identifier'] =~ '^' . str
-          call add(result, {'word': entry['identifier'], 'menu': s:StripNewlines(entry['type'])
-                          \,'info': entry['module'] . "." . entry['identifier']})
+          let e = {'word': entry['identifier'], 'menu': s:StripNewlines(entry['type']), 'info': entry['module'], 'dup': 0}
+          let existing = s:findInListBy(result, 'word', e['word'])
+
+          if existing != {}
+            let e['menu'] = e['menu'] . ' (' . e['info'] . ')'
+            let e['dup'] = 1
+            if existing['dup'] == 0
+              let existing['menu'] = existing['menu'] . ' (' . existing['info'] . ')'
+              let existing['dup'] = 1
+            endif
+          endif
+
+          call add(result, e)
         endif
       endfor
     endif
     return result
   endif
+endfunction
+
+function! s:findInListBy(list, key, str)
+  let i = 0
+  let l = len(a:list)
+  let found = {}
+  
+  while found == {} && i < l
+    if a:list[i][a:key] == a:str
+      let found = a:list[i]
+    endif
+    let i = i + 1
+  endwhile
+
+  return found
 endfunction
 
 function! s:prefixFilter(s) 
@@ -424,7 +555,7 @@ endfunction
 " Is responsible for keeping track of whether or not we have a running server
 " and (re)starting it if not
 " Also serializes and deserializes from/to JSON
-function! s:callPscIde(input, errorm, retry)
+function! s:callPscIde(input, errorm, isRetry)
   call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
 
   if s:pscidestarted == 0
@@ -472,14 +603,14 @@ function! s:callPscIde(input, errorm, retry)
     let s:pscidestarted = 0
     let s:pscideexternal = 0
 
-    if a:retry
+    if a:isRetry
       call s:log("callPscIde: Error: Failed to contact server", 0)
     endif
-    if !a:retry
+    if !a:isRetry
       " Seems saving often causes psc-ide-server to crash. Haven't been able
       " to figure out why. It doesn't crash when I run it externally...
-      " Retrying is then the next best thing
-      return s:callPscIde(a:input, a:errorm, 1) " Keeping track of retries so we only retry once
+      " retrying is then the next best thing
+      return s:callPscIde(a:input, a:errorm, 1) " Keeping track of retries so we only rerty once
     endif
   endif
 
@@ -533,6 +664,21 @@ function! s:Shutdown()
   silent PSCIDEend
 endfunction
 
+" Automatic import after completion
+function! s:completeDone(item)
+  if g:psc_ide_auto_imports == 0
+    return
+  endif
+
+  if (type(a:item) == type({}) 
+        \ && has_key(a:item, 'word') && type(a:item.word) == type("") 
+        \ && has_key(a:item, 'info')) && type(a:item.info) == type("")
+    call s:importIdentifier(a:item.word, a:item.info)
+  endif
+endfunction
+augroup PscideAfterCompletion
+  autocmd CompleteDone * call s:completeDone(v:completed_item)
+augroup END
 
 
 
