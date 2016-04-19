@@ -240,27 +240,25 @@ endfunction
 command! PSCIDEapplySuggestion call PSCIDEapplySuggestion()
 function! PSCIDEapplySuggestion()
   let lnr = line(".")
-  let bnr = bufnr("%")
-  call PSCIDEapplySuggestionPrime(lnr, bnr, 0)
+  let filename = expand("%:p")
+  call PSCIDEapplySuggestionPrime(lnr, filename, 0)
 endfunction
-function! PSCIDEapplySuggestionPrime(lnr, bnr, silent)
-  let llist = getloclist(0)
+function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
+  "let llist = getloclist(0)
 
   call s:log('PSCIDEapplySuggestion: lineNr: ' . a:lnr, 3)
-  call s:log('PSCIDEapplySuggestion: BufferNr: ' . a:bnr, 3)
+  call s:log('PSCIDEapplySuggestion: filename: ' . a:filename, 3)
 
-  for entry in llist
-    if entry.lnum == a:lnr && entry.bufnr == a:bnr && has_key(g:psc_ide_suggestions, string(entry.nr))
-      let found = g:psc_ide_suggestions[string(entry.nr)]
-    endif
-  endfor
-
-  if !exists('found')
+  let key = a:filename . "|" . string(a:lnr)
+  if (has_key(g:psc_ide_suggestions, key))
+    let found = g:psc_ide_suggestions[key]
+  else
     if !a:silent
       call s:log('PSCIDEapplySuggestion: No suggestion found', 0)
     endif
     return
   endif
+
   call s:log('PSCIDEapplySuggestion: Suggestion found: ' . string(found), 3)
 
   while found.endColumn == 1 || getline(found.endLine) == ''
@@ -306,7 +304,7 @@ endfunction
 command! PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
 function! PSCIDEaddImportQualifications()
   let foundLines = []
-  let bnr = bufnr("%")
+  let filename = expand("%:p")
   let oldCursorPos = getcurpos()
 
   call cursor(1, 0)
@@ -319,7 +317,7 @@ function! PSCIDEaddImportQualifications()
   call s:log('Adding import qualifications to : ' . string(foundLines), 3)
 
   for lnr in foundLines
-    call PSCIDEapplySuggestionPrime(lnr, bnr, 1)
+    call PSCIDEapplySuggestionPrime(lnr, filename, 1)
   endfor
 
   call cursor(oldCursorPos[1], oldCursorPos[2])

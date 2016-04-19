@@ -22,7 +22,7 @@ function! SyntaxCheckers_purescript_pulp_GetLocList() dict
     let loclist = SyntasticMake({
         \ 'makeprg': self.makeprgBuild({ 'fname': ''
         \                              , 'args': 'build --no-psa --json-errors' }),
-        \ 'errorformat': '%t:%f:%l:%c:%n:%m',
+        \ 'errorformat': '%t:%f:%l:%c:%m',
         \ 'Preprocess': function('ParsePulp') })
 
     for e in loclist
@@ -84,14 +84,11 @@ function! ParsePulp(lines)
     call s:error('checker purescript/pulp: unrecognized error format 1: ' . str)
     return out
   endif
-  
-  let i = 0
 
   if type(decoded) == type({}) && type(decoded["warnings"]) == type([]) && type(decoded["errors"])
     for e in decoded['warnings']
       try
-        call s:addEntry(out, 0, i, e)
-        let i = i + 1
+        call s:addEntry(out, 0, e)
       catch /\m^Vim\%((\a\+)\)\=:E716/
         call s:error('checker purescript/pulp: unrecognized error format 2: ' . str)
         let out = []
@@ -100,8 +97,7 @@ function! ParsePulp(lines)
     endfor
     for e in decoded['errors']
       try
-        call s:addEntry(out, 1, i, e)
-        let i = i + 1
+        call s:addEntry(out, 1, e)
       catch /\m^Vim\%((\a\+)\)\=:E716/
         call s:error('checker purescript/pulp: unrecognized error format 3: ' . str)
         let out = []
@@ -114,7 +110,7 @@ function! ParsePulp(lines)
   return out
 endfunction
 
-function! s:addEntry(out, err, index, e)
+function! s:addEntry(out, err, e)
   let hasSuggestion = exists("a:e.suggestion") && type(a:e.suggestion) == type({}) &&
                     \ exists("a:e.position") && type(a:e.position) == type({})
   let isError = a:err == 1
@@ -125,17 +121,16 @@ function! s:addEntry(out, err, index, e)
                 \ a:e.filename, 
                 \ startL,
                 \ startC,
-                \ string(a:index), 
                 \ s:cleanupMessage(a:e.message)], ":")
 
   call add(a:out, msg)
 
   if hasSuggestion
-    call s:addSuggestion(a:index, a:e)
+    call s:addSuggestion(a:e)
   endif
 endfunction
 
-function! s:addSuggestion(i, e)
+function! s:addSuggestion(e)
   if !exists('g:psc_ide_suggestions')
     return
   endif
@@ -146,7 +141,7 @@ function! s:addSuggestion(i, e)
              \'endColumn':   a:e['position']['endColumn'], 
              \'replacement': a:e['suggestion']['replacement']}
 
-   let g:psc_ide_suggestions[string(a:i)] = sugg
+   let g:psc_ide_suggestions[a:e.filename . "|" . string(a:e.position.startLine)] = sugg
 endfunction
 
 function! s:cleanupMessage(str)
