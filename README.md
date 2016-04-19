@@ -19,15 +19,18 @@ This plugin provides a syntax checker for syntastic. It relies on the --json-err
 * :PSCIDEtype : Returns the type of the expression under the cursor (Doesn't support fully qualified names).
 
 ![:PSCIDEtype gif](http://frigoeu.github.io/gifs/type.gif)
+* :PSCIDEaddTypeAnnotation : Add type annotation.
+
+![:PSCIDEaddtype gif](http://frigoeu.github.io/gifs/addtype.gif)
+* :PSCIDEimportIdentifier: Add import statement for identifier under cursor. If there are multiple options, you can select the module you want to import from with the number keys. Needs Purescript 0.8.4.0 or higher
+
+![:PSCIDEimportIdentifier](http://frigoeu.github.io/gifs/importidentifier.gif)
 * :PSCIDEapplySuggestion : Automatically applies suggestions provided by the compiler. This uses the syntastic syntax checker, so syntastic is required for this to work. Errors/warnings with suggestions are marked as "Style" errors, which use the "S>" icon by default, while normal errors/warnings use ">>" by default
 
 ![:PSCIDEapplySuggestion gif](http://frigoeu.github.io/gifs/applysuggestion.gif)
 * :PSCIDEcaseSplit : Splits variables in a function declaration into its different constructors. Will probably get improved soon so you don't have to input the type yourself
 
 ![:PSCIDEcaseSplit gif](http://frigoeu.github.io/gifs/casesplit.gif)
-* :PSCIDEaddTypeAnnotation : Add type annotation.
-
-![:PSCIDEaddtype gif](http://frigoeu.github.io/gifs/addtype.gif)
 * :PSCIDEremoveImportQualifications : Remove all qualifications from your imports
 
 ![:PSCIDEremoveimport gif](http://frigoeu.github.io/gifs/removeimport.gif)

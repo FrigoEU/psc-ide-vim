@@ -1,6 +1,6 @@
 " Options -------------------------------------------------------------------
 if !exists('g:psc_ide_log_level')
-  let g:psc_ide_log_level = 3
+  let g:psc_ide_log_level = 0
 endif
 
 if !exists('g:psc_ide_auto_imports')
