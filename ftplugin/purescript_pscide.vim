@@ -1,9 +1,10 @@
+" Options -------------------------------------------------------------------
 if !exists('g:psc_ide_log_level')
-  let g:psc_ide_log_level = 0
+  let g:psc_ide_log_level = 3
 endif
 
-if !exists('g:psc_ide_suggestions')
-  let g:psc_ide_suggestions = {}
+if !exists('g:psc_ide_auto_imports')
+  let g:psc_ide_auto_imports = 0
 endif
 
 " Syntastic initialization ---------------------------------------------------
@@ -13,8 +14,12 @@ else
   let g:syntastic_extra_filetypes = ['purescript']
 endif
 
-" Temporary file for adding imports ------------------------------------------
+" Inits ----------------------------------------------------------------------
 let s:tempfile = tempname()
+
+if !exists('g:psc_ide_suggestions')
+  let g:psc_ide_suggestions = {}
+endif
 
 " START ----------------------------------------------------------------------
 if !exists('s:pscidestarted')
@@ -162,9 +167,11 @@ function! s:importIdentifier(id, module)
 
   "multiple possibilities
   if type(resp) == type({}) && resp.resultType ==# "success" && type(resp.result[0]) == type({})
-    let choice = confirm("Multiple possibilities to import " . ident , join(map(resp.result, 'v:val["module"]'), "\n"))
+    let choices = copy(resp.result)
+    call map (choices, 'v:key. v:val["module"]')
+    let choice = confirm("Multiple possibilities to import " . ident , join(choices, "\n"))
     if choice
-      call s:importIdentifier(ident, resp.result[choice - 1])
+      call s:importIdentifier(ident, resp.result[choice - 1].module)
     endif
     return
   endif
@@ -661,7 +668,13 @@ endfunction
 
 " Automatic import after completion
 function! s:completeDone(item)
-  if (type(a:item) == type({}) && has_key(a:item, 'word') && has_key(a:item, 'info'))
+  if g:psc_ide_auto_imports == 0
+    return
+  endif
+
+  if (type(a:item) == type({}) 
+        \ && has_key(a:item, 'word') && type(a:item.word) == type("") 
+        \ && has_key(a:item, 'info')) && type(a:item.info) == type("")
     call s:importIdentifier(a:item.word, a:item.info)
   endif
 endfunction

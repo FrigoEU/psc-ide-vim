@@ -144,6 +144,7 @@ function! s:addSuggestion(i, e)
              \'startColumn': a:e['position']['startColumn'], 
              \'endLine':     a:e['position']['endLine'], 
              \'endColumn':   a:e['position']['endColumn'], 
+             \'filename':    a:e['filename'],
              \'replacement': a:e['suggestion']['replacement']}
 
    let g:psc_ide_suggestions[string(a:i)] = sugg
