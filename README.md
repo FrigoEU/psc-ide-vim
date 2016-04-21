@@ -1,10 +1,6 @@
 # psc-ide-vim
 A vim plugin that interfaces with `psc-ide`, Purescript's editor support server.
 
-## Versions
-Tag 0.1.0 should be working pretty well with compiler version < 8.1.0. 
-Since 8.1.0 psc-ide is bundled with purescript (yay!). For compiler versions >= 8.1.0 -> Use tag 0.2.0 or higher.
-
 ## Setup
 Installing the plugin via Vundle/NeoBundle/etc:
 
@@ -73,7 +69,7 @@ au FileType purescript nmap <leader>qa :PSCIDEaddImportQualifications<CR>
 ![:PSCIDE omnicompletion gif](http://frigoeu.github.io/gifs/omnicompletion.gif)
 
 ## Prerequisites
-* Have psc-ide-server installed and available on your path
+* Have psc, psc-ide-server and psc-ide-client installed and available on your path. From version 0.8.1.0 of PureScript on, psc-ide-server and psc-ide-client are installed when installing PureScript.
 * Have port 4242 free
 * Have a bower.json file on the root path of your project. The plugin will climb upward on the file tree until it finds bower.json.
 
