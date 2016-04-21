@@ -1,5 +1,5 @@
 # psc-ide-vim
-A vim plugin that interfaces with kRITZCREEK/psc-ide: Purescript's editor support server.
+A vim plugin that interfaces with `psc-ide`, Purescript's editor support server.
 
 ## Versions
 Tag 0.1.0 should be working pretty well with compiler version < 8.1.0. 
