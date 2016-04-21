@@ -682,16 +682,16 @@ endfunction
 
 " INIT -----------------------------------------------------------------------
 " Automatically load the module we just opened
-augroup PscIdeAutoLoad
-  au!
-  autocmd BufEnter *.purs call s:AutoLoad()
+"augroup PscIdeAutoLoad
+  "au!
+  "autocmd BufEnter *.purs call s:AutoLoad()
   "autocmd BufWritePost *.purs call s:AutoLoad()
-augroup END
-function! s:AutoLoad()
-  if s:pscidestarted == 1
-    call PSCIDEload(0)
-  endif
-endfunction
+"augroup END
+"function! s:AutoLoad()
+  "if s:pscidestarted == 1
+    "call PSCIDEload(1)
+  "endif
+"endfunction
 
 " Automatically close the server when leaving vim
 augroup PscideShutDown

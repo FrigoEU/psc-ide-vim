@@ -30,7 +30,14 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 function! SyntaxCheckers_purescript_pscide_IsAvailable() dict
-  return g:psc_ide_syntastic_mode == 1 ? 1 : executable('pulp')
+  if (g:psc_ide_syntastic_mode == 1)
+    let version_output = syntastic#util#system('psc --version')
+    let parsed_ver = syntastic#util#parseVersion(version_output)
+    return syntastic#util#versionIsAtLeast(parsed_ver, [0, 8, 5, 0])
+  endif
+  if (g:psc_ide_syntastic_mode == 1)
+    return executable('pulp')
+  endif
 endfunction
 
 function! SyntaxCheckers_purescript_pscide_GetLocList() dict
@@ -103,11 +110,11 @@ function! ParsePulp(lines)
 
   if type(decoded) == type({}) && type(decoded["warnings"]) == type([]) && type(decoded["errors"])
     let res = ParsePscJsonOutput(decoded["errors"], decoded["warnings"])
-    if (res.error !== "")
+    if (res.error != "")
       call s:error(res.error)
     endif
     let g:psc_ide_suggestions = res.suggestions
-    return res.out
+    return res.llist
   else
     call s:error('checker purescript/pscide: unrecognized error format 4: ' . str)
     return []

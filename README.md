@@ -11,7 +11,11 @@ Installing the plugin via Vundle/NeoBundle/etc:
 `NeoBundle "frigoeu/psc-ide-vim"`
 
 ## Syntax checking
-This plugin provides a syntax checker for syntastic. It relies on the --json-errors flag of psc, which is only available starting at version 0.8.0.0, and it uses pulp, so make sure you have the most recent version
+This plugin provides two kinds of syntax checking with syntastic. Controlling which one you use happens via the global variable g:psc_ide_syntastic_mode.
+
+If 0 -> syntax checking is disabled
+If 1 (default) -> syntax checking happens with the fast-rebuild feature of psc-ide. This only checks the file that you're currently saving. You need psc version >= 0.8.5.0 for this to work.
+If 2 -> use pulp build. This rebuilds the whole project and is often quite a bit slower, so using the fast-rebuild mode is advised.
 
 ![:PSCIDE syntastic gif](http://frigoeu.github.io/gifs/syntastic.gif)
 
@@ -45,7 +49,7 @@ This plugin provides a syntax checker for syntastic. It relies on the --json-err
 
 * :PSCIDEstart : Starts psc-ide-server on port 4242 and your project root directory (found by recursively walking up the tree until we find bower.json). Gets called automatically when trying to interact with the server, so you shouldn't need to call this yourself. If you have a psc-ide-server running already, this plugin will use that server for it's commands.
 * :PSCIDEstop : Stops psc-ide-server. Gets called automatically when exiting VIM.
-* :PSCIDEload : Loads the current module and it's dependencies into psc-ide-server. Gets called automatically whenever you open/switch to a purescript file. As psc-ide reloads new versions of the module for you, you also shouldn't need to call this yourself.
+* :PSCIDEload : Loads all modules into psc-ide-server. This gets called automatically when psc-ide-server gets started. Afterwards it's up to you to refresh it now and then. This used to happen automatically on file save/buffer switch, but this took multiple seconds on bigger projects and ended up being more trouble than it was worth.
 
 ## Mappings
 No custom mappings are provided, but it's easy to map the above commands to any key mapping you want. My personal setup:
@@ -53,10 +57,11 @@ No custom mappings are provided, but it's easy to map the above commands to any 
 ```
 au FileType purescript nmap <leader>t :PSCIDEtype<CR>
 au FileType purescript nmap <leader>s :PSCIDEapplySuggestion<CR>
-au FileType purescript nmap <leader>p :PSCIDEpursuit<CR>
-au FileType purescript nmap <leader>c :PSCIDEcaseSplit<CR>
 au FileType purescript nmap <leader>a :PSCIDEaddTypeAnnotation<CR>
 au FileType purescript nmap <leader>i :PSCIDEimportIdentifier<CR>
+au FileType purescript nmap <leader>r :PSCIDEload<CR>
+au FileType purescript nmap <leader>p :PSCIDEpursuit<CR>
+au FileType purescript nmap <leader>c :PSCIDEcaseSplit<CR>
 au FileType purescript nmap <leader>qd :PSCIDEremoveImportQualifications<CR>
 au FileType purescript nmap <leader>qa :PSCIDEaddImportQualifications<CR>
 ```
