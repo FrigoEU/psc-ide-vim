@@ -35,15 +35,17 @@ function! SyntaxCheckers_purescript_pscide_IsAvailable() dict
     let parsed_ver = syntastic#util#parseVersion(version_output)
     return syntastic#util#versionIsAtLeast(parsed_ver, [0, 8, 5, 0])
   endif
-  if (g:psc_ide_syntastic_mode == 1)
+  if (g:psc_ide_syntastic_mode == 2)
     return executable('pulp')
   endif
 endfunction
 
 function! SyntaxCheckers_purescript_pscide_GetLocList() dict
   if g:psc_ide_syntastic_mode == 1
+    " Mode one doesn't use an executable, so we just do something trivial like
+    " echo in makeprg and do the real work in Preprocess
     let loclist = SyntasticMake({
-        \ 'makeprg': '',
+        \ 'makeprg': self.makeprgBuild({'exe': 'echo', 'args': 'a'}), 
         \ 'errorformat': '%t:%f:%l:%c:%m',
         \ 'Preprocess': function('PSCIDErebuild') })
   endif

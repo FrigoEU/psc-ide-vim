@@ -702,21 +702,20 @@ function! s:Shutdown()
   silent PSCIDEend
 endfunction
 
-" Automatic import after completion
-function! s:completeDone(item)
-  if g:psc_ide_auto_imports == 0
-    return
-  endif
-
-  if (type(a:item) == type({}) 
-        \ && has_key(a:item, 'word') && type(a:item.word) == type("") 
-        \ && has_key(a:item, 'info')) && type(a:item.info) == type("")
-    call s:importIdentifier(a:item.word, a:item.info)
-  endif
-endfunction
-augroup PscideAfterCompletion
-  autocmd CompleteDone * call s:completeDone(v:completed_item)
-augroup END
+" " Automatic import after completion
+" function! s:completeDone(item)
+"   if g:psc_ide_auto_imports == 0
+"     return
+"   endif
+"   if (type(a:item) == type({}) 
+"         \ && has_key(a:item, 'word') && type(a:item.word) == type("") 
+"         \ && has_key(a:item, 'info')) && type(a:item.info) == type("")
+"     call s:importIdentifier(a:item.word, a:item.info)
+"   endif
+" endfunction
+" augroup PscideAfterCompletion
+"   autocmd CompleteDone * call s:completeDone(v:completed_item)
+" augroup END
 
 
 
