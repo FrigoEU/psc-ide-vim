@@ -46,12 +46,12 @@ function! PSCIDEstart(silent)
     return
   endif
 
-  call s:log("PSCIDEstart: Starting psc-ide-server at ", loglevel)
+  call s:log("PSCIDEstart: Starting psc-ide-server at " . dir, loglevel)
 
-  let command = (has('win16') || has('win32') || has('win64')) ? ("start /b psc-ide-server -p 4242 -d " . dir) : ("psc-ide-server -p 4242 -d " . dir . " &")
+  let command = (has('win16') || has('win32') || has('win64')) ? ("start /b psc-ide-server -p 4242 -d " . dir) : ("psc-ide-server -p 4242 -d " . dir . " > /dev/null &")
   let resp = system(command)
 
-  call s:log("callPscIde: Sleeping for 100ms so server can start up", 1)
+  call s:log("PSCIDEstart: Sleeping for 100ms so server can start up", 1)
   :exe "sleep 100m"
 
   let s:pscidestarted = 1
@@ -92,7 +92,7 @@ function! PSCIDEend()
     return
   endif
   let input = {'command': 'quit'}
-  let resp = system("psc-ide-client -p 4242", s:jsonEncode(input))
+  let resp = s:mysystem("psc-ide-client -p 4242", s:jsonEncode(input))
   let s:pscidestarted = 0
 endfunction
 
@@ -232,6 +232,32 @@ function! s:drop(list, j)
     endif
   endfor
   return newlist
+endfunction
+
+function! PSCIDErebuild(stuff)
+  let g:psc_ide_suggestions = {}
+  let filename = expand("%:p")
+  let input = {'command': 'rebuild', 'params': {'file': filename}}
+
+  let resp = s:callPscIde(input, 0, 0)
+
+  if type(resp) == type({}) && has_key(resp, "resultType") 
+     \ && has_key (resp, "result") && type(resp.result) == type([])
+    if resp.resultType == "error"
+      let out = ParsePscJsonOutput(resp.result, [])
+    else
+      let out = ParsePscJsonOutput([], resp.result)
+    endif
+    if out.error != ""
+      call s:log("PSCIDErebuild: Failed to interpret " . string(resp.result), 0)
+    endif
+
+    let g:psc_ide_suggestions = out.suggestions
+    return out.llist
+  else
+    call s:log("PSCIDErebuild: Failed to rebuild " . filename, 0)
+    return []
+  endif
 endfunction
 
 " Add type annotation
@@ -564,12 +590,17 @@ function! s:callPscIde(input, errorm, isRetry)
     let cwdcommand = {'command': 'cwd'}
 
     call s:log("callPscIde: No server found, looking for external server", 1)
-    let cwdresp = s:jsonDecode(system("psc-ide-client -p 4242 ", s:jsonEncode(cwdcommand)))
-    if type(cwdresp) == type({}) && cwdresp.resultType ==# 'success'
-      call s:log("callPscIde: Found external server with cwd: " . string(cwdresp.result), 1)
+    let cwdresp = s:mysystem("psc-ide-client -p 4242 ", s:jsonEncode(cwdcommand))
+    call s:log("callPscIde: Raw response of trying to reach external server: " . cwdresp, 1)
+    let cwdrespDecoded = PscIdeDecodeJson(s:StripNewlines(cwdresp))
+    call s:log("callPscIde: Decoded response of trying to reach external server: " 
+                \ . string(cwdrespDecoded), 1)
+
+    if type(cwdrespDecoded) == type({}) && cwdrespDecoded.resultType ==# 'success'
+      call s:log("callPscIde: Found external server with cwd: " . string(cwdrespDecoded.result), 1)
       call s:log("callPscIde: Expecting CWD: " . expectedCWD, 1)
 
-      if expectedCWD != cwdresp.result
+      if expectedCWD != cwdrespDecoded.result
         call s:log("callPscIde: External server on incorrect CWD, closing", 1)
         PSCIDEend
         call s:log("callPscIde: Starting new server", 1)
@@ -585,9 +616,14 @@ function! s:callPscIde(input, errorm, isRetry)
     endif
 
     call s:log("callPscIde: Trying to reach server again", 1)
-    let cwdresp2 = s:jsonDecode(system("psc-ide-client -p 4242 ", s:jsonEncode(cwdcommand)))
+    let cwdresp2 = s:mysystem("psc-ide-client -p 4242 ", s:jsonEncode(cwdcommand))
+    call s:log("callPscIde: Raw response of trying to reach server again: " . cwdresp2, 1)
+    let cwdresp2Decoded = PscIdeDecodeJson(s:StripNewlines(cwdresp2))
+    call s:log("callPscIde: Decoded response of trying to reach server again: " 
+               \ . string(cwdresp2Decoded), 1)
 
-    if type(cwdresp2) == type({}) && cwdresp2.resultType ==# 'success' && cwdresp2.result == expectedCWD
+    if type(cwdresp2Decoded) == type({}) && cwdresp2Decoded.resultType ==# 'success' 
+       \ && cwdresp2Decoded.result == expectedCWD
       call s:log("callPscIde: Server successfully contacted! Loading current module.", 1)
       call PSCIDEload(1)
     else
@@ -596,7 +632,8 @@ function! s:callPscIde(input, errorm, isRetry)
     endif
   endif
 
-  let resp = system("psc-ide-client -p 4242 ", s:jsonEncode(a:input))
+  let enc = s:jsonEncode(a:input)
+  let resp = s:mysystem("psc-ide-client -p 4242 ", enc)
   call s:log("callPscIde: Raw response: " . resp, 3)
 
   if resp =~ "onnection refused"  "TODO: This check is probably not crossplatform
@@ -610,14 +647,15 @@ function! s:callPscIde(input, errorm, isRetry)
       " Seems saving often causes psc-ide-server to crash. Haven't been able
       " to figure out why. It doesn't crash when I run it externally...
       " retrying is then the next best thing
-      return s:callPscIde(a:input, a:errorm, 1) " Keeping track of retries so we only rerty once
+      return s:callPscIde(a:input, a:errorm, 1) " Keeping track of retries so we only retry once
     endif
   endif
 
-  let decoded = s:jsonDecode(s:CleanEnd(s:StripNewlines(resp)))
+  let decoded = PscIdeDecodeJson(s:CleanEnd(s:StripNewlines(resp)))
   call s:log("callPscIde: Decoded response: " . string(decoded), 3)
 
-  if type(decoded) != type({}) || decoded['resultType'] !=# 'success'
+  if (type(decoded) != type({}) || decoded['resultType'] !=# 'success') 
+      \ && type(a:errorm) == type("")
     call s:log("callPscIde: Error: " . a:errorm, 0)
   endif
   return decoded
@@ -647,11 +685,11 @@ endfunction
 augroup PscIdeAutoLoad
   au!
   autocmd BufEnter *.purs call s:AutoLoad()
-  autocmd BufWritePost *.purs call s:AutoLoad()
+  "autocmd BufWritePost *.purs call s:AutoLoad()
 augroup END
 function! s:AutoLoad()
   if s:pscidestarted == 1
-    silent PSCIDEload
+    call PSCIDEload(0)
   endif
 endfunction
 
@@ -724,28 +762,108 @@ fun! s:jsonEncode(thing, ...)
   endif
 endf
 
-function! s:jsonDecode(json) abort
-  let cleaned = s:CleanEnd(a:json)
-    if a:json ==# ''
-        return []
-    endif
+" Parse Errors & Suggestions ------------------------------------------
+" Returns { error :: String, 
+"           llist :: Array (String in errorformat), 
+"           suggestions :: StrMap { startLine :: Int,
+"                                  startColumn :: Int,
+"                                  endLine :: Int,
+"                                  endColumn :: Int,
+"                                  filename :: String,
+"                                  replacement :: String } }
+" Key of suggestions = <filename>|<linenr>
+function! ParsePscJsonOutput(errors, warnings)
+  let out = []
+  let suggestions = {}
 
-    if substitute(cleaned, '\v\"%(\\.|[^"\\])*\"|true|false|null|[+-]?\d+%(\.\d+%([Ee][+-]?\d+)?)?', '', 'g') !~# "[^,:{}[\\] \t]"
-        " JSON artifacts
-        let true = 1
-        let false = 0
-        let null = ''
+  for e in a:warnings
+    try
+      call s:addEntry(out, suggestions, 0, e)
+    catch /\m^Vim\%((\a\+)\)\=:E716/
+      return {'error': 'ParsePscJsonOutput: unrecognized warning format', 
+            \ 'llist': [], 
+            \ 'suggestions': []}
+    endtry
+  endfor
+  for e in a:errors
+    try
+      call s:addEntry(out, suggestions, 1, e)
+    catch /\m^Vim\%((\a\+)\)\=:E716/
+      return {'error': 'ParsePscJsonOutput: unrecognized error format', 
+            \ 'llist': [], 
+            \ 'suggestions': []}
+    endtry
+  endfor
 
-        try
-            let object = eval(cleaned)
-        catch
-            " malformed JSON
-            let object = ''
-        endtry
-    else
-        let object = ''
-    endif
+  return {'error': "", 'llist': out, 'suggestions': suggestions}
+endfunction
 
-    return object
-endfunction 
+function! s:addEntry(out, suggestions, err, e)
+  let hasSuggestion = exists("a:e.suggestion") && type(a:e.suggestion) == type({}) &&
+                    \ exists("a:e.position") && type(a:e.position) == type({})
+  let isError = a:err == 1
+  let letter = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
+  let startL = (exists("a:e.position") && type(a:e.position) == type({}))
+               \ ? a:e.position.startLine : 1
+  let startC = (exists("a:e.position") && type(a:e.position) == type({}))
+               \ ? a:e.position.startColumn : 1
+  let msg = join([letter, 
+                \ a:e.filename, 
+                \ startL,
+                \ startC,
+                \ s:cleanupMessage(a:e.message)], ":")
 
+  call add(a:out, msg)
+
+  if hasSuggestion
+    call s:addSuggestion(a:suggestions, a:e)
+  endif
+endfunction
+
+function! s:addSuggestion(suggestions, e)
+  let sugg = {'startLine':   a:e['position']['startLine'], 
+             \'startColumn': a:e['position']['startColumn'], 
+             \'endLine':     a:e['position']['endLine'], 
+             \'endColumn':   a:e['position']['endColumn'], 
+             \'filename':    a:e['filename'],
+             \'replacement': a:e['suggestion']['replacement']}
+
+   let a:suggestions[a:e.filename . "|" . string(a:e.position.startLine)] = sugg
+endfunction
+
+function! s:cleanupMessage(str)
+    let transformations = [ ['\s*\n\+\s*', ' '], ['(\s', '('], ['\s)', ')'], ['\s\,', ','] ]
+    let out = a:str
+    for t in transformations
+        let out = substitute(out, t[0], t[1], 'g')
+    endfor
+    return out
+endfunction
+
+function! PscIdeDecodeJson(json) abort
+  if a:json ==# ''
+      return []
+  endif
+
+  if substitute(a:json, '\v\"%(\\.|[^"\\])*\"|true|false|null|[+-]?\d+%(\.\d+%([Ee][+-]?\d+)?)?', '', 'g') !~# "[^,:{}[\\] \t]"
+      " JSON artifacts
+      let true = 1
+      let false = 0
+      let null = ''
+
+      try
+          let object = eval(a:json)
+      catch
+          " malformed JSON
+          let object = ''
+      endtry
+  else
+      let object = ''
+  endif
+
+  return object
+endfunction
+
+function! s:mysystem(a, b)
+  return system(a:a, a:b . "\n")
+endfunction
