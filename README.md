@@ -44,7 +44,7 @@ If 2 -> use pulp build. This rebuilds the whole project and is often quite a bit
 * :PSCIDElist : Prints the loaded modules.
 
 * :PSCIDEstart : Starts psc-ide-server on port 4242 and your project root directory (found by recursively walking up the tree until we find bower.json). Gets called automatically when trying to interact with the server, so you shouldn't need to call this yourself. If you have a psc-ide-server running already, this plugin will use that server for it's commands.
-* :PSCIDEstop : Stops psc-ide-server. Gets called automatically when exiting VIM.
+* :PSCIDEend : Stops psc-ide-server. Gets called automatically when exiting VIM.
 * :PSCIDEload : Loads all modules into psc-ide-server. This gets called automatically when psc-ide-server gets started. Afterwards it's up to you to refresh it now and then. This used to happen automatically on file save/buffer switch, but this took multiple seconds on bigger projects and ended up being more trouble than it was worth.
 
 ## Mappings
