@@ -43,7 +43,7 @@ If 2 -> use pulp build. This rebuilds the whole project and is often quite a bit
 * :PSCIDEcwd : Prints the current working directory of psc-ide-server.
 * :PSCIDElist : Prints the loaded modules.
 
-* :PSCIDEstart : Starts psc-ide-server on port 4242 and your project root directory (found by recursively walking up the tree until we find bower.json). Gets called automatically when trying to interact with the server, so you shouldn't need to call this yourself. If you have a psc-ide-server running already, this plugin will use that server for it's commands.
+* :PSCIDEstart : Starts psc-ide-server on port 4242 (configurable via `g:psc_ide_server_port`) and your project root directory (found by recursively walking up the tree until we find bower.json). Gets called automatically when trying to interact with the server, so you shouldn't need to call this yourself. If you have a psc-ide-server running already, this plugin will use that server for it's commands.
 * :PSCIDEend : Stops psc-ide-server. Gets called automatically when exiting VIM.
 * :PSCIDEload : Loads all modules into psc-ide-server. This gets called automatically when psc-ide-server gets started. Afterwards it's up to you to refresh it now and then. This used to happen automatically on file save/buffer switch, but this took multiple seconds on bigger projects and ended up being more trouble than it was worth.
 
@@ -70,7 +70,7 @@ au FileType purescript nmap <leader>qa :PSCIDEaddImportQualifications<CR>
 
 ## Prerequisites
 * Have psc, psc-ide-server and psc-ide-client installed and available on your path. From version 0.8.1.0 of PureScript on, psc-ide-server and psc-ide-client are installed when installing PureScript.
-* Have port 4242 free
+* Have chosen server port (by default 4242) free. You can change port value using `g:psc_ide_server_port` option.
 * Have a bower.json file on the root path of your project. The plugin will climb upward on the file tree until it finds bower.json.
 
 ## Debugging

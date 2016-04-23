@@ -7,6 +7,11 @@ if !exists('g:psc_ide_auto_imports')
   let g:psc_ide_auto_imports = 0
 endif
 
+if !exists('g:psc_ide_server_port')
+  let g:psc_ide_server_port = 4242
+endif
+
+
 " Syntastic initialization ---------------------------------------------------
 if exists('g:syntastic_extra_filetypes')
   call add(g:syntastic_extra_filetypes, 'purescript')
@@ -29,6 +34,7 @@ if !exists('s:pscideexternal')
   let s:pscideexternal = 0
 endif
 
+
 "Looks for bower.json, assumes that's the root directory, starts
 "psc-ide-server in the background
 "Returns Nothing
@@ -48,7 +54,11 @@ function! PSCIDEstart(silent)
 
   call s:log("PSCIDEstart: Starting psc-ide-server at " . dir, loglevel)
 
-  let command = (has('win16') || has('win32') || has('win64')) ? ("start /b psc-ide-server -p 4242 -d " . dir) : ("psc-ide-server -p 4242 -d " . dir . " > /dev/null &")
+  if has('win16') || has('win32') || has('win64')
+    let command = "start /b psc-ide-server -p " . g:psc_ide_server_port . " -d " . dir
+  else
+    let command = "psc-ide-server -p " . g:psc_ide_server_port . " -d " . dir . " > /dev/null &"
+  endif
   let resp = system(command)
 
   call s:log("PSCIDEstart: Sleeping for 100ms so server can start up", 1)
@@ -92,7 +102,7 @@ function! PSCIDEend()
     return
   endif
   let input = {'command': 'quit'}
-  let resp = s:mysystem("psc-ide-client -p 4242", s:jsonEncode(input))
+  let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(input))
   let s:pscidestarted = 0
 endfunction
 
@@ -590,7 +600,7 @@ function! s:callPscIde(input, errorm, isRetry)
     let cwdcommand = {'command': 'cwd'}
 
     call s:log("callPscIde: No server found, looking for external server", 1)
-    let cwdresp = s:mysystem("psc-ide-client -p 4242 ", s:jsonEncode(cwdcommand))
+    let cwdresp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(cwdcommand))
     call s:log("callPscIde: Raw response of trying to reach external server: " . cwdresp, 1)
     let cwdrespDecoded = PscIdeDecodeJson(s:StripNewlines(cwdresp))
     call s:log("callPscIde: Decoded response of trying to reach external server: " 
@@ -616,7 +626,7 @@ function! s:callPscIde(input, errorm, isRetry)
     endif
 
     call s:log("callPscIde: Trying to reach server again", 1)
-    let cwdresp2 = s:mysystem("psc-ide-client -p 4242 ", s:jsonEncode(cwdcommand))
+    let cwdresp2 = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(cwdcommand))
     call s:log("callPscIde: Raw response of trying to reach server again: " . cwdresp2, 1)
     let cwdresp2Decoded = PscIdeDecodeJson(s:StripNewlines(cwdresp2))
     call s:log("callPscIde: Decoded response of trying to reach server again: " 
@@ -633,7 +643,7 @@ function! s:callPscIde(input, errorm, isRetry)
   endif
 
   let enc = s:jsonEncode(a:input)
-  let resp = s:mysystem("psc-ide-client -p 4242 ", enc)
+  let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, enc)
   call s:log("callPscIde: Raw response: " . resp, 3)
 
   if resp =~ "onnection refused"  "TODO: This check is probably not crossplatform
