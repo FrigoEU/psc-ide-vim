@@ -81,7 +81,7 @@ function! s:findFileRecur(filename)
     elseif iteration == 2
       let pattern = '..'
     else
-      let pattern = (has('win16') || has('win32') || has('win64')) ? pattern + '\..' : pattern + '/..'
+      let pattern = (has('win16') || has('win32') || has('win64')) ? pattern . '\..' : pattern . '/..'
     endif
 
     let list = globpath(pattern, a:filename, 1, 1)
