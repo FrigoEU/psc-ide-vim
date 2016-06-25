@@ -11,6 +11,9 @@ if !exists('g:psc_ide_server_port')
   let g:psc_ide_server_port = 4242
 endif
 
+" Adding iskeyword symbols to improve GetWordUnderCursor ---------------------
+" 124 = |
+setlocal iskeyword+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,^
 
 " Syntastic initialization ---------------------------------------------------
 if exists('g:syntastic_extra_filetypes')
@@ -123,7 +126,7 @@ function! PSCIDEload(silent)
   endif
 endfunction
 
-function! s:extractModule()
+function! s:ExtractModule()
   " Find the module we're currently in. Don't know how to get the length of
   " the current buffer so just looking at the first 20 lines, should be enough
   let module = ''
@@ -529,7 +532,10 @@ function! PSCIDEomni(findstart,base)
     let str = type(a:base) == type('a') ? a:base : string(a:base)
     call s:log('PSCIDEOmni: Looking for completions for: ' . str, 3)
 
-    let resp = s:callPscIde({'command': 'complete', 'params': {'filters': [s:prefixFilter(str)], 'matcher': s:flexMatcher(str)}}, 'Failed to get completions for: ' . str, 0)
+    let currentModule = s:ExtractModule()
+    call s:log('PSCIDEOmni currentModule: ' . currentModule, 3)
+
+    let resp = s:callPscIde({'command': 'complete', 'params': {'filters': [s:prefixFilter(str)], 'matcher': s:flexMatcher(str), 'currentModule': currentModule}}, 'Failed to get completions for: '. str, 0)
 
     if type(resp) == type({}) && resp.resultType ==# 'success'
       call s:log('PSCIDEOmni: Found Entries: ' . string(resp.result), 3)
