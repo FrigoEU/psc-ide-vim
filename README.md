@@ -70,6 +70,7 @@ au FileType purescript nmap <leader>qa :PSCIDEaddImportQualifications<CR>
 
 ## Prerequisites
 * Have psc, psc-ide-server and psc-ide-client installed and available on your path. From version 0.8.1.0 of PureScript on, psc-ide-server and psc-ide-client are installed when installing PureScript.
+* Have [purescript-vim](https://github.com/raichoo/purescript-vim) installed.
 * Have chosen server port (by default 4242) free. You can change port value using `g:psc_ide_server_port` option.
 * Have a bower.json file on the root path of your project. The plugin will climb upward on the file tree until it finds bower.json.
 
