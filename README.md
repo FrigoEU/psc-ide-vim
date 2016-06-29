@@ -9,9 +9,9 @@ Installing the plugin via Vundle/NeoBundle/etc:
 ## Syntax checking
 This plugin provides two kinds of syntax checking with syntastic. Controlling which one you use happens via the global variable g:psc_ide_syntastic_mode.
 
-If 0 -> syntax checking is disabled
-If 1 (default) -> syntax checking happens with the fast-rebuild feature of psc-ide. This only checks the file that you're currently saving. You need psc version >= 0.8.5.0 for this to work.
-If 2 -> use pulp build. This rebuilds the whole project and is often quite a bit slower, so using the fast-rebuild mode is advised.
+- If 0 -> syntax checking is disabled
+- If 1 (default) -> syntax checking happens with the fast-rebuild feature of psc-ide. This only checks the file that you're currently saving. You need psc version >= 0.8.5.0 for this to work.
+- If 2 -> use pulp build. This rebuilds the whole project and is often quite a bit slower, so using the fast-rebuild mode is advised.
 
 ![:PSCIDE syntastic gif](http://frigoeu.github.io/gifs/syntastic.gif)
 
