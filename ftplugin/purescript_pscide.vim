@@ -37,7 +37,6 @@ if !exists('s:pscideexternal')
   let s:pscideexternal = 0
 endif
 
-
 "Looks for bower.json, assumes that's the root directory, starts
 "psc-ide-server in the background
 "Returns Nothing
@@ -70,6 +69,18 @@ function! PSCIDEstart(silent)
   let s:pscidestarted = 1
 endfunction
 
+if v:version > 704 || (v:version == 704 && has('patch279'))
+    function! s:globpath(dir, pattern) abort
+        return globpath(a:dir, a:pattern, 1, 1)
+    endfunction
+else
+    function! s:globpath(dir, pattern) abort
+        return split(globpath(a:dir, a:pattern, 1), '\n')
+    endfunction
+endif
+
+
+
 " Find file recursively, return folder ----------------------------------------------------
 function! s:findFileRecur(filename)
   let iteration = 0
@@ -87,7 +98,8 @@ function! s:findFileRecur(filename)
       let pattern = (has('win16') || has('win32') || has('win64')) ? pattern . '\..' : pattern . '/..'
     endif
 
-    let list = globpath(pattern, a:filename, 1, 1)
+    let list = s:globpath(pattern, a:filename)
+
   endwhile
 
   if len(list) > 0
@@ -107,6 +119,24 @@ function! PSCIDEend()
   let input = {'command': 'quit'}
   let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(input))
   let s:pscidestarted = 0
+endfunction
+
+function! b:projectValidate()
+  let bowerdir = s:findFileRecur('bower.json')
+
+  if bowerdir == ""
+      call s:log("Your project is missing a bower.json file", 3)
+      return 0
+  else
+      let outputcontent = s:globpath(bowerdir, "output/*")
+      call s:log(join(outputcontent, ", "), 3)
+      if len(outputcontent) == 0
+          call s:log("Your project's /output directory is empty.  You should run `pulp build` to compile your project.", 3)
+          return 0
+      endif
+  endif
+
+  return 1
 endfunction
 
 " LOAD -----------------------------------------------------------------------
@@ -599,6 +629,8 @@ endfunction
 " Also serializes and deserializes from/to JSON
 function! s:callPscIde(input, errorm, isRetry)
   call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
+
+  call b:projectValidate()
 
   if s:pscidestarted == 0
 
