@@ -36,6 +36,9 @@ endif
 if !exists('s:pscideexternal')
   let s:pscideexternal = 0
 endif
+if !exists('s:projectvalid')
+  let s:projectvalid = 0
+endif
 
 "Looks for bower.json, assumes that's the root directory, starts
 "psc-ide-server in the background
@@ -119,24 +122,25 @@ function! PSCIDEend()
   let input = {'command': 'quit'}
   let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(input))
   let s:pscidestarted = 0
+  let s:projectvalid = 0
 endfunction
 
-function! b:projectValidate()
+function! s:projectProblems()
   let bowerdir = s:findFileRecur('bower.json')
+  let problems = []
 
   if bowerdir == ""
-      call s:log("Your project is missing a bower.json file", 3)
-      return 0
+      let problem = "Your project is missing a bower.json file"
+      call add(problems, problem)
   else
       let outputcontent = s:globpath(bowerdir, "output/*")
-      call s:log(join(outputcontent, ", "), 3)
       if len(outputcontent) == 0
-          call s:log("Your project's /output directory is empty.  You should run `pulp build` to compile your project.", 3)
-          return 0
+          let problem = "Your project's /output directory is empty.  You should run `pulp build` to compile your project."
+          call add(problems, problem)
       endif
   endif
 
-  return 1
+  return problems
 endfunction
 
 " LOAD -----------------------------------------------------------------------
@@ -519,6 +523,20 @@ function! s:formatpursuit(record)
   return "In " . s:CleanEnd(s:StripNewlines(a:record["package"])) . " " . s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['ident']) . ' :: ' . s:StripNewlines(a:record['type']))
 endfunction
 
+" VALIDATE -----------------------------------------------------------------------
+command! PSCIDEprojectValidate call PSCIDEprojectValidate()
+function! PSCIDEprojectValidate()
+  let problems = s:projectProblems()
+
+  if len(problems) == 0
+    let s:projectvalid = 1
+    echom "Your project is setup correctly."
+  else
+    let s:projectvalid = 0
+    echom "Your project is not setup correctly. " . join(problems)
+  endif
+endfunction
+
 " LIST -----------------------------------------------------------------------
 command! PSCIDElist call PSCIDElist()
 function! PSCIDElist()
@@ -630,7 +648,9 @@ endfunction
 function! s:callPscIde(input, errorm, isRetry)
   call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
 
-  call b:projectValidate()
+  if s:projectvalid == 0
+      call PSCIDEprojectValidate()
+  endif
 
   if s:pscidestarted == 0
 
@@ -684,7 +704,7 @@ function! s:callPscIde(input, errorm, isRetry)
   let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, enc)
   call s:log("callPscIde: Raw response: " . resp, 3)
 
-  if resp =~ "onnection refused"  "TODO: This check is probably not crossplatform
+  if resp =~ "connection refused"  "TODO: This check is probably not crossplatform
     let s:pscidestarted = 0
     let s:pscideexternal = 0
 
