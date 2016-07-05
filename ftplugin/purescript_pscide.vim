@@ -73,13 +73,13 @@ function! PSCIDEstart(silent)
 endfunction
 
 if v:version > 704 || (v:version == 704 && has('patch279'))
-    function! s:globpath(dir, pattern) abort
-        return globpath(a:dir, a:pattern, 1, 1)
-    endfunction
+  function! s:globpath(dir, pattern) abort
+    return globpath(a:dir, a:pattern, 1, 1)
+  endfunction
 else
-    function! s:globpath(dir, pattern) abort
-        return split(globpath(a:dir, a:pattern, 1), '\n')
-    endfunction
+  function! s:globpath(dir, pattern) abort
+    return split(globpath(a:dir, a:pattern, 1), '\n')
+  endfunction
 endif
 
 
@@ -130,14 +130,14 @@ function! s:projectProblems()
   let problems = []
 
   if bowerdir == ""
-      let problem = "Your project is missing a bower.json file"
-      call add(problems, problem)
+    let problem = "Your project is missing a bower.json file"
+    call add(problems, problem)
   else
-      let outputcontent = s:globpath(bowerdir, "output/*")
-      if len(outputcontent) == 0
-          let problem = "Your project's /output directory is empty.  You should run `pulp build` to compile your project."
-          call add(problems, problem)
-      endif
+    let outputcontent = s:globpath(bowerdir, "output/*")
+    if len(outputcontent) == 0
+      let problem = "Your project's /output directory is empty.  You should run `pulp build` to compile your project."
+      call add(problems, problem)
+    endif
   endif
 
   return problems
@@ -649,7 +649,7 @@ function! s:callPscIde(input, errorm, isRetry)
   call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
 
   if s:projectvalid == 0
-      call PSCIDEprojectValidate()
+    call PSCIDEprojectValidate()
   endif
 
   if s:pscidestarted == 0
