@@ -38,6 +38,8 @@ This plugin provides two kinds of syntax checking with syntastic. Controlling wh
 
 ![:PSCIDEaddimport gif](http://frigoeu.github.io/gifs/addimport.gif)
 
+* :PSCIDEgoToDefinition : Go to definition of word under cursor (sorry no gif yet!)
+
 * :PSCIDEaddClause : Add function template based on type signature
 * :PSCIDEpursuit : Prints the info found on pursuit for the identifier under the cursor. Doesn't support fully qualified names.
 * :PSCIDEcwd : Prints the current working directory of psc-ide-server.

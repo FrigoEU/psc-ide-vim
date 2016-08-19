@@ -1,3 +1,15 @@
+" Inits ----------------------------------------------------------------------
+if exists('g:loaded_psc_ide_vim')
+  finish
+endif
+let g:loaded_psc_ide_vim = 1
+
+let s:tempfile = tempname()
+
+if !exists('g:psc_ide_suggestions')
+  let g:psc_ide_suggestions = {}
+endif
+
 " Options -------------------------------------------------------------------
 if !exists('g:psc_ide_log_level')
   let g:psc_ide_log_level = 0
@@ -20,13 +32,6 @@ if exists('g:syntastic_extra_filetypes')
   call add(g:syntastic_extra_filetypes, 'purescript')
 else
   let g:syntastic_extra_filetypes = ['purescript']
-endif
-
-" Inits ----------------------------------------------------------------------
-let s:tempfile = tempname()
-
-if !exists('g:psc_ide_suggestions')
-  let g:psc_ide_suggestions = {}
 endif
 
 " START ----------------------------------------------------------------------
@@ -60,9 +65,9 @@ function! PSCIDEstart(silent)
   call s:log("PSCIDEstart: Starting psc-ide-server at " . dir, loglevel)
 
   if has('win16') || has('win32') || has('win64')
-    let command = "start /b psc-ide-server -p " . g:psc_ide_server_port . " -d " . dir
+    let command = "start /b psc-ide-server src/**/*.purs bower_components/**/*.purs -p " . g:psc_ide_server_port . " -d " . dir
   else
-    let command = "psc-ide-server -p " . g:psc_ide_server_port . " -d " . dir . " > /dev/null &"
+    let command = "psc-ide-server src/**/*.purs bower_components/**/*.purs -p " . g:psc_ide_server_port . " -d " . dir . " > /dev/null &"
   endif
   let resp = system(command)
 
@@ -281,6 +286,52 @@ function! s:drop(list, j)
   return newlist
 endfunction
 
+command! PSCIDEgoToDefinition call PSCIDEgoToDefinition()
+function! PSCIDEgoToDefinition()
+  let identifier = s:GetWordUnderCursor()
+  call s:log('PSCIDEgoToDefinition identifier: ' . identifier, 3)
+
+  let currentModule = s:ExtractModule()
+  call s:log('PSCIDEgoToDefinition currentModule: ' . currentModule, 3)
+
+  let resp = s:callPscIde({'command': 'type', 'params': {'search': identifier, 'filters': []}, 'currentModule': currentModule}, 'Failed to get location info for: ' . identifier, 0)
+
+  if type(resp) == type({}) && resp.resultType ==# "success" && len(resp.result) == 1
+      call s:goToDefinition(resp.result[0].definedAt)
+  endif
+
+  if type(resp) == type({}) && resp.resultType ==# "success" && len(resp.result) > 1
+    let choices = copy(resp.result)
+    call map (choices, 'v:key. v:val["module"]')
+    let choice = confirm("Multiple possibilities for " . identifier , join(choices, "\n"))
+    if choice
+      call s:goToDefinition(resp.result[choice - 1].definedAt)
+    endif
+    return
+  endif
+endfunction
+
+function! s:goToDefinition(definedAt)
+  let currentfile = expand("%:p")
+  if (currentfile == a:definedAt.name)
+    let cur = getpos(".")
+    let cur[1] = a:definedAt.start[0]
+    call setpos(".", cur)
+  else
+    let cwd = getcwd()
+    call s:log("PSCIDE s:goToDefinition: cwd: " . cwd, 3)
+
+    let lcwd = len(cwd)
+    let name = strpart(a:definedAt.name, lcwd + 1) " To strip slash
+    call s:log("PSCIDE s:goToDefinition: name: " . name, 3)
+
+    let command = "e +" . a:definedAt.start[0] . " " . name
+    call s:log("PSCIDE s:goToDefinition: command: " . command, 3)
+
+    :exe command
+  endif
+endfunction
+
 function! PSCIDErebuild(stuff)
   let g:psc_ide_suggestions = {}
   let filename = expand("%:p")
@@ -400,7 +451,10 @@ function! PSCIDEtype()
 endfunction
 
 function! s:getType(identifier)
-  let resp = s:callPscIde({'command': 'type', 'params': {'search': a:identifier, 'filters': []}}, 'Failed to get type info for: ' . a:identifier, 0)
+  let currentModule = s:ExtractModule()
+  call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
+
+  let resp = s:callPscIde({'command': 'type', 'params': {'search': a:identifier, 'filters': []}, 'currentModule': currentModule}, 'Failed to get type info for: ' . a:identifier, 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# 'success'
     if len(resp["result"]) > 0
@@ -555,11 +609,7 @@ endfunction
 
 
 " SET UP OMNICOMPLETION ------------------------------------------------------
-aug PSCIDE
-  au!
-  au BufNewFile,BufRead *.purs setlocal omnifunc=PSCIDEomni
-aug PSCIDE
-doau PSCIDE BufRead
+set omnifunc=PSCIDEomni
 
 " OMNICOMPLETION FUNCTION ----------------------------------------------------
 "Omnicompletion function
