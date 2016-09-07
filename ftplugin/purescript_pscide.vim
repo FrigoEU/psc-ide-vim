@@ -754,7 +754,7 @@ function! s:callPscIde(input, errorm, isRetry)
   let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, enc)
   call s:log("callPscIde: Raw response: " . resp, 3)
 
-  if resp =~ "connection refused"  "TODO: This check is probably not crossplatform
+  if resp =~? "connection refused"  "TODO: This check is probably not crossplatform
     let s:pscidestarted = 0
     let s:pscideexternal = 0
 
