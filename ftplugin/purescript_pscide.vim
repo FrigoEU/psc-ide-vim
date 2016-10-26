@@ -62,12 +62,12 @@ function! PSCIDEstart(silent)
     return
   endif
 
-  call s:log("PSCIDEstart: Starting psc-ide-server at " . dir, loglevel)
+  call s:log("PSCIDEstart: Starting psc-ide-server at " . dir . " on port " . g:psc_ide_server_port, loglevel)
 
   if has('win16') || has('win32') || has('win64')
-    let command = "start /b psc-ide-server src/**/*.purs bower_components/**/*.purs -p " . g:psc_ide_server_port . " -d " . dir
+    let command = "start /b psc-ide-server " . dir . "/src/**/*.purs " . dir . "/bower_components/**/*.purs -p " . g:psc_ide_server_port . " -d " . dir
   else
-    let command = "psc-ide-server src/**/*.purs bower_components/**/*.purs -p " . g:psc_ide_server_port . " -d " . dir . " > /dev/null &"
+    let command = "psc-ide-server " . dir . "/src/**/*.purs " . dir . "/bower_components/**/*.purs -p " . g:psc_ide_server_port . " -d " . dir . " > /dev/null &"
   endif
   let resp = system(command)
 
@@ -422,7 +422,7 @@ function! PSCIDEcaseSplit()
   call s:log('end position: ' . string(e), 3)
   call s:log('type: ' . t, 3)
 
-  let command = {'command': 'caseSplit', 'params': {'line': line, 'begin': b, 'end': e, 'type': t}}
+  let command = {'command': 'caseSplit', 'params': {'line': line, 'begin': b, 'end': e, 'annotations': s:jsonFalse(), 'type': t}}
 
   let resp = s:callPscIde(command, 'Failed to split case for: ' . word, 0)
 
