@@ -34,6 +34,8 @@ else
   let g:syntastic_extra_filetypes = ['purescript']
 endif
 
+let g:syntastic_purescript_checkers = ['pscide']
+
 " START ----------------------------------------------------------------------
 if !exists('s:pscidestarted')
   let s:pscidestarted = 0
