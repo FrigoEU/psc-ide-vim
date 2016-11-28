@@ -23,6 +23,10 @@ if !exists('g:psc_ide_server_port')
   let g:psc_ide_server_port = 4242
 endif
 
+if !exists('g:psc_ide_check_output_dir')
+  let g:psc_ide_check_output_dir = 1
+endif
+
 " Adding iskeyword symbols to improve GetWordUnderCursor ---------------------
 " 124 = |
 setlocal iskeyword+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,^
@@ -139,7 +143,7 @@ function! s:projectProblems()
   if bowerdir == ""
     let problem = "Your project is missing a bower.json file"
     call add(problems, problem)
-  else
+  elseif g:psc_ide_check_output_dir == 1
     let outputcontent = s:globpath(bowerdir, "output/*")
     if len(outputcontent) == 0
       let problem = "Your project's /output directory is empty.  You should run `pulp build` to compile your project."
