@@ -453,16 +453,55 @@ function! PSCIDEtype()
   endif
 endfunction
 
+" LISTIMPORTS -----------------------------------------------------------------------
+" List the modules imported by the current module
+command! PSCIDElistImports call PSCIDElistImports()
+function! PSCIDElistImports()
+  let currentModule = s:ExtractModule()
+  call s:log('PSCIDElistImports ' . currentModule, 3)
+  let result = s:ListImports(currentModule)
+  if type(result) == type([])
+    for e in result
+      echom e
+    endfor
+  else
+    echom "PSC-IDE: No import information found for " . currentModule
+  endif
+endfunction
+
+function! s:ListImports(module)
+  let filename = expand("%:p")
+  call s:log('PSCIDE s:ListImports ' . a:module . ' in file ' . filename, 1)
+  let resp = s:callPscIde({'command': 'list', 'params': {'type': 'import', 'file': filename}}, 'Failed to get imports for: ' . a:module, 0)
+  call s:log("PSCIDE s:ListImports result: " . string(resp), 3)
+  " Only need module names right now, so pluck just those.
+  if type(resp) == type({}) && resp['resultType'] ==# 'success'
+    " psc-ide >=0.11 returns imports on 'imports' property.
+    let imports = type(resp['result']) == type([]) ? resp['result'] : resp['result']['imports']
+    if len(imports) > 0
+      let result = []
+      for entry in imports
+        call add(result, entry['module'])
+      endfor
+      return result
+    else
+      return []
+    endif
+  endif
+endfunction
+
+
 function! s:getType(identifier)
   let currentModule = s:ExtractModule()
+  let importedModules = s:ListImports(currentModule)
   call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
-  let resp = s:callPscIde({'command': 'type', 'params': {'search': a:identifier, 'filters': [], 'currentModule': currentModule}}, 'Failed to get type info for: ' . a:identifier, 0)
+  let resp = s:callPscIde( {'command': 'type', 'params': {'search': a:identifier , 'filters': [ {'filter': 'modules' , 'params': {'modules': importedModules } }], 'currentModule': currentModule} }, 'Failed to get type info for: ' . a:identifier, 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# 'success'
-    if len(resp["result"]) > 0
-      return resp["result"]
-    endif
+    return resp['result']
+  else
+    return ''
   endif
 endfunction
 
