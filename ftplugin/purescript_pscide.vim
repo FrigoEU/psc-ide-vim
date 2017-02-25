@@ -73,7 +73,7 @@ function! PSCIDEstart(silent)
   if has('win16') || has('win32') || has('win64')
     let command = "start /b psc-ide-server " . dir . "/src/**/*.purs " . dir . "/bower_components/**/*.purs -p " . g:psc_ide_server_port . " -d " . dir
   else
-    let command = "psc-ide-server " . dir . "/src/**/*.purs " . dir . "/bower_components/**/*.purs -p " . g:psc_ide_server_port . " -d " . dir . " > /dev/null &"
+    let command = "psc-ide-server \"src/**/*.purs\" \"bower_components/**/*.purs\" -p " . g:psc_ide_server_port . " -d " . dir . " > /dev/null &"
   endif
   let resp = system(command)
 
