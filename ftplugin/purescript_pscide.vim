@@ -94,6 +94,18 @@ else
 endif
 
 
+" Display choices from a list of dicts for the user to select from with
+" alphanumerals as shortcuts
+function! s:pickOption(message, options, labelKey)
+  let displayOptions = copy(a:options)
+  call map(displayOptions, '(v:key > 9 ? nr2char(v:key + 55) : v:key) . " " . v:val[a:labelKey]')
+  let choice = confirm(a:message, join(displayOptions, "\n"))
+  if choice
+    return {'picked': v:true, 'option': a:options[choice - 1]}
+  else
+    return {'picked': v:false, 'option': v:none}
+  endif
+endfunction
 
 " Find file recursively, return folder ----------------------------------------------------
 function! s:findFileRecur(filename)
@@ -225,11 +237,9 @@ function! s:importIdentifier(id, module)
 
   "multiple possibilities
   if type(resp) == type({}) && resp.resultType ==# "success" && type(resp.result[0]) == type({})
-    let choices = copy(resp.result)
-    call map (choices, 'v:key. v:val["module"]')
-    let choice = confirm("Multiple possibilities to import " . ident , join(choices, "\n"))
-    if choice
-      call s:importIdentifier(ident, resp.result[choice - 1].module)
+    let choice = s:pickOption("Multiple possibilities to import " . ident, resp.result, "module")
+    if choice.picked
+      call s:importIdentifier(ident, choice.option.module)
     endif
     return
   endif
@@ -307,11 +317,9 @@ function! PSCIDEgoToDefinition()
   endif
 
   if type(resp) == type({}) && resp.resultType ==# "success" && len(resp.result) > 1
-    let choices = copy(resp.result)
-    call map (choices, 'v:key. v:val["module"]')
-    let choice = confirm("Multiple possibilities for " . identifier , join(choices, "\n"))
-    if choice
-      call s:goToDefinition(resp.result[choice - 1].definedAt)
+    let choice = s:pickOption("Multiple possibilities for " . identifier, resp.result, "module")
+    if choice.picked
+      call s:goToDefinition(choice.option.definedAt)
     endif
     return
   endif
