@@ -174,12 +174,19 @@ function! PSCIDEload(silent)
 
   let input = {'command': 'load'}
 
-  let resp = s:callPscIde(input, "Failed to load", 0)
+  call s:callPscIde(
+	\ input,
+	\ "Failed to load",
+	\ 0,
+	\ {msg -> s:PSCIDEloadCallback(loglevel, msg)}
+	\ )
+endfunction
 
-  if type(resp) == type({}) && resp['resultType'] ==# "success"
-    call s:log("PSCIDEload: Succesfully loaded modules: " . string(resp["result"]), loglevel)
+function! s:PSCIDEloadCallback(loglevel, resp)
+  if type(a:resp) == type({}) && a:resp['resultType'] ==# "success"
+    call s:log("PSCIDEload: Succesfully loaded modules: " . string(a:resp["result"]), a:loglevel)
   else
-    call s:log("PSCIDEload: Failed to load. Error: " . string(resp["result"]), loglevel)
+    call s:log("PSCIDEload: Failed to load. Error: " . string(a:resp["result"]), a:loglevel)
   endif
 endfunction
 
@@ -216,9 +223,7 @@ function! s:importIdentifier(id, module)
     return
   endif
 
-  let oldlines = getline(1, '$')
-
-  call writefile(oldlines, s:tempfile)
+  call writefile(getline(1, '$'), s:tempfile)
 
   let input = { 
         \ 'command': 'import' ,
@@ -233,21 +238,29 @@ function! s:importIdentifier(id, module)
     let input.params.filters = [{'filter': 'modules', 'params': {'modules': [a:module]}}]
   endif
 
-  let resp = s:callPscIde(input, "Failed to import identifier " . ident, 0)
+  call s:callPscIde(
+	\ input,
+	\ "Failed to import identifier " . ident, 
+	\ 0,
+	\ {resp -> s:PSCIDEimportIdentifierCallback(ident, a:id, a:module, resp)}
+	\ )
+endfunction
 
+function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp) 
   "multiple possibilities
-  if type(resp) == type({}) && resp.resultType ==# "success" && type(resp.result[0]) == type({})
-    let choice = s:pickOption("Multiple possibilities to import " . ident, resp.result, "module")
+  call s:log("s:PSCIDEimportIndetifierCallback", 3)
+  if type(a:resp) == type({}) && a:resp.resultType ==# "success" && type(a:resp.result[0]) == type({})
+    let choice = s:pickOption("Multiple possibilities to import " . a:ident, a:resp.result, "module")
     if choice.picked
-      call s:importIdentifier(ident, choice.option.module)
+      call s:importIdentifier(a:ident, choice.option.module)
     endif
     return
   endif
 
-  if type(resp) == type({}) && resp['resultType'] ==# "success"
-    let newlines = resp.result
+  if type(a:resp) == type({}) && a:resp['resultType'] ==# "success"
+    let newlines = a:resp.result
 
-    let linesdiff = len(newlines) - len(oldlines)
+    let linesdiff = len(newlines) - line("$")
     let nrOfOldlinesUnderLine = line(".") - 1
     let nrOfNewlinesUnderLine = nrOfOldlinesUnderLine + linesdiff
     let nrOfLinesToReplace = min([nrOfNewlinesUnderLine, nrOfOldlinesUnderLine])
@@ -280,7 +293,7 @@ function! s:importIdentifier(id, module)
 
     call s:log("PSCIDEimportIdentifier: Succesfully imported identifier: " . a:module . " ".a:id, 3)
   else
-    call s:log("PSCIDEimportIdentifier: Failed to import identifier " . ident . ". Error: " . string(resp["result"]), 0)
+    call s:log("PSCIDEimportIdentifier: Failed to import identifier " . a:ident . ". Error: " . string(a:resp["result"]), 0)
   endif
 endfunction
 
@@ -351,23 +364,30 @@ function! PSCIDErebuild(stuff)
   let filename = expand("%:p")
   let input = {'command': 'rebuild', 'params': {'file': filename}}
 
-  let resp = s:callPscIde(input, 0, 0)
+  call s:callPscIde(
+	\ input,
+	\ 0,
+	\ 0,
+	\ { msg -> s:PSCIDErebuild(filename, msg) }
+	\ )
+endfunction
 
-  if type(resp) == type({}) && has_key(resp, "resultType") 
-     \ && has_key (resp, "result") && type(resp.result) == type([])
-    if resp.resultType == "error"
-      let out = ParsePscJsonOutput(resp.result, [])
+function! s:PSCIDErebuild(filename, resp) 
+  if type(a:resp) == type({}) && has_key(a:resp, "resultType") 
+     \ && has_key (a:resp, "result") && type(a:resp.result) == type([])
+    if a:resp.resultType == "error"
+      let out = ParsePscJsonOutput(a:resp.result, [])
     else
-      let out = ParsePscJsonOutput([], resp.result)
+      let out = ParsePscJsonOutput([], a:resp.result)
     endif
     if out.error != ""
-      call s:log("PSCIDErebuild: Failed to interpret " . string(resp.result), 0)
+      call s:log("PSCIDErebuild: Failed to interpret " . string(a:resp.result), 0)
     endif
 
     let g:psc_ide_suggestions = out.suggestions
     return out.llist
   else
-    call s:log("PSCIDErebuild: Failed to rebuild " . filename, 0)
+    call s:log("PSCIDErebuild: Failed to rebuild " . a:filename, 0)
     return []
   endif
 endfunction
@@ -377,13 +397,18 @@ command! PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation()
 function! PSCIDEaddTypeAnnotation()
   let identifier = s:GetWordUnderCursor()
 
-  let result = s:getType(identifier)
+  call s:getType(
+	\ identifier,
+	\ { resp -> s:PSCIDEaddTypeAnnotationCallback(identifier, resp) }
+	\ )
+endfunction
 
-  if type(result) == type([])
+function! s:PSCIDEaddTypeAnnotationCallback(identifier, resp)
+  if type(a:result) == type([])
     let lnr = line(".")
     call append(lnr - 1, s:StripNewlines(result[0]['identifier']) . ' :: ' . s:StripNewlines(result[0]["type"]))
   else
-    echom "PSC-IDE: No type information found for " . identifier
+    echom "PSC-IDE: No type information found for " . a:identifier
   endif
 endfunction
 
@@ -453,26 +478,38 @@ command! PSCIDEtype call PSCIDEtype()
 function! PSCIDEtype()
   let identifier = s:GetWordUnderCursor()
 
-  let result = s:getType(identifier)
+  call s:getType(
+	\ identifier,
+	\ { resp -> s:PSCIDEtypeCallback(identifier, resp) }
+	\ )
+endfunction
 
-  if type(result) == type([])
-    for e in result
+function s:PSCIDEtypeCallback(identifier, result)
+  if type(a:result) == type([])
+    for e in a:result
       echom s:formattype(e)
     endfor
   else
-    echom "PSC-IDE: No type information found for " . identifier
+    echom "PSC-IDE: No type information found for " . a:identifier
   endif
 endfunction
 
-function! s:getType(identifier)
+function! s:getType(identifier, cb)
   let currentModule = s:ExtractModule()
   call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
-  let resp = s:callPscIde({'command': 'type', 'params': {'search': a:identifier, 'filters': []}, 'currentModule': currentModule}, 'Failed to get type info for: ' . a:identifier, 0)
+  call s:callPscIde(
+	\ {'command': 'type', 'params': {'search': a:identifier, 'filters': []}, 'currentModule': currentModule},
+	\  'Failed to get type info for: ' . a:identifier,
+	\ 0,
+	\ { resp -> s:getTypeCallback(resp, a:cb)}
+	\ )
+endfunction
 
-  if type(resp) == type({}) && resp['resultType'] ==# 'success'
-    if len(resp["result"]) > 0
-      return resp["result"]
+function! s:getTypeCallback(resp, cb)
+  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
+    if len(a:resp["result"]) > 0
+      call a:cb(a:resp["result"])
     endif
   endif
 endfunction
@@ -489,6 +526,7 @@ function! PSCIDEapplySuggestion()
   let filename = expand("%:p")
   call PSCIDEapplySuggestionPrime(lnr, filename, 0)
 endfunction
+
 function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
   "let llist = getloclist(0)
 
@@ -709,7 +747,7 @@ endfunction
 " Is responsible for keeping track of whether or not we have a running server
 " and (re)starting it if not
 " Also serializes and deserializes from/to JSON
-function! s:callPscIde(input, errorm, isRetry)
+function! s:callPscIde(input, errorm, isRetry, cb)
   call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
 
   if s:projectvalid == 0
@@ -722,53 +760,80 @@ function! s:callPscIde(input, errorm, isRetry)
     let cwdcommand = {'command': 'cwd'}
 
     call s:log("callPscIde: No server found, looking for external server", 1)
-    let cwdresp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(cwdcommand))
-    call s:log("callPscIde: Raw response of trying to reach external server: " . cwdresp, 1)
-    let cwdrespDecoded = PscIdeDecodeJson(s:StripNewlines(cwdresp))
-    call s:log("callPscIde: Decoded response of trying to reach external server: " 
-                \ . string(cwdrespDecoded), 1)
-
-    if type(cwdrespDecoded) == type({}) && cwdrespDecoded.resultType ==# 'success'
-      call s:log("callPscIde: Found external server with cwd: " . string(cwdrespDecoded.result), 1)
-      call s:log("callPscIde: Expecting CWD: " . expectedCWD, 1)
-
-      if expectedCWD != cwdrespDecoded.result
-        call s:log("callPscIde: External server on incorrect CWD, closing", 1)
-        PSCIDEend
-        call s:log("callPscIde: Starting new server", 1)
-        call PSCIDEstart(1)
-      else
-        call s:log("callPscIde: External server CWD matches with what we need", 1)
-        let s:pscidestarted = 1
-        let s:pscideexternal = 1
-      endif
-    else
-      call s:log("callPscIde: No external server found, starting new server", 1)
-      call PSCIDEstart(1)
-    endif
-
-    call s:log("callPscIde: Trying to reach server again", 1)
-    let cwdresp2 = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(cwdcommand))
-    call s:log("callPscIde: Raw response of trying to reach server again: " . cwdresp2, 1)
-    let cwdresp2Decoded = PscIdeDecodeJson(s:StripNewlines(cwdresp2))
-    call s:log("callPscIde: Decoded response of trying to reach server again: " 
-               \ . string(cwdresp2Decoded), 1)
-
-    if type(cwdresp2Decoded) == type({}) && cwdresp2Decoded.resultType ==# 'success' 
-       \ && cwdresp2Decoded.result == expectedCWD
-      call s:log("callPscIde: Server successfully contacted! Loading current module.", 1)
-      call PSCIDEload(1)
-    else
-      call s:log("callPscIde: Server still can't be contacted, aborting...", 1)
-      return
-    endif
+    call job_start(
+	  \ ["psc-ide-client", "-p", g:psc_ide_server_port, s:jsonEncode(cwdcommand)],
+	  \ { "out_cb": function("s:PscIdeCallback")
+	  \ })
+    return
   endif
 
   let enc = s:jsonEncode(a:input)
-  let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, enc)
-  call s:log("callPscIde: Raw response: " . resp, 3)
+  let tempfile = tempname()
+  call writefile([enc], tempfile, "b")
+  call s:log("callPscIde: psc-ide-client: " . enc, 3)
+  call job_start(
+	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
+	\ { "out_cb": {ch, msg -> a:cb(s:PscIdeCallback3(a:input, a:errorm, msg))}
+	\ , "in_io": "file"
+	\ , "in_name": tempfile
+	\ , "err_cb": {ch, msg -> s:log("ups..." . msg, 3)}
+	\ })
+  call delete(tempfile)
+endfunction
 
-  if resp =~? "connection refused"  "TODO: This check is probably not crossplatform
+" UTILITY FUNCTIONS ----------------------------------------------------------
+function! s:PscIdeCallback(channel, cwdresp)
+  let expectedCWD = s:findFileRecur('bower.json')
+  call s:log("callPscIde: Raw response of trying to reach external server: " . a:cwdresp, 1)
+  let cwdrespDecoded = PscIdeDecodeJson(s:StripNewlines(a:cwdresp))
+  call s:log("callPscIde: Decoded response of trying to reach external server: " 
+	      \ . string(cwdrespDecoded), 1)
+
+  if type(cwdrespDecoded) == type({}) && cwdrespDecoded.resultType ==# 'success'
+    call s:log("callPscIde: Found external server with cwd: " . string(cwdrespDecoded.result), 1)
+    call s:log("callPscIde: Expecting CWD: " . expectedCWD, 1)
+
+    if expectedCWD != cwdrespDecoded.result
+      call s:log("callPscIde: External server on incorrect CWD, closing", 1)
+      PSCIDEend
+      call s:log("callPscIde: Starting new server", 1)
+      call PSCIDEstart(1)
+    else
+      call s:log("callPscIde: External server CWD matches with what we need", 1)
+      let s:pscidestarted = 1
+      let s:pscideexternal = 1
+    endif
+  else
+    call s:log("callPscIde: No external server found, starting new server", 1)
+    call PSCIDEstart(1)
+  endif
+  call s:log("callPscIde: Trying to reach server again", 1)
+  call job_start(
+      \ ["psc-ide-client", "-p", g:psc_ide_server_port, s:jsonEncode(cwdcommand)]
+      \ { "out_cb": function("s:PscIdeCallback2")
+      \ })
+endfunction
+
+function! s:PscIdeCallback2(channel, cwdresp2)
+  call s:log("callPscIde: Raw response of trying to reach server again: " . a:cwdresp2, 1)
+  let cwdresp2Decoded = PscIdeDecodeJson(s:StripNewlines(a:cwdresp2))
+  call s:log("callPscIde: Decoded response of trying to reach server again: " 
+	     \ . string(cwdresp2Decoded), 1)
+
+  if type(cwdresp2Decoded) == type({}) && cwdresp2Decoded.resultType ==# 'success' 
+     \ && cwdresp2Decoded.result == expectedCWD
+    call s:log("callPscIde: Server successfully contacted! Loading current module.", 1)
+    call PSCIDEload(1)
+  else
+    call s:log("callPscIde: Server still can't be contacted, aborting...", 1)
+    return
+  endif
+endfunction
+
+function! s:PscIdeCallback3(input, errorm, resp)
+  call s:log("callPscIde: Raw response: " . a:resp, 3)
+
+  if a:resp =~? "connection refused"  "TODO: This check is probably not crossplatform
     let s:pscidestarted = 0
     let s:pscideexternal = 0
 
@@ -783,7 +848,7 @@ function! s:callPscIde(input, errorm, isRetry)
     endif
   endif
 
-  let decoded = PscIdeDecodeJson(s:CleanEnd(s:StripNewlines(resp)))
+  let decoded = PscIdeDecodeJson(s:CleanEnd(s:StripNewlines(a:resp)))
   call s:log("callPscIde: Decoded response: " . string(decoded), 3)
 
   if (type(decoded) != type({}) || decoded['resultType'] !=# 'success') 
@@ -793,7 +858,6 @@ function! s:callPscIde(input, errorm, isRetry)
   return decoded
 endfunction
 
-" UTILITY FUNCTIONS ----------------------------------------------------------
 function! s:StripNewlines(s)
   return substitute(a:s, '\s*\n\s*', ' ', 'g')
 endfunction
@@ -983,7 +1047,7 @@ function! PscIdeDecodeJson(json) abort
       let null = ''
 
       try
-          let object = eval(a:json)
+          let object = json_decode(a:json)
       catch
           " malformed JSON
           let object = ''
