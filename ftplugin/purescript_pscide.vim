@@ -396,12 +396,11 @@ function! PSCIDErebuild(async, ...)
 	  \ { msg -> CallBack(s:PSCIDErebuildCallback(filename, msg)) }
 	  \ )
   else
-    return CallBack(
-	    s:PSCIDErebuildCallback(
+    let resp = s:PSCIDErebuildCallback(
 	      \ filename,
 	      \ s:callPscIdeSync(input, 0, 0),
 	      \ )
-	  \ )
+    return CallBack(resp)
   endif
 endfunction
 
