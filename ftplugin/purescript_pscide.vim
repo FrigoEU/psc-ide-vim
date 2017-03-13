@@ -323,14 +323,22 @@ function! PSCIDEgoToDefinition()
   let currentModule = s:ExtractModule()
   call s:log('PSCIDEgoToDefinition currentModule: ' . currentModule, 3)
 
-  let resp = s:callPscIde({'command': 'type', 'params': {'search': identifier, 'filters': []}, 'currentModule': currentModule}, 'Failed to get location info for: ' . identifier, 0)
+  call s:callPscIde(
+	\   {'command': 'type', 'params': {'search': identifier, 'filters': []}, 'currentModule': currentModule},
+	\ 'Failed to get location info for: ' . identifier,
+	\ 0,
+	\ { resp -> s:PSCIDEgoToDefinitionCallback(identifier, resp) }
+	\ )
+endfunction
 
-  if type(resp) == type({}) && resp.resultType ==# "success" && len(resp.result) == 1
-      call s:goToDefinition(resp.result[0].definedAt)
+function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
+  call s:log("s:PSCIDEgoToDefinitionCallback: " . string(a:resp), 3)
+  if type(a:resp) == type({}) && a:resp.resultType ==# "success" && len(a:resp.result) == 1
+      call s:goToDefinition(a:resp.result[0].definedAt)
   endif
 
-  if type(resp) == type({}) && resp.resultType ==# "success" && len(resp.result) > 1
-    let choice = s:pickOption("Multiple possibilities for " . identifier, resp.result, "module")
+  if type(a:resp) == type({}) && a:resp.resultType ==# "success" && len(a:resp.result) > 1
+    let choice = s:pickOption("Multiple possibilities for " . a:identifier, a:resp.result, "module")
     if choice.picked
       call s:goToDefinition(choice.option.definedAt)
     endif
