@@ -805,7 +805,7 @@ function! s:callPscIde(input, errorm, isRetry, cb)
     call s:log("callPscIde: No server found, looking for external server", 1)
     call job_start(
 	  \ ["psc-ide-client", "-p", g:psc_ide_server_port],
-	  \ { "out_cb": { msg -> s:PscIdeStartCallback(cwdcommand, msg) }
+	  \ { "out_cb": { msg -> s:PscIdeStartCallback(a:input, a:errorm, a:cb, cwdcommand, msg) }
 	  \ , "in_io": "file"
 	  \ , "in_name": tempfile
 	  \ })
@@ -819,15 +819,15 @@ function! s:callPscIde(input, errorm, isRetry, cb)
   call s:log("callPscIde: psc-ide-client: " . enc, 3)
   call job_start(
 	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
-	\ { "out_cb": {ch, msg -> a:cb(s:PscIdeCallback(a:input, a:errorm, a:isRetry, msg))}
+	\ { "out_cb": {ch, msg -> a:cb(s:PscIdeCallback(a:input, a:errorm, a:isRetry, a:cb, msg))}
 	\ , "in_io": "file"
 	\ , "in_name": tempfile
-	\ , "err_cb": {ch, msg -> s:log("ups..." . msg, 3)}
+	\ , "err_cb": {ch, msg -> s:log("s:callPscIde error: " . msg, 3)}
 	\ })
   call delete(tempfile)
 endfunction
 
-function! s:callPscIdeSync(input, errorm, isRetry) 
+function! s:callPscIdeSync(input, errorm, isRetry)
   call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
 
   if s:projectvalid == 0
@@ -841,17 +841,17 @@ function! s:callPscIdeSync(input, errorm, isRetry)
 
     call s:log("callPscIde: No server found, looking for external server", 1)
     let cwdresp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(cwdcommand))
-    call s:PscIdeStartCallback(cwdcommand, cwdresp)
+    return s:PscIdeStartCallback(a:input, a:errorm, 0, cwdcommand, cwdresp)
   endif
 
   call s:log("callPscIde: Trying to reach server again", 1)
   let enc = s:jsonEncode(a:input)
   let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, enc)
-  return s:PscIdeCallback(a:input, a:errorm, a:isRetry, resp)
+  return s:PscIdeCallback(a:input, a:errorm, a:isRetry, a:cb, resp)
 endfunction
 
 " UTILITY FUNCTIONS ----------------------------------------------------------
-function! s:PscIdeStartCallback(cwdcommand, cwdresp)
+function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
   let expectedCWD = s:findFileRecur('bower.json')
   call s:log("s:PscIdeStartCallback: Raw response of trying to reach external server: " . a:cwdresp, 1)
   let cwdrespDecoded = PscIdeDecodeJson(s:StripNewlines(a:cwdresp))
@@ -877,19 +877,26 @@ function! s:PscIdeStartCallback(cwdcommand, cwdresp)
     call PSCIDEstart(1)
   endif
   call s:log("s:PscIdeStartCallback: Trying to reach server again", 1)
+  if (type(a:cb) == type(0) && !a:cb)
+    let cwdresp = s:mysystem(
+	  \ "psc-ide-client -p" . g:psc_ide_server_port,
+	  \ s:jsonEncode(a:cwdcommand)
+	  \ )
+    return s:PscIdeRetryCallback(a:input, a:errorm, 0, expectedCWD, cwdresp)
+  endif
   let tempfile = tempname()
   call writefile([s:jsonEncode(a:cwdcommand)], tempfile)
   call job_start(
 	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
-	\ { "out_cb": { ch, resp -> s:PscIdeRetryCallback(expectedCWD, resp) }
+	\ { "out_cb": { ch, resp -> s:PscIdeRetryCallback(a:input, a:errorm, a:cb, expectedCWD, resp) }
 	\ , "in_io": "file"
 	\ , "in_name": tempfile
-	\ , "err_cb": { ch, msg -> s:log("ups..." . msg, 3) }
+	\ , "err_cb": { ch, msg -> s:log("s:PscIdeStartCallback error: " . msg, 3) }
 	\ })
   call delete(tempfile)
 endfunction
 
-function! s:PscIdeRetryCallback(expectedCWD, cwdresp2)
+function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
   call s:log("s:PscIdeRetryCallback: Raw response of trying to reach server again: " . a:cwdresp2, 1)
   let cwdresp2Decoded = PscIdeDecodeJson(s:StripNewlines(a:cwdresp2))
   call s:log("s:PscIdeRetryCallback: Decoded response of trying to reach server again: " 
@@ -903,9 +910,29 @@ function! s:PscIdeRetryCallback(expectedCWD, cwdresp2)
     call s:log("s:PscIdeRetryCallback: Server still can't be contacted, aborting...", 1)
     return
   endif
+
+  let enc = s:jsonEncode(a:input)
+  if (type(a:cb) == type(0))
+    let resp = s:mysystem(
+	  \ "psc-ide-client -p" . g:psc_ide_server_port,
+	  \ enc
+	  \ )
+    return s:PscIdeCallback(a:input, a:errorm, 1, 0, resp)
+  endif
+  let tempfile = tempname()
+  call writefile([enc], tempfile, "b")
+  call s:log("callPscIde: psc-ide-client: " . enc, 3)
+  call job_start(
+	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
+	\ { "out_cb": {ch, msg -> a:cb(s:PscIdeCallback(a:input, a:errorm, 1, a:cb, msg))}
+	\ , "in_io": "file"
+	\ , "in_name": tempfile
+	\ , "err_cb": {ch, msg -> s:log("s:PscIdeRetryCallback error: " . msg, 3)}
+	\ })
+  call delete(tempfile)
 endfunction
 
-function! s:PscIdeCallback(input, errorm, isRetry, resp)
+function! s:PscIdeCallback(input, errorm, isRetry, cb, resp)
   call s:log("s:PscIdeCallback: Raw response: " . a:resp, 3)
 
   if a:resp =~? "connection refused"  "TODO: This check is probably not crossplatform
@@ -919,7 +946,7 @@ function! s:PscIdeCallback(input, errorm, isRetry, resp)
       " Seems saving often causes psc-ide-server to crash. Haven't been able
       " to figure out why. It doesn't crash when I run it externally...
       " retrying is then the next best thing
-      return s:callPscIde(a:input, a:errorm, 1) " Keeping track of retries so we only retry once
+      return s:callPscIde(a:input, a:errorm, 1, a:cb) " Keeping track of retries so we only retry once
     endif
   endif
 
