@@ -436,9 +436,9 @@ function! PSCIDEaddTypeAnnotation()
 endfunction
 
 function! s:PSCIDEaddTypeAnnotationCallback(identifier, resp)
-  if type(a:result) == type([])
+  if type(a:resp) == type([])
     let lnr = line(".")
-    call append(lnr - 1, s:StripNewlines(result[0]['identifier']) . ' :: ' . s:StripNewlines(result[0]["type"]))
+    call append(lnr - 1, s:StripNewlines(a:resp[0]['identifier']) . ' :: ' . s:StripNewlines(a:resp[0]["type"]))
   else
     echom "PSC-IDE: No type information found for " . a:identifier
   endif
