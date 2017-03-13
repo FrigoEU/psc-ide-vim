@@ -416,10 +416,17 @@ endfunction
 " Get current working directory of psc-ide-server
 command! PSCIDEcwd call PSCIDEcwd()
 function! PSCIDEcwd()
-  let resp = s:callPscIde({'command': 'cwd'}, "Failed to get current working directory", 0)
+  call s:callPscIde(
+	\ {'command': 'cwd'},
+	\ "Failed to get current working directory", 
+	\ 0,
+	\ function("s:PSCIDEcwdCallback")
+	\ )
+endfunction
 
-  if type(resp) == type({}) && resp['resultType'] ==# 'success'
-    echom "PSC-IDE: Current working directory: " . resp["result"]
+function s:PSCIDEcwdCallback(resp)
+  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
+    echom "PSC-IDE: Current working directory: " . a:resp["result"]
   endif
 endfunction
 
