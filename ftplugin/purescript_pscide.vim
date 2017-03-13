@@ -824,6 +824,29 @@ function! s:callPscIde(input, errorm, isRetry, cb)
   call delete(tempfile)
 endfunction
 
+function! s:callPscIdeSync(input, errorm, isRetry) 
+  call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
+
+  if s:projectvalid == 0
+    call PSCIDEprojectValidate()
+  endif
+
+  if s:pscidestarted == 0
+
+    let expectedCWD = s:findFileRecur('bower.json')
+    let cwdcommand = {'command': 'cwd'}
+
+    call s:log("callPscIde: No server found, looking for external server", 1)
+    let cwdresp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(cwdcommand))
+    call s:PscIdeStartCallback(cwdcommand, cwdresp)
+  endif
+
+  call s:log("callPscIde: Trying to reach server again", 1)
+  let enc = s:jsonEncode(a:input)
+  let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, enc)
+  return s:PscIdeCallback(a:input, a:errorm, a:isRetry, resp)
+endfunction
+
 " UTILITY FUNCTIONS ----------------------------------------------------------
 function! s:PscIdeStartCallback(cwdcommand, cwdresp)
   let expectedCWD = s:findFileRecur('bower.json')
