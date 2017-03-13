@@ -368,11 +368,11 @@ function! PSCIDErebuild(stuff)
 	\ input,
 	\ 0,
 	\ 0,
-	\ { msg -> s:PSCIDErebuild(filename, msg) }
+	\ { msg -> s:PSCIDErebuildCallback(filename, msg) }
 	\ )
 endfunction
 
-function! s:PSCIDErebuild(filename, resp) 
+function! s:PSCIDErebuildCallback(filename, resp) 
   if type(a:resp) == type({}) && has_key(a:resp, "resultType") 
      \ && has_key (a:resp, "result") && type(a:resp.result) == type([])
     if a:resp.resultType == "error"
