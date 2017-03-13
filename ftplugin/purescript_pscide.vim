@@ -475,14 +475,24 @@ function! PSCIDEcaseSplit()
   call s:log('end position: ' . string(e), 3)
   call s:log('type: ' . t, 3)
 
-  let command = {'command': 'caseSplit', 'params': {'line': line, 'begin': b, 'end': e, 'annotations': s:jsonFalse(), 'type': t}}
+  let command = {
+	\ 'command': 'caseSplit',
+	\ 'params': { 'line': line, 'begin': b, 'end': e, 'annotations': s:jsonFalse(), 'type': t}
+	\ }
 
-  let resp = s:callPscIde(command, 'Failed to split case for: ' . word, 0)
+  call s:callPscIde(
+	\ command,
+	\ 'Failed to split case for: ' . word,
+	\ 0,
+	\ { resp -> s:PSCIDEcaseSplitCallback(lnr, resp) }
+	\ )
+endfunction
 
-  if type(resp) == type({}) && resp['resultType'] ==# 'success' && type(resp.result) == type([])     
-    call s:log('PSCIDEcaseSplit results: ' . string(resp.result), 3)
-    call append(lnr, resp.result)
-    :normal dd
+function! s:PSCIDEcaseSplitCallback(lnr, resp)
+  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success' && type(a:resp.result) == type([])     
+    call s:log('PSCIDEcaseSplit results: ' . string(a:resp.result), 3)
+    call append(a:lnr, a:resp.result)
+    normal dd
   endif
 endfunction
 
