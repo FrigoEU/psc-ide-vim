@@ -439,12 +439,19 @@ function! PSCIDEaddClause()
 
   let command = {'command': 'addClause', 'params': {'line': line, 'annotations': s:jsonFalse()}}
 
-  let resp = s:callPscIde(command, "Failed to add clause", 0)
+  call s:callPscIde(
+	\ command,
+	\ "Failed to add clause",
+	\ 0,
+	\ { resp -> s:PSCIDEaddClauseCallback(lnr, resp) }
+	\ )
+endfunction
 
-  if type(resp) == type({}) && resp['resultType'] ==# 'success' && type(resp.result) == type([])     
-    call s:log('PSCIDEaddClause results: ' . string(resp.result), 3)
-    call append(lnr, resp.result)
-    :normal dd
+function! s:PSCIDEaddClauseCallback(lnr, resp)
+  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success' && type(a:resp.result) == type([])     
+    call s:log('PSCIDEaddClause results: ' . string(a:resp.result), 3)
+    call append(a:lnr, a:resp.result)
+    normal dd
   endif
 endfunction
 
