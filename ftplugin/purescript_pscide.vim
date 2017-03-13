@@ -822,7 +822,7 @@ function! s:callPscIde(input, errorm, isRetry, cb)
 	\ { "out_cb": {ch, msg -> a:cb(s:PscIdeCallback(a:input, a:errorm, a:isRetry, a:cb, msg))}
 	\ , "in_io": "file"
 	\ , "in_name": tempfile
-	\ , "err_cb": {ch, msg -> s:log("s:callPscIde error: " . msg, 3)}
+	\ , "err_cb": {ch, err -> s:log("s:callPscIde error: " . err, 3)}
 	\ })
   call delete(tempfile)
 endfunction
@@ -847,7 +847,7 @@ function! s:callPscIdeSync(input, errorm, isRetry)
   call s:log("callPscIde: Trying to reach server again", 1)
   let enc = s:jsonEncode(a:input)
   let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, enc)
-  return s:PscIdeCallback(a:input, a:errorm, a:isRetry, a:cb, resp)
+  return s:PscIdeCallback(a:input, a:errorm, a:isRetry, 0, resp)
 endfunction
 
 " UTILITY FUNCTIONS ----------------------------------------------------------
@@ -891,7 +891,7 @@ function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
 	\ { "out_cb": { ch, resp -> s:PscIdeRetryCallback(a:input, a:errorm, a:cb, expectedCWD, resp) }
 	\ , "in_io": "file"
 	\ , "in_name": tempfile
-	\ , "err_cb": { ch, msg -> s:log("s:PscIdeStartCallback error: " . msg, 3) }
+	\ , "err_cb": { ch, err -> s:log("s:PscIdeStartCallback error: " . err, 3) }
 	\ })
   call delete(tempfile)
 endfunction
@@ -919,15 +919,23 @@ function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
 	  \ )
     return s:PscIdeCallback(a:input, a:errorm, 1, 0, resp)
   endif
+
+  if (type(a:cb) == type(0) && !a:cb)
+    let resp = s:mysystem(
+	  \ "psc-ide-client -p" . g:psc_ide_server_port
+	  \ enc
+	  \ )
+    return s:PscIdeCallback(a:input, a:errorm, 1, 0, resp)
+  endif
   let tempfile = tempname()
   call writefile([enc], tempfile, "b")
   call s:log("callPscIde: psc-ide-client: " . enc, 3)
   call job_start(
 	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
-	\ { "out_cb": {ch, msg -> a:cb(s:PscIdeCallback(a:input, a:errorm, 1, a:cb, msg))}
+	\ { "out_cb": {ch, resp -> a:cb(s:PscIdeCallback(a:input, a:errorm, 1, a:cb, resp))}
 	\ , "in_io": "file"
 	\ , "in_name": tempfile
-	\ , "err_cb": {ch, msg -> s:log("s:PscIdeRetryCallback error: " . msg, 3)}
+	\ , "err_cb": {ch, err -> s:log("s:PscIdeRetryCallback error: " . err, 3)}
 	\ })
   call delete(tempfile)
 endfunction
