@@ -758,12 +758,17 @@ function! s:callPscIde(input, errorm, isRetry, cb)
 
     let expectedCWD = s:findFileRecur('bower.json')
     let cwdcommand = {'command': 'cwd'}
+    let tempfile = tempname()
+    call writefile([s:jsonEncode(cwdcommand)], tempfile)
 
     call s:log("callPscIde: No server found, looking for external server", 1)
     call job_start(
-	  \ ["psc-ide-client", "-p", g:psc_ide_server_port, s:jsonEncode(cwdcommand)],
-	  \ { "out_cb": function("s:PscIdeCallback")
+	  \ ["psc-ide-client", "-p", g:psc_ide_server_port],
+	  \ { "out_cb": { msg -> s:PscIdeCallback(cwdcommand, msg) }
+	  \ , "in_io": "file"
+	  \ , "in_name": tempfile
 	  \ })
+    call delete(tempfile)
     return
   endif
 
@@ -782,7 +787,7 @@ function! s:callPscIde(input, errorm, isRetry, cb)
 endfunction
 
 " UTILITY FUNCTIONS ----------------------------------------------------------
-function! s:PscIdeCallback(channel, cwdresp)
+function! s:PscIdeCallback(cwdcommand, cwdresp)
   let expectedCWD = s:findFileRecur('bower.json')
   call s:log("callPscIde: Raw response of trying to reach external server: " . a:cwdresp, 1)
   let cwdrespDecoded = PscIdeDecodeJson(s:StripNewlines(a:cwdresp))
@@ -808,20 +813,26 @@ function! s:PscIdeCallback(channel, cwdresp)
     call PSCIDEstart(1)
   endif
   call s:log("callPscIde: Trying to reach server again", 1)
+  let tempfile = tempname()
+  call writefile([s:jsonEncode(a:cwdcommand)], tempfile)
   call job_start(
-      \ ["psc-ide-client", "-p", g:psc_ide_server_port, s:jsonEncode(cwdcommand)]
-      \ { "out_cb": function("s:PscIdeCallback2")
-      \ })
+	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
+	\ { "out_cb": { ch, resp -> s:PscIdeCallback2(expectedCWD, resp) }
+	\ , "in_io": "file"
+	\ , "in_name": tempfile
+	\ , "err_cb": { ch, msg -> s:log("ups..." . msg, 3) }
+	\ })
+  call delete(tempfile)
 endfunction
 
-function! s:PscIdeCallback2(channel, cwdresp2)
+function! s:PscIdeCallback2(expectedCWD, cwdresp2)
   call s:log("callPscIde: Raw response of trying to reach server again: " . a:cwdresp2, 1)
   let cwdresp2Decoded = PscIdeDecodeJson(s:StripNewlines(a:cwdresp2))
   call s:log("callPscIde: Decoded response of trying to reach server again: " 
 	     \ . string(cwdresp2Decoded), 1)
 
   if type(cwdresp2Decoded) == type({}) && cwdresp2Decoded.resultType ==# 'success' 
-     \ && cwdresp2Decoded.result == expectedCWD
+     \ && cwdresp2Decoded.result == a:expectedCWD
     call s:log("callPscIde: Server successfully contacted! Loading current module.", 1)
     call PSCIDEload(1)
   else
