@@ -678,11 +678,18 @@ endfunction
 " LIST -----------------------------------------------------------------------
 command! PSCIDElist call PSCIDElist()
 function! PSCIDElist()
-  let resp = s:callPscIde({'command': 'list', 'params': {'type': 'loadedModules'}}, 'Failed to get loaded modules', 0)
+  s:callPscIde(
+	\ {'command': 'list', 'params': {'type': 'loadedModules'}},
+	\ 'Failed to get loaded modules',
+	\ 0
+	\ )
+  call s:PSCIDElistCallback(resp)
+endfunction
 
-  if type(resp) == type({}) && resp['resultType'] ==# 'success'
-    if len(resp["result"]) > 0
-      for m in resp["result"]
+function s:PSCIDElistCallback(resp)
+  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
+    if len(a:resp["result"]) > 0
+      for m in a:resp["result"]
         echom m
       endfor
     else
@@ -690,7 +697,6 @@ function! PSCIDElist()
     endif
   endif
 endfunction
-
 
 " SET UP OMNICOMPLETION ------------------------------------------------------
 set omnifunc=PSCIDEomni
