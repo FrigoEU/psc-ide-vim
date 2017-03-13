@@ -678,7 +678,7 @@ endfunction
 " LIST -----------------------------------------------------------------------
 command! PSCIDElist call PSCIDElist()
 function! PSCIDElist()
-  s:callPscIde(
+  let resp = s:callPscIdeSync(
 	\ {'command': 'list', 'params': {'type': 'loadedModules'}},
 	\ 'Failed to get loaded modules',
 	\ 0
@@ -723,7 +723,10 @@ function! PSCIDEomni(findstart,base)
     let currentModule = s:ExtractModule()
     call s:log('PSCIDEOmni currentModule: ' . currentModule, 3)
 
-    let resp = s:callPscIde({'command': 'complete', 'params': {'filters': [s:prefixFilter(str)], 'matcher': s:flexMatcher(str), 'currentModule': currentModule}}, 'Failed to get completions for: '. str, 0)
+    let resp = s:callPscIdeSync(
+	  \ {'command': 'complete', 'params': {'filters': [s:prefixFilter(str)], 'matcher': s:flexMatcher(str), 'currentModule': currentModule}},
+	  \ 'Failed to get completions for: '. str,
+	  \ 0)
 
     if type(resp) == type({}) && resp.resultType ==# 'success'
       call s:log('PSCIDEOmni: Found Entries: ' . string(resp.result), 3)
