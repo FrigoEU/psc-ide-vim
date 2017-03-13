@@ -367,17 +367,24 @@ function! s:goToDefinition(definedAt)
   endif
 endfunction
 
-function! PSCIDErebuild(stuff)
+function! PSCIDErebuild(async)
   let g:psc_ide_suggestions = {}
   let filename = expand("%:p")
   let input = {'command': 'rebuild', 'params': {'file': filename}}
 
-  call s:callPscIde(
-	\ input,
-	\ 0,
-	\ 0,
-	\ { msg -> s:PSCIDErebuildCallback(filename, msg) }
-	\ )
+  if a:async
+    call s:callPscIde(
+	  \ input,
+	  \ 0,
+	  \ 0,
+	  \ { msg -> s:PSCIDErebuildCallback(filename, msg) }
+	  \ )
+  else
+    return s:PSCIDErebuildCallback(
+	  \ filename,
+	  \ s:callPscIdeSync(input, 0, 0),
+	  \ )
+  endif
 endfunction
 
 function! s:PSCIDErebuildCallback(filename, resp) 
