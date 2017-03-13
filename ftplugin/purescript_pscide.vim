@@ -142,8 +142,18 @@ function! PSCIDEend()
   if s:pscideexternal == 1
     return
   endif
-  let input = {'command': 'quit'}
-  let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(input))
+  let filename = tempname()
+  call writefile([s:jsonEncode({'command': 'quite'})], filename)
+  call job_start(
+	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
+	\ { "out_cb": function("s:PSCIDEendCallback")
+	\ , "err_cb": {err -> s:log("PSCIDEend error " . string(err), 0)}
+	\ , "in_io": "file"
+	\ , "in_name": filename
+	\ })
+endfunction
+
+function! s:PSCIDEendCallback() 
   let s:pscidestarted = 0
   let s:projectvalid = 0
 endfunction
