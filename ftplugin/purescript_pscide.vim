@@ -637,11 +637,18 @@ command! PSCIDEpursuit call PSCIDEpursuit()
 function! PSCIDEpursuit()
   let identifier = s:GetWordUnderCursor()
 
-  let resp = s:callPscIde({'command': 'pursuit', 'params': {'query': identifier, 'type': "completion"}}, 'Failed to get pursuit info for: ' . identifier, 0)
+  call s:callPscIde(
+	\ {'command': 'pursuit', 'params': {'query': identifier, 'type': "completion"}},
+	\ 'Failed to get pursuit info for: ' . identifier,
+	\ 0,
+	\ { resp -> s:PSCIDEpursuitCallback(resp) }
+	\ )
+endfunction
 
-  if type(resp) == type({}) && resp['resultType'] ==# 'success'
-    if len(resp["result"]) > 0
-      for e in resp["result"]
+function! s:PSCIDEpuresuitCallback(resp)
+  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
+    if len(a:resp["result"]) > 0
+      for e in a:resp["result"]
         echom s:formatpursuit(e)
       endfor
     else
@@ -649,6 +656,7 @@ function! PSCIDEpursuit()
     endif
   endif
 endfunction
+
 function! s:formatpursuit(record)
   return "In " . s:CleanEnd(s:StripNewlines(a:record["package"])) . " " . s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['ident']) . ' :: ' . s:StripNewlines(a:record['type']))
 endfunction
