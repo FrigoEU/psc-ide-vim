@@ -51,6 +51,7 @@ if !exists('s:projectvalid')
   let s:projectvalid = 0
 endif
 
+let s:psc_ide_server = v:none
 "Looks for bower.json, assumes that's the root directory, starts
 "psc-ide-server in the background
 "Returns Nothing
@@ -70,16 +71,25 @@ function! PSCIDEstart(silent)
 
   call s:log("PSCIDEstart: Starting psc-ide-server at " . dir . " on port " . g:psc_ide_server_port, loglevel)
 
-  if has('win16') || has('win32') || has('win64')
-    let command = "start /b psc-ide-server " . dir . "/src/**/*.purs " . dir . "/bower_components/**/*.purs -p " . g:psc_ide_server_port . " -d " . dir
-  else
-    let command = "psc-ide-server \"src/**/*.purs\" \"bower_components/**/*.purs\" -p " . g:psc_ide_server_port . " -d " . dir . " > /dev/null &"
-  endif
-  let resp = system(command)
+  let command = [ 
+	\ "psc-ide-server",
+	\ "-p", g:psc_ide_server_port,
+	\ "-d", dir,
+	\ "dir", "/src/**/*.purs",
+	\ "dir", "/bower_components/**/*.purs",
+	\ ]
+  let s:psc_ide_server = job_start(
+	\ command,
+	\ { "stoponexit": "term"
+	\ , "err_mode": "raw"
+	\ , "err_cb": { ch, msg -> s:log("psc-ide-server error: " . string(msg)) }
+	\ , "in_io": "null"
+	\ , "out_io": "null"
+	\ }
+	\ )
 
   call s:log("PSCIDEstart: Sleeping for 100ms so server can start up", 1)
-  :exe "sleep 100m"
-
+  sleep 100m
   let s:pscidestarted = 1
 endfunction
 
