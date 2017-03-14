@@ -847,7 +847,8 @@ function! s:callPscIde(input, errorm, isRetry, cb)
     call s:log("callPscIde: No server found, looking for external server", 1)
     call job_start(
 	  \ ["psc-ide-client", "-p", g:psc_ide_server_port],
-	  \ { "out_cb": { msg -> s:PscIdeStartCallback(a:input, a:errorm, a:cb, cwdcommand, msg) }
+	  \ { "out_cb": {ch, msg -> s:PscIdeStartCallback(a:input, a:errorm, a:cb, cwdcommand, msg)}
+	  \ , "err_cb": {ch, err -> s:log("s:callPscIde error: " . string(err), 3)}
 	  \ , "in_io": "file"
 	  \ , "in_name": tempfile
 	  \ })
@@ -895,8 +896,12 @@ endfunction
 " UTILITY FUNCTIONS ----------------------------------------------------------
 function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
   let expectedCWD = s:findFileRecur('bower.json')
-  call s:log("s:PscIdeStartCallback: Raw response of trying to reach external server: " . a:cwdresp, 1)
-  let cwdrespDecoded = json_decode(s:StripNewlines(a:cwdresp))
+  try
+    let cwdrespDecoded = json_decode(a:cwdresp)
+  catch /.*/
+    let cwdrespDecoded = {"resultType": "failed", "error": a:cwdresp}
+  endtry
+
   call s:log("s:PscIdeStartCallback: Decoded response of trying to reach external server: " 
 	      \ . string(cwdrespDecoded), 1)
 
@@ -940,7 +945,11 @@ endfunction
 
 function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
   call s:log("s:PscIdeRetryCallback: Raw response of trying to reach server again: " . a:cwdresp2, 1)
-  let cwdresp2Decoded = json_decode(s:StripNewlines(a:cwdresp2))
+  try
+    let cwdresp2Decoded = json_decode(a:cwdresp2)
+  catch /.*/
+    let cwdresp2Decoded = {"resultType": "failed", "error": a:cwdresp2}
+  endtry
   call s:log("s:PscIdeRetryCallback: Decoded response of trying to reach server again: " 
 	     \ . string(cwdresp2Decoded), 1)
 
