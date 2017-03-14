@@ -144,10 +144,10 @@ function! PSCIDEend()
   endif
   let filename = tempname()
   call writefile([s:jsonEncode({'command': 'quit'})], filename)
-  call job_start(
+  return job_start(
 	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
-	\ { "out_cb": function("s:PSCIDEendCallback")
-	\ , "err_cb": {err -> s:log("PSCIDEend error " . string(err), 0)}
+	\ { "exit_cb": {job, status -> s:PSCIDEendCallback() }
+	\ , "err_cb": {err -> s:log("PSCIDEend error: " . string(err), 0)}
 	\ , "in_io": "file"
 	\ , "in_name": filename
 	\ })
