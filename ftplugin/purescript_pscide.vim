@@ -153,7 +153,7 @@ function! PSCIDEend()
     return
   endif
   let filename = tempname()
-  call writefile([s:jsonEncode({'command': 'quit'})], filename)
+  call writefile([json_encode({'command': 'quit'})], filename)
   return job_start(
 	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
 	\ { "exit_cb": {job, status -> s:PSCIDEendCallback() }
@@ -842,7 +842,7 @@ function! s:callPscIde(input, errorm, isRetry, cb)
     let expectedCWD = s:findFileRecur('bower.json')
     let cwdcommand = {'command': 'cwd'}
     let tempfile = tempname()
-    call writefile([s:jsonEncode(cwdcommand)], tempfile)
+    call writefile([json_encode(cwdcommand)], tempfile)
 
     call s:log("callPscIde: No server found, looking for external server", 1)
     call job_start(
@@ -855,7 +855,7 @@ function! s:callPscIde(input, errorm, isRetry, cb)
     return
   endif
 
-  let enc = s:jsonEncode(a:input)
+  let enc = json_encode(a:input)
   let tempfile = tempname()
   call writefile([enc], tempfile, "b")
   call s:log("callPscIde: psc-ide-client: " . enc, 3)
@@ -882,12 +882,12 @@ function! s:callPscIdeSync(input, errorm, isRetry)
     let cwdcommand = {'command': 'cwd'}
 
     call s:log("callPscIde: No server found, looking for external server", 1)
-    let cwdresp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, s:jsonEncode(cwdcommand))
+    let cwdresp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, json_encode(cwdcommand))
     return s:PscIdeStartCallback(a:input, a:errorm, 0, cwdcommand, cwdresp)
   endif
 
   call s:log("callPscIde: Trying to reach server again", 1)
-  let enc = s:jsonEncode(a:input)
+  let enc = json_encode(a:input)
   let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, enc)
   return s:PscIdeCallback(a:input, a:errorm, a:isRetry, 0, resp)
 endfunction
@@ -896,7 +896,7 @@ endfunction
 function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
   let expectedCWD = s:findFileRecur('bower.json')
   call s:log("s:PscIdeStartCallback: Raw response of trying to reach external server: " . a:cwdresp, 1)
-  let cwdrespDecoded = PscIdeDecodeJson(s:StripNewlines(a:cwdresp))
+  let cwdrespDecoded = json_decode(s:StripNewlines(a:cwdresp))
   call s:log("s:PscIdeStartCallback: Decoded response of trying to reach external server: " 
 	      \ . string(cwdrespDecoded), 1)
 
@@ -922,12 +922,12 @@ function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
   if (type(a:cb) == type(0) && !a:cb)
     let cwdresp = s:mysystem(
 	  \ "psc-ide-client -p" . g:psc_ide_server_port,
-	  \ s:jsonEncode(a:cwdcommand)
+	  \ json_encode(a:cwdcommand)
 	  \ )
     return s:PscIdeRetryCallback(a:input, a:errorm, 0, expectedCWD, cwdresp)
   endif
   let tempfile = tempname()
-  call writefile([s:jsonEncode(a:cwdcommand)], tempfile)
+  call writefile([json_encode(a:cwdcommand)], tempfile)
   call job_start(
 	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
 	\ { "out_cb": { ch, resp -> s:PscIdeRetryCallback(a:input, a:errorm, a:cb, expectedCWD, resp) }
@@ -940,7 +940,7 @@ endfunction
 
 function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
   call s:log("s:PscIdeRetryCallback: Raw response of trying to reach server again: " . a:cwdresp2, 1)
-  let cwdresp2Decoded = PscIdeDecodeJson(s:StripNewlines(a:cwdresp2))
+  let cwdresp2Decoded = json_decode(s:StripNewlines(a:cwdresp2))
   call s:log("s:PscIdeRetryCallback: Decoded response of trying to reach server again: " 
 	     \ . string(cwdresp2Decoded), 1)
 
@@ -953,7 +953,7 @@ function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
     return
   endif
 
-  let enc = s:jsonEncode(a:input)
+  let enc = json_encode(a:input)
   if (type(a:cb) == type(0))
     let resp = s:mysystem(
 	  \ "psc-ide-client -p" . g:psc_ide_server_port,
@@ -1000,7 +1000,7 @@ function! s:PscIdeCallback(input, errorm, isRetry, cb, resp)
     endif
   endif
 
-  let decoded = PscIdeDecodeJson(s:CleanEnd(s:StripNewlines(a:resp)))
+  let decoded = json_decode(s:CleanEnd(s:StripNewlines(a:resp)))
   call s:log("s:PscIdeCallback: Decoded response: " . string(decoded), 3)
 
   if (type(decoded) != type({}) || decoded['resultType'] !=# 'success') 
@@ -1082,33 +1082,6 @@ fun! s:jsonToJSONBool(i)
   return  a:i ? s:jsonTrue() : s:jsonFalse()
 endf
 
-fun! s:jsonEncode(thing, ...)
-  let nl = a:0 > 0 ? (a:1 ? "\n" : "") : ""
-  if type(a:thing) == type("")
-    return '"'.escape(a:thing,'"\').'"'
-  elseif type(a:thing) == type({}) && !has_key(a:thing, 'json_special_value')
-    let pairs = []
-    for [Key, Value] in items(a:thing)
-      call add(pairs, s:jsonEncode(Key).':'.s:jsonEncode(Value))
-      unlet Key | unlet Value
-    endfor
-    return "{".nl.join(pairs, ",".nl)."}"
-  elseif type(a:thing) == type(0)
-    return a:thing
-  elseif type(a:thing) == type([])
-    return '['.join(map(copy(a:thing), "s:jsonEncode(v:val)"),",").']'
-    return 
-  elseif string(a:thing) == string(s:jsonNULL())
-    return "null"
-  elseif string(a:thing) == string(s:jsonTrue())
-    return "true"
-  elseif string(a:thing) == string(s:jsonFalse())
-    return "false"
-  else
-    throw "unexpected new thing: ".string(a:thing)
-  endif
-endf
-
 " Parse Errors & Suggestions ------------------------------------------
 " Returns { error :: String, 
 "           llist :: Array (String in errorformat), 
@@ -1185,30 +1158,6 @@ function! s:cleanupMessage(str)
         let out = substitute(out, t[0], t[1], 'g')
     endfor
     return out
-endfunction
-
-function! PscIdeDecodeJson(json) abort
-  if a:json ==# ''
-      return []
-  endif
-
-  if substitute(a:json, '\v\"%(\\.|[^"\\])*\"|true|false|null|[+-]?\d+%(\.\d+%([Ee][+-]?\d+)?)?', '', 'g') !~# "[^,:{}[\\] \t]"
-      " JSON artifacts
-      let true = 1
-      let false = 0
-      let null = ''
-
-      try
-          let object = json_decode(a:json)
-      catch
-          " malformed JSON
-          let object = ''
-      endtry
-  else
-      let object = ''
-  endif
-
-  return object
 endfunction
 
 function! s:mysystem(a, b)
