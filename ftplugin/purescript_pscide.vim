@@ -82,7 +82,7 @@ function! PSCIDEstart(silent)
 	\ command,
 	\ { "stoponexit": "term"
 	\ , "err_mode": "raw"
-	\ , "err_cb": { ch, msg -> s:log("psc-ide-server error: " . string(msg)) }
+	\ , "err_cb": { ch, msg -> s:log("psc-ide-server error: " . string(msg), 0) }
 	\ , "in_io": "null"
 	\ , "out_io": "null"
 	\ }
