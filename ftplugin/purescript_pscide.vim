@@ -143,7 +143,7 @@ function! PSCIDEend()
     return
   endif
   let filename = tempname()
-  call writefile([s:jsonEncode({'command': 'quite'})], filename)
+  call writefile([s:jsonEncode({'command': 'quit'})], filename)
   call job_start(
 	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
 	\ { "out_cb": function("s:PSCIDEendCallback")
@@ -194,7 +194,7 @@ endfunction
 
 function! s:PSCIDEloadCallback(loglevel, resp)
   if type(a:resp) == type({}) && a:resp['resultType'] ==# "success"
-    call s:log("PSCIDEload: Succesfully loaded modules: " . string(a:resp["result"]), a:loglevel)
+    call s:log("PSCIDEload: Successfully loaded modules: " . string(a:resp["result"]), a:loglevel)
   else
     call s:log("PSCIDEload: Failed to load. Error: " . string(a:resp["result"]), a:loglevel)
   endif
@@ -258,7 +258,7 @@ endfunction
 
 function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp) 
   "multiple possibilities
-  call s:log("s:PSCIDEimportIndetifierCallback", 3)
+  call s:log("s:PSCIDEimportIdentifierCallback", 3)
   if type(a:resp) == type({}) && a:resp.resultType ==# "success" && type(a:resp.result[0]) == type({})
     let choice = s:pickOption("Multiple possibilities to import " . a:ident, a:resp.result, "module")
     if choice.picked
