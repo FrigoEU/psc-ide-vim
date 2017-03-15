@@ -69,7 +69,6 @@ function! PSCIDEstart(silent)
     return
   endif
 
-  let g:dir = dir
   let command = [ 
 	\ "psc-ide-server",
 	\ "-p", g:psc_ide_server_port,
