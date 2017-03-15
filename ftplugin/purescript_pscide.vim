@@ -868,7 +868,7 @@ function! s:callPscIde(input, errorm, isRetry, cb)
 	\ { "out_cb": {ch, msg -> a:cb(s:PscIdeCallback(a:input, a:errorm, a:isRetry, a:cb, msg))}
 	\ , "in_io": "file"
 	\ , "in_name": tempfile
-	\ , "err_cb": {ch, err -> s:log("s:callPscIde error: " . err, 3)}
+	\ , "err_cb": {ch, err -> s:log("s:callPscIde error: " . string(err), 3)}
 	\ })
   call delete(tempfile)
 endfunction
@@ -1012,7 +1012,7 @@ function! s:PscIdeCallback(input, errorm, isRetry, cb, resp)
     endif
   endif
 
-  let decoded = json_decode(s:CleanEnd(s:StripNewlines(a:resp)))
+  let decoded = json_decode(a:resp)
   call s:log("s:PscIdeCallback: Decoded response: " . string(decoded), 3)
 
   if (type(decoded) != type({}) || decoded['resultType'] !=# 'success') 
