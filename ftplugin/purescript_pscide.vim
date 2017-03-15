@@ -297,18 +297,22 @@ function! PSCIDEgoToDefinition()
   let currentModule = s:ExtractModule()
   call s:log('PSCIDEgoToDefinition currentModule: ' . currentModule, 3)
 
-  let resp = s:callPscIde({'command': 'type', 'params': {'search': identifier, 'filters': []}, 'currentModule': currentModule}, 'Failed to get location info for: ' . identifier, 0)
+  let resp = s:callPscIde({'command': 'type', 'params': {'search': identifier, 'filters': [], 'currentModule': currentModule}}, 'Failed to get location info for: ' . identifier, 0)
 
-  if type(resp) == type({}) && resp.resultType ==# "success" && len(resp.result) == 1
+  if type(resp) == type({}) && resp.resultType ==# "success" && len(resp.result) == 1 && type(resp.result[0].definedAt) == type({})
       call s:goToDefinition(resp.result[0].definedAt)
-  endif
-
-  if type(resp) == type({}) && resp.resultType ==# "success" && len(resp.result) > 1
-    let choice = s:pickOption("Multiple possibilities for " . identifier, resp.result, "module")
-    if choice.picked
-      call s:goToDefinition(choice.option.definedAt)
+  else 
+    if type(resp) == type({}) && resp.resultType ==# "success" && len(resp.result) > 1
+      let choice = s:pickOption("Multiple possibilities for " . identifier, resp.result, "module")
+      if choice.picked && type(choice.option.definedAt) == type({})
+        call s:goToDefinition(choice.option.definedAt)
+      else
+        echom ("PSCIDE: No location information found for: " . identifier . " in module " . choice.option.module)
+      endif
+      return
+    else
+      echom ("PSCIDE: No location information found for: " . identifier)
     endif
-    return
   endif
 endfunction
 
@@ -455,7 +459,7 @@ function! s:getType(identifier)
   let currentModule = s:ExtractModule()
   call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
-  let resp = s:callPscIde({'command': 'type', 'params': {'search': a:identifier, 'filters': []}, 'currentModule': currentModule}, 'Failed to get type info for: ' . a:identifier, 0)
+  let resp = s:callPscIde({'command': 'type', 'params': {'search': a:identifier, 'filters': [], 'currentModule': currentModule}}, 'Failed to get type info for: ' . a:identifier, 0)
 
   if type(resp) == type({}) && resp['resultType'] ==# 'success'
     if len(resp["result"]) > 0
