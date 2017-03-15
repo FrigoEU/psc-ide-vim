@@ -420,9 +420,10 @@ function! PSCIDEaddTypeAnnotation()
 endfunction
 
 function! s:PSCIDEaddTypeAnnotationCallback(identifier, resp)
-  if type(a:resp) == type([])
+  if type(a:resp) == v:t_dict && a:resp["resultType"] ==# 'success' && !empty(a:resp["result"])
+    let result = a:resp["result"]
     let lnr = line(".")
-    call append(lnr - 1, s:StripNewlines(a:resp[0]['identifier']) . ' :: ' . s:StripNewlines(a:resp[0]["type"]))
+    call append(lnr - 1, s:StripNewlines(result[0]['identifier']) . ' :: ' . s:StripNewlines(result[0]["type"]))
   else
     echom "PSC-IDE: No type information found for " . a:identifier
   endif
@@ -542,16 +543,8 @@ function! s:getType(identifier, cb)
 	\ {'command': 'type', 'params': {'search': a:identifier, 'filters': []}, 'currentModule': currentModule},
 	\  'Failed to get type info for: ' . a:identifier,
 	\ 0,
-	\ { resp -> s:getTypeCallback(resp, a:cb)}
+	\ {resp -> a:cb(resp)}
 	\ )
-endfunction
-
-function! s:getTypeCallback(resp, cb)
-  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
-    if len(a:resp["result"]) > 0
-      call a:cb(a:resp["result"])
-    endif
-  endif
 endfunction
 
 function! s:formattype(record)
