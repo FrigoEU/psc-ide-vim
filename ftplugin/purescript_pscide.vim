@@ -709,7 +709,7 @@ function! s:callPscIde(input, errorm, isRetry)
 
   if s:pscidestarted == 0
 
-    let expectedCWD = s:findRoot()
+    let expectedCWD = fnamemodify(s:findRoot(), ":p:h")
     let cwdcommand = {'command': 'cwd'}
 
     call s:log("callPscIde: No server found, looking for external server", 1)
@@ -744,6 +744,7 @@ function! s:callPscIde(input, errorm, isRetry)
     let cwdresp2Decoded = PscIdeDecodeJson(s:StripNewlines(cwdresp2))
     call s:log("callPscIde: Decoded response of trying to reach server again: " 
                \ . string(cwdresp2Decoded), 1)
+    call s:log("callPscIde: Expecting CWD: " . expectedCWD, 1)
 
     if type(cwdresp2Decoded) == type({}) && cwdresp2Decoded.resultType ==# 'success' 
        \ && cwdresp2Decoded.result == expectedCWD
