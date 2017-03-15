@@ -69,8 +69,7 @@ function! PSCIDEstart(silent)
     return
   endif
 
-  call s:log("PSCIDEstart: Starting psc-ide-server at " . dir . " on port " . g:psc_ide_server_port, loglevel)
-
+  let g:dir = dir
   let command = [ 
 	\ "psc-ide-server",
 	\ "-p", g:psc_ide_server_port,
@@ -777,7 +776,7 @@ function! PSCIDEomni(findstart,base)
       for entry in entries
         if entry['identifier'] =~ '^' . str
           let e = {'word': entry['identifier'], 'menu': s:StripNewlines(entry['type']), 'info': entry['module'], 'dup': 0}
-          let existing = s:findInListBy(result, 'word', e['word'])
+          let existing = filter(result, {idx, val -> val["word"] == e["word"]})
 
           if existing != {}
             let e['menu'] = e['menu'] . ' (' . e['info'] . ')'
@@ -794,21 +793,6 @@ function! PSCIDEomni(findstart,base)
     endif
     return result
   endif
-endfunction
-
-function! s:findInListBy(list, key, str)
-  let i = 0
-  let l = len(a:list)
-  let found = {}
-  
-  while found == {} && i < l
-    if a:list[i][a:key] == a:str
-      let found = a:list[i]
-    endif
-    let i = i + 1
-  endwhile
-
-  return found
 endfunction
 
 function! s:prefixFilter(s) 
