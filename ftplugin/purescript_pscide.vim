@@ -871,7 +871,7 @@ function! s:callPscIdeSync(input, errorm, isRetry)
 
   if s:pscidestarted == 0
 
-    let expectedCWD = s:findFileRecur('bower.json')
+    let expectedCWD = s:findRoot()
     let cwdcommand = {'command': 'cwd'}
 
     call s:log("callPscIde: No server found, looking for external server", 1)
@@ -887,7 +887,7 @@ endfunction
 
 " UTILITY FUNCTIONS ----------------------------------------------------------
 function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
-  let expectedCWD = s:findFileRecur('bower.json')
+  let expectedCWD = s:findRoot()
   try
     let cwdrespDecoded = json_decode(a:cwdresp)
   catch /.*/
