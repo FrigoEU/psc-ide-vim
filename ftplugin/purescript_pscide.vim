@@ -294,7 +294,7 @@ function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp)
       call cursor(oldCursorPos[1] - nrOfLinesToDelete, oldCursorPos[2])
     endif
     if (nrOfLinesToAppend > 0)
-      let linesToAppend = filter(neslines, { idx -> idx >= nrOfLinesToReplace && idx < nrOfLinesToReplace + nrOfLinesToAppend })
+      let linesToAppend = filter(newlines, { idx -> idx >= nrOfLinesToReplace && idx < nrOfLinesToReplace + nrOfLinesToAppend })
       call s:log('linesToAppend: ' . string(linesToAppend), 3)
       call append(nrOfOldlinesUnderLine, linesToAppend)
     endif
@@ -327,8 +327,12 @@ function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
       call s:goToDefinition(a:resp.result[0].definedAt)
   endif
 
-  if type(a:resp) == type({}) && a:resp.resultType ==# "success" && len(a:resp.result) > 1
-    let choice = s:pickOption("Multiple possibilities for " . a:identifier, a:resp.result, "module")
+  if type(a:resp) == type({}) && a:resp.resultType ==# "success"
+    if len(a:resp.result) > 1
+      let choice = s:pickOption("Multiple possibilities for " . a:identifier, a:resp.result, "module")
+    else
+      let choice = {"picked": v:true, "option": a:resp.result[0]}
+    endif
     if choice.picked && type(choice.option.definedAt) == type({})
       call s:goToDefinition(choice.option.definedAt)
     else
@@ -343,21 +347,17 @@ endfunction
 function! s:goToDefinition(definedAt)
   let currentfile = expand("%:p")
   if (currentfile == a:definedAt.name)
-    let cur = getpos(".")
-    let cur[1] = a:definedAt.start[0]
-    call setpos(".", cur)
+    " set ' mark at the current position
+    m'
+    call cursor(a:definedAt.start[0], a:definedAt.start[1])
   else
-    let cwd = getcwd()
-    call s:log("PSCIDE s:goToDefinition: cwd: " . cwd, 3)
-
-    let lcwd = len(cwd)
-    let name = strpart(a:definedAt.name, lcwd + 1) " To strip slash
+    let name = a:definedAt.name
     call s:log("PSCIDE s:goToDefinition: name: " . name, 3)
 
     let command = "e +" . a:definedAt.start[0] . " " . name
     call s:log("PSCIDE s:goToDefinition: command: " . command, 3)
-
-    :exe command
+    exe command
+    exe "normal " . a:definedAt.start[1] . "|"
   endif
 endfunction
 
