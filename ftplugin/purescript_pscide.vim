@@ -75,9 +75,11 @@ function! PSCIDEstart(silent)
 	\ "psc-ide-server",
 	\ "-p", g:psc_ide_server_port,
 	\ "-d", dir,
-	\ "dir", "/src/**/*.purs",
-	\ "dir", "/bower_components/**/*.purs",
+	\ "dir", "src/**/*.purs",
+	\ "dir", "bower_components/**/*.purs",
 	\ ]
+
+  exe "lcd" dir
   let s:psc_ide_server = job_start(
 	\ command,
 	\ { "stoponexit": "term"
@@ -87,6 +89,7 @@ function! PSCIDEstart(silent)
 	\ , "out_io": "null"
 	\ }
 	\ )
+  lcd -
 
   call s:log("PSCIDEstart: Sleeping for 100ms so server can start up", 1)
   sleep 100m
