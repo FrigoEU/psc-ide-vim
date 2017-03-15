@@ -62,10 +62,10 @@ function! PSCIDEstart(silent)
   endif
   let loglevel = a:silent == 1 ? 1 : 0
 
-  let dir = s:findFileRecur('bower.json')
+  let dir = s:findRoot()
 
-  if dir == ''
-    echom "No bower.json found, couldn't start psc-ide-server"
+  if empty(dir)
+    echom "No psc-package.json or bower.json found, couldn't start psc-ide-server"
     return
   endif
 
@@ -120,32 +120,19 @@ function! s:pickOption(message, options, labelKey)
   endif
 endfunction
 
-" Find file recursively, return folder ----------------------------------------------------
-function! s:findFileRecur(filename)
-  let iteration = 0
-  let list = []
-  let dir = ''
-
-  " Climbing up on the file tree until we find a bower.json
-  while (len(list) == 0 && iteration < 10)
-    let iteration += 1
-    if iteration == 1
-      let pattern = '.'
-    elseif iteration == 2
-      let pattern = '..'
-    else
-      let pattern = (has('win16') || has('win32') || has('win64')) ? pattern . '\..' : pattern . '/..'
-    endif
-
-    let list = s:globpath(pattern, a:filename)
-
-  endwhile
-
-  if len(list) > 0
-    return fnamemodify(list[0], ':p:h')
+" Find root folder ----------------------------------------------------
+function! s:findRoot()
+  let pscPackage = findfile("psc-package.json", expand("%:p:h").";")
+  if !empty(pscPackage)
+    return fnamemodify(pscPackage, ":h:p")
   else
-    return ''
-  endif
+    let bower = findfile("bower.json", expand("%:p:h").";")
+    if !empty(bower)
+      return fnamemodify(bower, ":h:p")
+    else
+      return ""
+    endif
+  endfor
 endfunction
 
 " END ------------------------------------------------------------------------
@@ -172,14 +159,14 @@ function! s:PSCIDEendCallback()
 endfunction
 
 function! s:projectProblems()
-  let bowerdir = s:findFileRecur('bower.json')
+  let rootdir = s:findRoot()
   let problems = []
 
-  if bowerdir == ""
-    let problem = "Your project is missing a bower.json file"
+  if empty(rootdir)
+    let problem = "Your project is missing a bower.json or psc-package.json file"
     call add(problems, problem)
   elseif g:psc_ide_check_output_dir == 1
-    let outputcontent = s:globpath(bowerdir, "output/*")
+    let outputcontent = s:globpath(rootdir, "output/*")
     if len(outputcontent) == 0
       let problem = "Your project's /output directory is empty.  You should run `pulp build` to compile your project."
       call add(problems, problem)
@@ -362,10 +349,14 @@ function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
 
   if type(a:resp) == type({}) && a:resp.resultType ==# "success" && len(a:resp.result) > 1
     let choice = s:pickOption("Multiple possibilities for " . a:identifier, a:resp.result, "module")
-    if choice.picked
+    if choice.picked && type(choice.option.definedAt) == type({})
       call s:goToDefinition(choice.option.definedAt)
+    else
+      echom "PSCIDE: No location information found for: " . a:identifier . " in module " . choice.option.module
     endif
     return
+  else
+    echom "PSCIDE: No location information found for: " . a:identifier
   endif
 endfunction
 
@@ -842,7 +833,7 @@ function! s:callPscIde(input, errorm, isRetry, cb)
 
   if s:pscidestarted == 0
 
-    let expectedCWD = s:findFileRecur('bower.json')
+    let expectedCWD = fnamemodify(s:findRoot(), ":p:h")
     let cwdcommand = {'command': 'cwd'}
     let tempfile = tempname()
     call writefile([json_encode(cwdcommand)], tempfile)
