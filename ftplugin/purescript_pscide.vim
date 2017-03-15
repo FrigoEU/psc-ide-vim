@@ -286,7 +286,7 @@ function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp)
 
     " Adding one at a time with setline + append/delete to keep line symbols and
     " cursor as intact as possible
-    call setline(1, s:take(newlines, nrOfLinesToReplace))
+    call setline(1, filter(newlines, { idx -> idx < nrOfLinesToReplace }))
 
     if (nrOfLinesToDelete > 0)
       let comm = 'silent ' . (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d|0"
@@ -294,7 +294,7 @@ function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp)
       call cursor(oldCursorPos[1] - nrOfLinesToDelete, oldCursorPos[2])
     endif
     if (nrOfLinesToAppend > 0)
-      let linesToAppend = s:take(s:drop(newlines, nrOfLinesToReplace), nrOfLinesToAppend)
+      let linesToAppend = filter(neslines, { idx -> idx >= nrOfLinesToReplace && idx < nrOfLinesToReplace + nrOfLinesToAppend })
       call s:log('linesToAppend: ' . string(linesToAppend), 3)
       call append(nrOfOldlinesUnderLine, linesToAppend)
     endif
@@ -303,24 +303,6 @@ function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp)
   else
     call s:log("PSCIDEimportIdentifier: Failed to import identifier " . a:ident . ". Error: " . string(a:resp["result"]), 0)
   endif
-endfunction
-
-function! s:take(list, j)
-  let newlist = []
-  for i in range(0, a:j - 1)
-    call add(newlist, a:list[i])
-  endfor
-  return newlist
-endfunction
-
-function! s:drop(list, j)
-  let newlist = []
-  for i in range(0, len(a:list) - 1)
-    if i >= a:j
-      call add(newlist, a:list[i])
-    endif
-  endfor
-  return newlist
 endfunction
 
 command! PSCIDEgoToDefinition call PSCIDEgoToDefinition()
