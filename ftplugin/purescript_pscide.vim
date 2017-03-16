@@ -55,7 +55,7 @@ let s:psc_ide_server = v:none
 "Looks for bower.json, assumes that's the root directory, starts
 "psc-ide-server in the background
 "Returns Nothing
-command! PSCIDEstart call PSCIDEstart(0)
+command! -buffer PSCIDEstart call PSCIDEstart(0)
 function! PSCIDEstart(silent)
   if s:pscidestarted == 1 
     return
@@ -135,7 +135,7 @@ endfunction
 
 " END ------------------------------------------------------------------------
 " Tell the psc-ide-server to quit
-command! PSCIDEend call PSCIDEend()
+command! -buffer PSCIDEend call PSCIDEend()
 function! PSCIDEend()
   if s:pscideexternal == 1
     return
@@ -176,7 +176,7 @@ endfunction
 
 " LOAD -----------------------------------------------------------------------
 " Load module of current buffer + its dependencies into psc-ide-server
-command! PSCIDEload call PSCIDEload(0)
+command! -buffer PSCIDEload call PSCIDEload(0)
 function! PSCIDEload(silent)
   let loglevel = a:silent == 1 ? 1 : 0
 
@@ -216,7 +216,7 @@ function! s:ExtractModule()
 endfunction
 
 " Import given identifier
-command! PSCIDEimportIdentifier call PSCIDEimportIdentifier()
+command! -buffer PSCIDEimportIdentifier call PSCIDEimportIdentifier()
 function! PSCIDEimportIdentifier()
   call s:importIdentifier(s:GetWordUnderCursor(), "")
 endfunction
@@ -305,7 +305,7 @@ function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp)
   endif
 endfunction
 
-command! PSCIDEgoToDefinition call PSCIDEgoToDefinition()
+command! -buffer PSCIDEgoToDefinition call PSCIDEgoToDefinition()
 function! PSCIDEgoToDefinition()
   let identifier = s:GetWordUnderCursor()
   call s:log('PSCIDEgoToDefinition identifier: ' . identifier, 3)
@@ -409,7 +409,7 @@ function! s:PSCIDErebuildCallback(filename, resp)
 endfunction
 
 " Add type annotation
-command! PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation()
+command! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation()
 function! PSCIDEaddTypeAnnotation()
   let identifier = s:GetWordUnderCursor()
 
@@ -431,7 +431,7 @@ endfunction
 
 " CWD ------------------------------------------------------------------------
 " Get current working directory of psc-ide-server
-command! PSCIDEcwd call PSCIDEcwd()
+command! -buffer PSCIDEcwd call PSCIDEcwd()
 function! PSCIDEcwd()
   call s:callPscIde(
 	\ {'command': 'cwd'},
@@ -449,7 +449,7 @@ endfunction
 
 " ADDCLAUSE
 " Makes template function implementation from signature
-command! PSCIDEaddClause call PSCIDEaddClause()
+command! -buffer PSCIDEaddClause call PSCIDEaddClause()
 function! PSCIDEaddClause()
   let lnr = line(".")
   let line = getline(lnr)
@@ -475,7 +475,7 @@ endfunction
 " CASESPLIT
 " Hover cursor over variable in function declaration -> pattern match on all
 " different cases of the variable
-command! PSCIDEcaseSplit call PSCIDEcaseSplit()
+command! -buffer PSCIDEcaseSplit call PSCIDEcaseSplit()
 function! PSCIDEcaseSplit()
   let lnr = line(".")
   let line = getline(lnr)
@@ -515,7 +515,7 @@ endfunction
 
 " TYPE -----------------------------------------------------------------------
 " Get type of word under cursor
-command! PSCIDEtype call PSCIDEtype()
+command! -buffer PSCIDEtype call PSCIDEtype()
 function! PSCIDEtype()
   let identifier = s:GetWordUnderCursor()
 
@@ -553,7 +553,7 @@ endfunction
 
 " APPLYSUGGESTION ------------------------------------------------------
 " Apply suggestion in loclist to buffer --------------------------------
-command! PSCIDEapplySuggestion call PSCIDEapplySuggestion()
+command! -buffer PSCIDEapplySuggestion call PSCIDEapplySuggestion()
 function! PSCIDEapplySuggestion()
   let lnr = line(".")
   let filename = expand("%:p")
@@ -608,7 +608,7 @@ function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
 endfunction
 
 " Remove all import qualifications
-command! PSCIDEremoveImportQualifications call PSCIDEremoveImportQualifications()
+command! -buffer PSCIDEremoveImportQualifications call PSCIDEremoveImportQualifications()
 function! PSCIDEremoveImportQualifications()
   let captureregex = "import\\s\\(\\S\\+\\)\\s*(.*)"
   let replace = "import \\1"
@@ -618,7 +618,7 @@ function! PSCIDEremoveImportQualifications()
 endfunction
 
 " Add all import qualifications
-command! PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
+command! -buffer PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
 function! PSCIDEaddImportQualifications()
   let foundLines = []
   let filename = expand("%:p")
@@ -642,7 +642,7 @@ endfunction
 
 
 " PURSUIT --------------------------------------------------------------------
-command! PSCIDEpursuit call PSCIDEpursuit()
+command! -buffer PSCIDEpursuit call PSCIDEpursuit()
 function! PSCIDEpursuit()
   let identifier = s:GetWordUnderCursor()
 
@@ -671,7 +671,7 @@ function! s:formatpursuit(record)
 endfunction
 
 " VALIDATE -----------------------------------------------------------------------
-command! PSCIDEprojectValidate call PSCIDEprojectValidate()
+command! -buffer PSCIDEprojectValidate call PSCIDEprojectValidate()
 function! PSCIDEprojectValidate()
   let problems = s:projectProblems()
 
@@ -685,7 +685,7 @@ function! PSCIDEprojectValidate()
 endfunction
 
 " LIST -----------------------------------------------------------------------
-command! PSCIDElist call PSCIDElist()
+command! -buffer PSCIDElist call PSCIDElist()
 function! PSCIDElist()
   let resp = s:callPscIdeSync(
 	\ {'command': 'list', 'params': {'type': 'loadedModules'}},
