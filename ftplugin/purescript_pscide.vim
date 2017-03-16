@@ -878,7 +878,7 @@ function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
 
     if expectedCWD != cwdrespDecoded.result
       call s:log("s:PscIdeStartCallback: External server on incorrect CWD, closing", 1)
-      PSCIDEend
+      call PSCIDEend()
       call s:log("s:PscIdeStartCallback: Starting new server", 1)
       call PSCIDEstart(1)
     else
