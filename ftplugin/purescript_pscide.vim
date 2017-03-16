@@ -286,16 +286,14 @@ function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp)
 
     " Adding one at a time with setline + append/delete to keep line symbols and
     " cursor as intact as possible
-    call setline(1, filter(newlines, { idx -> idx < nrOfLinesToReplace }))
+    call setline(1, filter(copy(newlines), { idx -> idx < nrOfLinesToReplace }))
 
     if (nrOfLinesToDelete > 0)
-      let comm = 'silent ' . (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d|0"
-      :exe comm
+      exe 'silent ' . (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d_|0"
       call cursor(oldCursorPos[1] - nrOfLinesToDelete, oldCursorPos[2])
     endif
     if (nrOfLinesToAppend > 0)
-      let linesToAppend = filter(newlines, { idx -> idx >= nrOfLinesToReplace && idx < nrOfLinesToReplace + nrOfLinesToAppend })
-      call s:log('linesToAppend: ' . string(linesToAppend), 3)
+      let linesToAppend = filter(copy(newlines), { idx -> idx >= nrOfLinesToReplace && idx < nrOfLinesToReplace + nrOfLinesToAppend  })
       call append(nrOfOldlinesUnderLine, linesToAppend)
     endif
 
