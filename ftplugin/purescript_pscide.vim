@@ -258,8 +258,19 @@ function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp)
   "multiple possibilities
   call s:log("s:PSCIDEimportIdentifierCallback", 3)
   if type(a:resp) == type({}) && a:resp.resultType ==# "success" && type(a:resp.result[0]) == type({})
-    let choice = s:pickOption("Multiple possibilities to import " . a:ident, a:resp.result, "module")
-    if choice.picked
+    " filter results
+    let results = []
+    for res in a:resp.result
+      if empty(filter(copy(results), { idx, val -> val.module == res.module }))
+	call add(results, res)
+      endif
+    endfor
+    if (len(results) == 1)
+      let choice = { option: results[0], picked: v:true }
+    else
+      let choice = s:pickOption("Multiple possibilities to import " . a:ident, results, "module")
+    endif
+    if choice.picked == v:true
       call s:importIdentifier(a:ident, choice.option.module)
     endif
     return
@@ -320,16 +331,24 @@ function! PSCIDEgoToDefinition()
 endfunction
 
 function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
-  call s:log("s:PSCIDEgoToDefinitionCallback: " . string(a:resp), 3)
+  call s:log("s:PSCIDEgoToDefinitionCallback", 3)
+  let results = []
+  for res in a:resp.result
+    if empty(filter(copy(results), { idx, val -> val.definedAt.name == res.definedAt.name && val.definedAt.start[0] == res.definedAt.start[0] && val.definedAt.start[1] == res.definedAt.start[1]}))
+      call add(results, res)
+    endif
+  endfor
   if type(a:resp) == type({}) && a:resp.resultType ==# "success" && len(a:resp.result) == 1
-      call s:goToDefinition(a:resp.result[0].definedAt)
+      call s:goToDefinition(results[0].definedAt)
   endif
 
   if type(a:resp) == type({}) && a:resp.resultType ==# "success"
-    if len(a:resp.result) > 1
-      let choice = s:pickOption("Multiple possibilities for " . a:identifier, a:resp.result, "module")
+    if len(results) > 1
+      let choice = s:pickOption("Multiple possibilities for " . a:identifier, results, "module")
+    elseif len(results) == 1
+      let choice = {"picked": v:true, "option": results[0]}
     else
-      let choice = {"picked": v:true, "option": a:resp.result[0]}
+      let choice = {"picked": v:false, "option": v:none}
     endif
     if choice.picked && type(choice.option.definedAt) == type({})
       call s:goToDefinition(choice.option.definedAt)
@@ -439,7 +458,7 @@ function! PSCIDEcwd()
 	\ )
 endfunction
 
-function s:PSCIDEcwdCallback(resp)
+function! s:PSCIDEcwdCallback(resp)
   if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
     echom "PSC-IDE: Current working directory: " . a:resp["result"]
   endif
@@ -523,7 +542,7 @@ function! PSCIDEtype()
 	\ )
 endfunction
 
-function s:PSCIDEtypeCallback(identifier, result)
+function! s:PSCIDEtypeCallback(identifier, result)
   if type(a:result) == type([])
     for e in a:result
       echom s:formattype(e)
@@ -693,7 +712,7 @@ function! PSCIDElist()
   call s:PSCIDElistCallback(resp)
 endfunction
 
-function s:PSCIDElistCallback(resp)
+function! s:PSCIDElistCallback(resp)
   if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
     if len(a:resp["result"]) > 0
       for m in a:resp["result"]
