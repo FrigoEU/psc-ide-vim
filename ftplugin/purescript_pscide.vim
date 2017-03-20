@@ -140,13 +140,11 @@ function! s:projectProblems()
   let problems = []
 
   if empty(rootdir)
-    let problem = "Your project is missing a bower.json or psc-package.json file"
-    call add(problems, problem)
+    call add(problems, "Your project is missing a bower.json or psc-package.json file")
   elseif g:psc_ide_check_output_dir == 1
     let outputcontent = s:globpath(rootdir, "output/*")
     if len(outputcontent) == 0
-      let problem = "Your project's /output directory is empty.  You should run `pulp build` to compile your project."
-      call add(problems, problem)
+      call add(problems, "Your project's /output directory is empty.  You should run `pulp build` to compile your project.")
     endif
   endif
 
