@@ -352,8 +352,10 @@ function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
     endif
     if choice.picked && type(choice.option.definedAt) == type({})
       call s:goToDefinition(choice.option.definedAt)
-    else
+    elseif choice.option
       echom "PSCIDE: No location information found for: " . a:identifier . " in module " . choice.option.module
+    else
+      echom "PSCIDE: No location information found for: " . a:identifier
     endif
     return
   else
