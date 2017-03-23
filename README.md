@@ -53,15 +53,15 @@ This plugin provides two kinds of syntax checking with syntastic. Controlling wh
 No custom mappings are provided, but it's easy to map the above commands to any key mapping you want. My personal setup:
 
 ```
-au FileType purescript nmap <leader>t :PSCIDEtype<CR>
-au FileType purescript nmap <leader>s :PSCIDEapplySuggestion<CR>
-au FileType purescript nmap <leader>a :PSCIDEaddTypeAnnotation<CR>
-au FileType purescript nmap <leader>i :PSCIDEimportIdentifier<CR>
-au FileType purescript nmap <leader>r :PSCIDEload<CR>
-au FileType purescript nmap <leader>p :PSCIDEpursuit<CR>
-au FileType purescript nmap <leader>c :PSCIDEcaseSplit<CR>
-au FileType purescript nmap <leader>qd :PSCIDEremoveImportQualifications<CR>
-au FileType purescript nmap <leader>qa :PSCIDEaddImportQualifications<CR>
+au FileType purescript nmap <buffer> <leader>t :<C-U>PSCIDEtype<CR>
+au FileType purescript nmap <buffer> <leader>s :<C-U>PSCIDEapplySuggestion<CR>
+au FileType purescript nmap <buffer> <leader>a :<C-U>PSCIDEaddTypeAnnotation<CR>
+au FileType purescript nmap <buffer> <leader>i :<C-U>PSCIDEimportIdentifier<CR>
+au FileType purescript nmap <buffer> <leader>r :<C-U>PSCIDEload<CR>
+au FileType purescript nmap <buffer> <leader>p :<C-U>PSCIDEpursuit<CR>
+au FileType purescript nmap <buffer> <leader>c :<C-U>PSCIDEcaseSplit<CR>
+au FileType purescript nmap <buffer> <leader>qd :<C-U>PSCIDEremoveImportQualifications<CR>
+au FileType purescript nmap <buffer> <leader>qa :<C-U>PSCIDEaddImportQualifications<CR>
 ```
 
 
