@@ -1036,15 +1036,6 @@ endfunction
   "endif
 "endfunction
 
-" Automatically close the server when leaving vim
-augroup PscideShutDown
-  au!
-  autocmd VimLeavePre * call s:Shutdown()
-augroup END
-function! s:Shutdown()
-  silent PSCIDEend
-endfunction
-
 " " Automatic import after completion
 " function! s:completeDone(item)
 "   if g:psc_ide_auto_imports == 0
