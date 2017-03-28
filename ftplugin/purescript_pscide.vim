@@ -73,8 +73,8 @@ function! PSCIDEstart(silent)
 	\ "psc-ide-server",
 	\ "-p", g:psc_ide_server_port,
 	\ "-d", dir,
-	\ "dir", "src/**/*.purs",
-	\ "dir", "bower_components/**/*.purs",
+	\ "dir", "'src/**/*.purs'",
+	\ "dir", "'bower_components/**/*.purs'",
 	\ ]
 
   exe "lcd" dir
@@ -538,7 +538,7 @@ function! PSCIDEtype()
 
   call s:getType(
 	\ identifier,
-	\ { resp -> s:PSCIDEtypeCallback(identifier, resp) }
+	\ { resp -> s:PSCIDEtypeCallback(identifier, resp.result) }
 	\ )
 endfunction
 
