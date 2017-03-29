@@ -73,8 +73,8 @@ function! PSCIDEstart(silent)
 	\ "psc-ide-server",
 	\ "-p", g:psc_ide_server_port,
 	\ "-d", dir,
-	\ "dir", "'src/**/*.purs'",
-	\ "dir", "'bower_components/**/*.purs'",
+	\ "src/**/*.purs",
+	\ "bower_components/**/*.purs",
 	\ ]
 
   exe "lcd" dir
