@@ -332,15 +332,16 @@ function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
   call s:log("s:PSCIDEgoToDefinitionCallback", 3)
   let results = []
   for res in a:resp.result
-    if empty(filter(copy(results), { idx, val -> val.definedAt.name == res.definedAt.name && val.definedAt.start[0] == res.definedAt.start[0] && val.definedAt.start[1] == res.definedAt.start[1]}))
+    if empty(filter(copy(results), { idx, val -> 
+	  \    val.definedAt != v:null
+	  \ && res.definedAt != v:null
+	  \ && val.definedAt.name == res.definedAt.name
+	  \ && val.definedAt.start[0] == res.definedAt.start[0]
+	  \ && val.definedAt.start[1] == res.definedAt.start[1]}))
       call add(results, res)
     endif
   endfor
-  if type(a:resp) == type({}) && a:resp.resultType ==# "success" && len(a:resp.result) == 1
-      call s:goToDefinition(results[0].definedAt)
-  endif
-
-  if type(a:resp) == type({}) && a:resp.resultType ==# "success"
+  if type(a:resp) == v:t_dict && a:resp.resultType ==# "success"
     if len(results) > 1
       let choice = s:pickOption("Multiple possibilities for " . a:identifier, results, "module")
     elseif len(results) == 1
@@ -350,12 +351,11 @@ function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
     endif
     if choice.picked && type(choice.option.definedAt) == type({})
       call s:goToDefinition(choice.option.definedAt)
-    elseif choice.option
+    elseif type(choice.option) == v:t_dict
       echom "PSCIDE: No location information found for: " . a:identifier . " in module " . choice.option.module
     else
       echom "PSCIDE: No location information found for: " . a:identifier
     endif
-    return
   else
     echom "PSCIDE: No location information found for: " . a:identifier
   endif
