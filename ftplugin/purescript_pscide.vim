@@ -109,11 +109,11 @@ endfunction
 
 " Find root folder ----------------------------------------------------
 function! s:findRoot()
-  let pscPackage = findfile("psc-package.json", expand("%:p:h").";")
+  let pscPackage = findfile("psc-package.json", fnameescape(expand("%:p:h")).";")
   if !empty(pscPackage)
     return fnamemodify(pscPackage, ":h:p")
   else
-    let bower = findfile("bower.json", expand("%:p:h").";")
+    let bower = findfile("bower.json", fnameescape(expand("%:p:h")).";")
     if !empty(bower)
       return fnamemodify(bower, ":h:p")
     else
