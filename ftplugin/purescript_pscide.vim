@@ -333,8 +333,8 @@ function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
   let results = []
   for res in a:resp.result
     if empty(filter(copy(results), { idx, val -> 
-	  \    val.definedAt != v:null
-	  \ && res.definedAt != v:null
+	  \    type(val.definedAt) == v:t_dict
+	  \ && type(res.definedAt) != v:t_dict
 	  \ && val.definedAt.name == res.definedAt.name
 	  \ && val.definedAt.start[0] == res.definedAt.start[0]
 	  \ && val.definedAt.start[1] == res.definedAt.start[1]}))
