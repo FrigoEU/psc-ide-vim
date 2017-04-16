@@ -53,7 +53,7 @@ endif
 
 let s:psc_ide_server = v:none
 "Looks for bower.json, assumes that's the root directory, starts
-"psc-ide-server in the background
+"`purs ide server` in the background
 "Returns Nothing
 command! -buffer PSCIDEstart call PSCIDEstart(0)
 function! PSCIDEstart(silent)
@@ -63,14 +63,15 @@ function! PSCIDEstart(silent)
   let loglevel = a:silent == 1 ? 1 : 0
 
   let dir = s:findRoot()
+  call s:log("PSCIDEstart: cwd " . dir, 3)
 
   if empty(dir)
-    echom "No psc-package.json or bower.json found, couldn't start psc-ide-server"
+    echom "No psc-package.json or bower.json found, couldn't start `purs ide server`"
     return
   endif
 
   let command = [ 
-	\ "psc-ide-server",
+	\ "purs", "ide", "server",
 	\ "-p", g:psc_ide_server_port,
 	\ "-d", dir,
 	\ "src/**/*.purs",
@@ -82,7 +83,7 @@ function! PSCIDEstart(silent)
 	\ command,
 	\ { "stoponexit": "term"
 	\ , "err_mode": "raw"
-	\ , "err_cb": { ch, msg -> s:log("psc-ide-server error: " . string(msg), 0) }
+	\ , "err_cb": { ch, msg -> s:log("purs ide server error: " . string(msg), 0) }
 	\ , "in_io": "null"
 	\ , "out_io": "null"
 	\ }
@@ -134,7 +135,7 @@ function! s:findRoot()
 endfunction
 
 " END ------------------------------------------------------------------------
-" Tell the psc-ide-server to quit
+" Tell the `purs ide server` to quit
 command! -buffer PSCIDEend call PSCIDEend()
 function! PSCIDEend()
   if s:pscideexternal == 1
@@ -143,7 +144,7 @@ function! PSCIDEend()
   let filename = tempname()
   call writefile([json_encode({'command': 'quit'})], filename)
   return job_start(
-	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
+	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "exit_cb": {job, status -> s:PSCIDEendCallback() }
 	\ , "err_cb": {err -> s:log("PSCIDEend error: " . string(err), 0)}
 	\ , "in_io": "file"
@@ -173,7 +174,7 @@ function! s:projectProblems()
 endfunction
 
 " LOAD -----------------------------------------------------------------------
-" Load module of current buffer + its dependencies into psc-ide-server
+" Load module of current buffer + its dependencies into `purs ide server`
 command! -buffer PSCIDEload call PSCIDEload(0)
 function! PSCIDEload(silent)
   let loglevel = a:silent == 1 ? 1 : 0
@@ -363,15 +364,17 @@ endfunction
 
 function! s:goToDefinition(definedAt)
   let currentfile = expand("%:p")
-  if (currentfile == a:definedAt.name)
+  let fname = a:definedAt.name
+  let cwd = s:findRoot()
+  let fname = fnameescape(findfile(fname, cwd))
+  if (currentfile == fname)
     " set ' mark at the current position
     m'
     call cursor(a:definedAt.start[0], a:definedAt.start[1])
   else
-    let name = a:definedAt.name
-    call s:log("PSCIDE s:goToDefinition: name: " . name, 3)
+    call s:log("PSCIDE s:goToDefinition: fname: " . fname, 3)
 
-    let command = "e +" . a:definedAt.start[0] . " " . name
+    let command = "e +" . a:definedAt.start[0] . " " . fname
     call s:log("PSCIDE s:goToDefinition: command: " . command, 3)
     exe command
     exe "normal " . a:definedAt.start[1] . "|"
@@ -447,7 +450,7 @@ function! s:PSCIDEaddTypeAnnotationCallback(identifier, resp)
 endfunction
 
 " CWD ------------------------------------------------------------------------
-" Get current working directory of psc-ide-server
+" Get current working directory of `pure ide server`
 command! -buffer PSCIDEcwd call PSCIDEcwd()
 function! PSCIDEcwd()
   call s:callPscIde(
@@ -578,12 +581,11 @@ function! PSCIDEapplySuggestion()
 endfunction
 
 function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
-  "let llist = getloclist(0)
+  let dir = s:findRoot()
+  let key = fnamemodify(a:filename, ':s?'.dir.'/??') . "|" . string(a:lnr)
 
-  call s:log('PSCIDEapplySuggestion: lineNr: ' . a:lnr, 3)
-  call s:log('PSCIDEapplySuggestion: filename: ' . a:filename, 3)
+  call s:log('PSCIDEapplySuggestion: lineNr: ' . a:lnr . "filename: " . a:filename . " key: " . key, 3)
 
-  let key = a:filename . "|" . string(a:lnr)
   if (has_key(g:psc_ide_suggestions, key))
     let found = g:psc_ide_suggestions[key]
   else
@@ -824,13 +826,14 @@ function! s:callPscIde(input, errorm, isRetry, cb)
   if s:pscidestarted == 0
 
     let expectedCWD = fnamemodify(s:findRoot(), ":p:h")
+    call s:log("callPscIde: cwd " . expectedCWD, 3)
     let cwdcommand = {'command': 'cwd'}
     let tempfile = tempname()
     call writefile([json_encode(cwdcommand)], tempfile)
 
     call s:log("callPscIde: No server found, looking for external server", 1)
     call job_start(
-	  \ ["psc-ide-client", "-p", g:psc_ide_server_port],
+	  \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	  \ { "out_cb": {ch, msg -> s:PscIdeStartCallback(a:input, a:errorm, a:cb, cwdcommand, msg)}
 	  \ , "err_cb": {ch, err -> s:log("s:callPscIde error: " . string(err), 3)}
 	  \ , "in_io": "file"
@@ -843,9 +846,9 @@ function! s:callPscIde(input, errorm, isRetry, cb)
   let enc = json_encode(a:input)
   let tempfile = tempname()
   call writefile([enc], tempfile, "b")
-  call s:log("callPscIde: psc-ide-client: " . enc, 3)
+  call s:log("callPscIde: purs ide client: " . enc, 3)
   call job_start(
-	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
+	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "out_cb": {ch, msg -> a:cb(s:PscIdeCallback(a:input, a:errorm, a:isRetry, a:cb, msg))}
 	\ , "in_io": "file"
 	\ , "in_name": tempfile
@@ -867,13 +870,13 @@ function! s:callPscIdeSync(input, errorm, isRetry)
     let cwdcommand = {'command': 'cwd'}
 
     call s:log("callPscIde: No server found, looking for external server", 1)
-    let cwdresp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, json_encode(cwdcommand))
+    let cwdresp = s:mysystem("purs ide client -p " . g:psc_ide_server_port, json_encode(cwdcommand))
     return s:PscIdeStartCallback(a:input, a:errorm, 0, cwdcommand, cwdresp)
   endif
 
   call s:log("callPscIde: Trying to reach server again", 1)
   let enc = json_encode(a:input)
-  let resp = s:mysystem("psc-ide-client -p " . g:psc_ide_server_port, enc)
+  let resp = s:mysystem("purs ide client -p " . g:psc_ide_server_port, enc)
   return s:PscIdeCallback(a:input, a:errorm, a:isRetry, 0, resp)
 endfunction
 
@@ -910,7 +913,7 @@ function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
   call s:log("s:PscIdeStartCallback: Trying to reach server again", 1)
   if (type(a:cb) == type(0) && !a:cb)
     let cwdresp = s:mysystem(
-	  \ "psc-ide-client -p" . g:psc_ide_server_port,
+	  \ "purs ide client -p" . g:psc_ide_server_port,
 	  \ json_encode(a:cwdcommand)
 	  \ )
     return s:PscIdeRetryCallback(a:input, a:errorm, 0, expectedCWD, cwdresp)
@@ -918,7 +921,7 @@ function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
   let tempfile = tempname()
   call writefile([json_encode(a:cwdcommand)], tempfile)
   call job_start(
-	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
+	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "out_cb": { ch, resp -> s:PscIdeRetryCallback(a:input, a:errorm, a:cb, expectedCWD, resp) }
 	\ , "in_io": "file"
 	\ , "in_name": tempfile
@@ -949,7 +952,7 @@ function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
   let enc = json_encode(a:input)
   if (type(a:cb) == type(0))
     let resp = s:mysystem(
-	  \ "psc-ide-client -p" . g:psc_ide_server_port,
+	  \ "purs ide client -p" . g:psc_ide_server_port,
 	  \ enc
 	  \ )
     return s:PscIdeCallback(a:input, a:errorm, 1, 0, resp)
@@ -957,16 +960,16 @@ function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
 
   if (type(a:cb) == type(0) && !a:cb)
     let resp = s:mysystem(
-	  \ "psc-ide-client -p" . g:psc_ide_server_port
+	  \ "purs ide client -p" . g:psc_ide_server_port
 	  \ enc
 	  \ )
     return s:PscIdeCallback(a:input, a:errorm, 1, 0, resp)
   endif
   let tempfile = tempname()
   call writefile([enc], tempfile, "b")
-  call s:log("callPscIde: psc-ide-client: " . enc, 3)
+  call s:log("callPscIde: purs ide client: " . enc, 3)
   call job_start(
-	\ ["psc-ide-client", "-p", g:psc_ide_server_port],
+	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "out_cb": {ch, resp -> a:cb(s:PscIdeCallback(a:input, a:errorm, 1, a:cb, resp))}
 	\ , "in_io": "file"
 	\ , "in_name": tempfile
@@ -986,7 +989,7 @@ function! s:PscIdeCallback(input, errorm, isRetry, cb, resp)
       call s:log("s:PscIdeCallback: Error: Failed to contact server", 0)
     endif
     if !a:isRetry
-      " Seems saving often causes psc-ide-server to crash. Haven't been able
+      " Seems saving often causes `purs ide server` to crash. Haven't been able
       " to figure out why. It doesn't crash when I run it externally...
       " retrying is then the next best thing
       return s:callPscIde(a:input, a:errorm, 1, a:cb) " Keeping track of retries so we only retry once
