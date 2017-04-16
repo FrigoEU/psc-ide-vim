@@ -121,11 +121,11 @@ endfunction
 
 " Find root folder ----------------------------------------------------
 function! s:findRoot()
-  let pscPackage = findfile("psc-package.json", expand("%:p:h").";")
+  let pscPackage = findfile("psc-package.json", fnameescape(expand("%:p:h")).";")
   if !empty(pscPackage)
     return fnamemodify(pscPackage, ":h:p")
   else
-    let bower = findfile("bower.json", expand("%:p:h").";")
+    let bower = findfile("bower.json", fnameescape(expand("%:p:h")).";")
     if !empty(bower)
       return fnamemodify(bower, ":h:p")
     else
@@ -555,12 +555,45 @@ function! s:PSCIDEtypeCallback(identifier, result)
   endif
 endfunction
 
-function! s:getType(identifier, cb)
+" LISTIMPORTS -----------------------------------------------------------------------
+" List the modules imported by the current module
+command! PSCIDElistImports call PSCIDElistImports()
+function! PSCIDElistImports()
   let currentModule = s:ExtractModule()
+  call s:log('PSCIDElistImports ' . currentModule, 3)
+  call s:ListImports(currentModule)
+endfunction
+
+function! s:ListImports(module)
+  let filename = expand("%:p")
+  call s:log('PSCIDE s:ListImports ' . a:module . ' in file ' . filename, 1)
+  let resp = s:callPscIdeSync(
+	\ {'command': 'list', 'params': {'type': 'import', 'file': filename}},
+	\ 'Failed to get imports for: ' . a:module,
+	\ 0
+	\ )
+  call s:log("PSCIDE s:ListImports result: " . string(resp), 3)
+  " Only need module names right now, so pluck just those.
+  if type(resp) == type({}) && resp['resultType'] ==# 'success'
+    " psc-ide >=0.11 returns imports on 'imports' property.
+    let imports = type(resp['result']) == type([]) ? resp['result'] : resp['result']['imports']
+    if len(imports) > 0
+      for module in imports
+	echom module["module"]
+      endfor
+    else
+      echom "purs ide: No import information found for " . a:module
+    endif
+  endif
+endfunction
+
+function! s:getType(identifier)
+  let currentModule = s:ExtractModule()
+  let importedModules = s:ListImports(currentModule)
   call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
   call s:callPscIde(
-	\ {'command': 'type', 'params': {'search': a:identifier, 'filters': []}, 'currentModule': currentModule},
+	\ {'command': 'type', 'params': {'search': a:identifier, 'filters': [{'filter': 'modules' , 'params': {'modules': importedModules } }]}, 'currentModule': currentModule},
 	\  'Failed to get type info for: ' . a:identifier,
 	\ 0,
 	\ {resp -> a:cb(resp)}
