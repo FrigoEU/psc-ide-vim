@@ -212,7 +212,7 @@ function! s:importIdentifier(id, module)
         \   'importCommand': {
         \     'importCommand': 'addImport',
         \     'identifier': ident
-        \ } } }
+        \   } } }
 
   if a:module != ""
     let input.params.filters = [{'filter': 'modules', 'params': {'modules': [a:module]}}]
@@ -250,18 +250,17 @@ function! s:importIdentifier(id, module)
 
     " Adding one at a time with setline + append/delete to keep line symbols and
     " cursor as intact as possible
-    call setline(1, s:take(newlines, nrOfLinesToReplace))
+    let view = winsaveview()
+    call setline(1, filter(copy(newlines), { idx -> idx < nrOfLinesToReplace }))
 
     if (nrOfLinesToDelete > 0)
-      let comm = 'silent ' . (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d|0"
-      :exe comm
-      call cursor(oldCursorPos[1] - nrOfLinesToDelete, oldCursorPos[2])
+      exe 'silent ' . (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d_|0"
     endif
     if (nrOfLinesToAppend > 0)
-      let linesToAppend = s:take(s:drop(newlines, nrOfLinesToReplace), nrOfLinesToAppend)
-      call s:log('linesToAppend: ' . string(linesToAppend), 3)
-      call append(nrOfOldlinesUnderLine, linesToAppend)
+      let view = winsaveview()
+      let linesToAppend = filter(copy(newlines), { idx -> idx >= nrOfLinesToReplace && idx < nrOfLinesToReplace + nrOfLinesToAppend  })
     endif
+    call winrestview(view)
 
     call s:log("PSCIDEimportIdentifier: Succesfully imported identifier: " . a:module . " ".a:id, 3)
   else
@@ -469,6 +468,36 @@ function! PSCIDElistImports()
   endif
 endfunction
 
+function! s:EchoImport(import)
+  echohl Identifier
+  echon a:import["module"]
+  echohl Normal
+  if has_key(a:import, "identifiers")
+    echon " ("
+    let len = len(a:import["identifiers"])
+    let idx = 0
+    for ident in a:import["identifiers"]
+      echohl Identifier
+      echon ident 
+      echohl Normal
+      if (idx < len - 1)
+	echon ", "
+      else
+	echon ")"
+      endif
+      let idx += 1
+    endfor
+  endif
+  if has_key(a:import, "qualifier")
+    echohl Keyword
+    echon " as "
+    echohl Identifier
+    echon a:import["qualifier"]
+    echohl Normal
+  endif
+  echon "\n"
+endfunction
+
 function! s:ListImports(module)
   let filename = expand("%:p")
   call s:log('PSCIDE s:ListImports ' . a:module . ' in file ' . filename, 1)
@@ -479,13 +508,11 @@ function! s:ListImports(module)
     " psc-ide >=0.11 returns imports on 'imports' property.
     let imports = type(resp['result']) == type([]) ? resp['result'] : resp['result']['imports']
     if len(imports) > 0
-      let result = []
-      for entry in imports
-        call add(result, entry['module'])
+      for import in imports
+	call s:EchoImport(import)
       endfor
-      return result
     else
-      return []
+      echom "purs ide: No import information found for " . a:module
     endif
   endif
 endfunction
