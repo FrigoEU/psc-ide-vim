@@ -297,14 +297,16 @@ function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp)
     " Adding one at a time with setline + append/delete to keep line symbols and
     " cursor as intact as possible
     let view = winsaveview()
-    call setline(1, filter(copy(newlines), { idx -> idx < nrOfLinesToReplace }))
+    call setline(1, filter(copy(newlines), { idx -> idx < nrOfLinesToReplace + nrOfLinesToAppend }))
 
     if (nrOfLinesToDelete > 0)
+      let view["lnum"] -= nrOfLinesToDelete
       exe 'silent ' . (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d_|0"
     endif
     if (nrOfLinesToAppend > 0)
-      let view = winsaveview()
-      let linesToAppend = filter(copy(newlines), { idx -> idx >= nrOfLinesToReplace && idx < nrOfLinesToReplace + nrOfLinesToAppend  })
+      let linesToAppend = filter(copy(newlines), { idx -> idx > nrOfLinesToReplace && idx <= nrOfLinesToReplace + nrOfLinesToAppend  })
+      let view["lnum"] += nrOfLinesToAppend
+      call append(line("."), linesToAppend)
     endif
     call winrestview(view)
 
