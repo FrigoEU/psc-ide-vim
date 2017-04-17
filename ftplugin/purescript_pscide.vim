@@ -562,7 +562,14 @@ command! PSCIDElistImports call PSCIDElistImports()
 function! PSCIDElistImports()
   let currentModule = s:ExtractModule()
   call s:log('PSCIDElistImports ' . currentModule, 3)
-  call s:ListImports(currentModule)
+  let imports =  s:ListImports(currentModule)
+  for import in imports
+    call s:EchoImport(import)
+  endfor
+  if (len(imports) == 0)
+    echom "PSC-IDE: No import information found for " . currentModule
+  endif
+
 endfunction
 
 function! s:EchoImport(import)
@@ -607,20 +614,14 @@ function! s:ListImports(module)
   " Only need module names right now, so pluck just those.
   if type(resp) == type({}) && resp['resultType'] ==# 'success'
     " psc-ide >=0.11 returns imports on 'imports' property.
-    let imports = type(resp['result']) == type([]) ? resp['result'] : resp['result']['imports']
-    if len(imports) > 0
-      for import in imports
-	call s:EchoImport(import)
-      endfor
-    else
-      echom "purs ide: No import information found for " . a:module
+    return type(resp['result']) == type([]) ? resp['result'] : resp['result']['imports']
     endif
   endif
 endfunction
 
-function! s:getType(identifier)
+function! s:getType(identifier, cb)
   let currentModule = s:ExtractModule()
-  let importedModules = s:ListImports(currentModule)
+  let importedModules = map(s:ListImports(currentModule), {key, val -> val["module"]}) 
   call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
   call s:callPscIde(
