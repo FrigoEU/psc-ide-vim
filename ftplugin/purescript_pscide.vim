@@ -506,7 +506,7 @@ function! s:getType(identifier)
 endfunction
 
 function! s:formattype(record)
-  return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['identifier']) . ' :: ' . s:StripNewlines(a:record['type']))
+  return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['identifier']) . ' ∷ ' . s:StripNewlines(a:record['type']))
 endfunction
 
 " APPLYSUGGESTION ------------------------------------------------------
