@@ -193,7 +193,7 @@ function! s:PSCIDEloadCallback(loglevel, resp)
   if type(a:resp) == type({}) && a:resp['resultType'] ==# "success"
     call s:log("PSCIDEload: Successfully loaded modules: " . string(a:resp["result"]), a:loglevel)
   else
-    call s:log("PSCIDEload: Failed to load. Error: " . string(a:resp["result"]), a:loglevel)
+    call s:log("PSCIDEload: Failed to load. Error.", a:loglevel)
   endif
 endfunction
 
