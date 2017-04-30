@@ -1048,7 +1048,9 @@ endfunction
 function! s:PscIdeCallback(input, errorm, isRetry, cb, resp)
   call s:log("s:PscIdeCallback: Raw response: " . a:resp, 3)
 
-  if a:resp =~? "connection refused"  "TODO: This check is probably not crossplatform
+  try
+    let decoded = json_decode(a:resp)
+  catch /.*/
     let s:pscidestarted = 0
     let s:pscideexternal = 0
 
@@ -1061,9 +1063,8 @@ function! s:PscIdeCallback(input, errorm, isRetry, cb, resp)
       " retrying is then the next best thing
       return s:callPscIde(a:input, a:errorm, 1, a:cb) " Keeping track of retries so we only retry once
     endif
-  endif
+  endtry
 
-  let decoded = json_decode(a:resp)
   call s:log("s:PscIdeCallback: Decoded response: " . string(decoded), 3)
 
   if (type(decoded) != type({}) || decoded['resultType'] !=# 'success') 
