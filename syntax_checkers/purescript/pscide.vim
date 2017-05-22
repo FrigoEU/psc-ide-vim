@@ -31,7 +31,7 @@ set cpo&vim
 
 function! SyntaxCheckers_purescript_pscide_IsAvailable() dict
   if (g:psc_ide_syntastic_mode == 1)
-    let version_output = syntastic#util#system('psc --version')
+    let version_output = syntastic#util#system('purs --version')
     let parsed_ver = syntastic#util#parseVersion(version_output)
     return syntastic#util#versionIsAtLeast(parsed_ver, [0, 8, 5, 0])
   endif
