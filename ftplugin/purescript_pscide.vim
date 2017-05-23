@@ -604,6 +604,36 @@ function! s:EchoImport(import)
   echon "\n"
 endfunction
 
+function! s:EchoImport(import)
+  echohl Identifier
+  echon a:import["module"]
+  echohl Normal
+  if has_key(a:import, "identifiers")
+    echon " ("
+    let len = len(a:import["identifiers"])
+    let idx = 0
+    for ident in a:import["identifiers"]
+      echohl Identifier
+      echon ident 
+      echohl Normal
+      if (idx < len - 1)
+	echon ", "
+      else
+	echon ")"
+      endif
+      let idx += 1
+    endfor
+  endif
+  if has_key(a:import, "qualifier")
+    echohl Keyword
+    echon " as "
+    echohl Identifier
+    echon a:import["qualifier"]
+    echohl Normal
+  endif
+  echon "\n"
+endfunction
+
 function! s:ListImports(module)
   let filename = expand("%:p")
   call s:log('PSCIDE s:ListImports ' . a:module . ' in file ' . filename, 1)
