@@ -653,7 +653,7 @@ endfunction
 
 function! s:getType(identifier, cb)
   let currentModule = s:ExtractModule()
-  let importedModules = map(s:ListImports(currentModule), {key, val -> val["module"]}) 
+  let importedModules = add(map(s:ListImports(currentModule), {key, val -> val["module"]}), currentModule)
   call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
   call s:callPscIde(
