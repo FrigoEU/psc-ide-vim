@@ -513,7 +513,7 @@ endfunction
 
 function! s:getType(identifier)
   let currentModule = s:ExtractModule()
-  let importedModules = map(s:ListImports(currentModule), {key, val -> val["module"]}) 
+  let importedModules = add(map(s:ListImports(currentModule), {key, val -> val["module"]}), currentModule)
   call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
   let resp = s:callPscIde( {'command': 'type', 'params': {'search': a:identifier , 'filters': [ {'filter': 'modules' , 'params': {'modules': importedModules } }], 'currentModule': currentModule} }, 'Failed to get type info for: ' . a:identifier, 0)
