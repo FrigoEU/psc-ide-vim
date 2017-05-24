@@ -657,7 +657,7 @@ function! s:getType(identifier, cb)
   call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
   call s:callPscIde(
-	\ {'command': 'type', 'params': {'search': a:identifier, 'filters': [{'filter': 'modules' , 'params': {'modules': importedModules } }]}, 'currentModule': currentModule},
+	\ {'command': 'type', 'params': {'search': a:identifier, 'filters': [{'filter': 'modules' , 'params': {'modules': importedModules } }], 'currentModule': currentModule}},
 	\  'Failed to get type info for: ' . a:identifier,
 	\ 0,
 	\ {resp -> a:cb(resp)}
