@@ -1094,34 +1094,54 @@ function! s:log(str, level)
 endfunction
 
 " INIT -----------------------------------------------------------------------
-" Automatically load the module we just opened
-"augroup PscIdeAutoLoad
-  "au!
-  "autocmd BufEnter *.purs call s:AutoLoad()
-  "autocmd BufWritePost *.purs call s:AutoLoad()
-"augroup END
-"function! s:AutoLoad()
-  "if s:pscidestarted == 1
-    "call PSCIDEload(1)
-  "endif
-"endfunction
+function! PSCIDEerrors(llist)
+  let qflist = []
+  for e in a:llist
+    let eparts = split(e, ":")
+    let bufnr = bufnr(eparts[1])
+    if bufnr != -1
+      call add(
+	    \   qflist
+	    \ , { "bufnr": bufnr(eparts[1])
+	    \   , "filename": eparts[1]
+	    \   , "lnum": eparts[2]
+	    \   , "col": eparts[3]
+	    \   , "text": join(filter(eparts, {idx -> idx >= 4}), ":")
+	    \   , "type": eparts[0]
+	    \   }
+	    \ )
+    endif
+  endfor
+  call setqflist(qflist)
+endfunction
+if g:psc_ide_syntastic_mode == 0
+  com! PSCIDErebuild call PSCIDErebuild(1, function("PSCIDEerrors"))
+  augroup purescript
+    au! BufWritePost *.purs call PSCIDErebuild(1, function("PSCIDEerrors"))
+  augroup END
+endif
 
-" " Automatic import after completion
-" function! s:completeDone(item)
-"   if g:psc_ide_auto_imports == 0
-"     return
-"   endif
-"   if (type(a:item) == type({}) 
-"         \ && has_key(a:item, 'word') && type(a:item.word) == type("") 
-"         \ && has_key(a:item, 'info')) && type(a:item.info) == type("")
-"     call s:importIdentifier(a:item.word, a:item.info)
-"   endif
-" endfunction
-" augroup PscideAfterCompletion
-"   autocmd CompleteDone * call s:completeDone(v:completed_item)
-" augroup END
+silent! call PSCIDEstart(0)
+silent! call PSCIDEload(0)
 
-" Parse Errors & Suggestions ------------------------------------------
+" PSCIDEerr ------------------------------------------------------------------
+fun PSCIDEerr(nr)
+  let qf = getqflist()
+  if a:nr > 0 && a:nr < len(qf) + 1
+    let e = qf[a:nr - 1]
+    echo getline(e["lnum"])
+    let col = e["col"]
+    echon "\n" . repeat(" ", col - 1)
+    echohl Error
+    echon "^\n\n"
+    echohl Normal
+    echo e["text"]
+  endif
+endfun
+
+command! -buffer -count=1 PSCIDEerr call PSCIDEerr(<count>)
+
+" Parse Errors & Suggestions -------------------------------------------------
 " Returns { error :: String, 
 "           llist :: Array (String in errorformat), 
 "           suggestions :: StrMap { startLine :: Int,
