@@ -1170,7 +1170,7 @@ function! s:addEntry(out, suggestions, err, e)
                 \ a:e.filename, 
                 \ startL,
                 \ startC,
-                \ s:cleanupMessage(a:e.message)], ":")
+                \ a:e.message], ":")
 
   call add(a:out, msg)
 
@@ -1188,15 +1188,6 @@ function! s:addSuggestion(suggestions, e)
              \'replacement': a:e['suggestion']['replacement']}
 
    let a:suggestions[a:e.filename . "|" . string(a:e.position.startLine)] = sugg
-endfunction
-
-function! s:cleanupMessage(str)
-    let transformations = [ ['\s*\n\+\s*', ' '], ['(\s', '('], ['\s)', ')'], ['\s\,', ','] ]
-    let out = a:str
-    for t in transformations
-        let out = substitute(out, t[0], t[1], 'g')
-    endfor
-    return out
 endfunction
 
 function! s:mysystem(a, b)
