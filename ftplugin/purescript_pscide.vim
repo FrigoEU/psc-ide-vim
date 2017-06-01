@@ -478,7 +478,7 @@ function! PSCIDEaddClause()
   let lnr = line(".")
   let line = getline(lnr)
 
-  let command = {'command': 'addClause', 'params': {'line': line, 'annotations': s:jsonFalse()}}
+  let command = {'command': 'addClause', 'params': {'line': line, 'annotations': v:false}}
 
   call s:callPscIde(
 	\ command,
@@ -518,7 +518,7 @@ function! PSCIDEcaseSplit()
 
   let command = {
 	\ 'command': 'caseSplit',
-	\ 'params': { 'line': line, 'begin': b, 'end': e, 'annotations': s:jsonFalse(), 'type': t}
+	\ 'params': { 'line': line, 'begin': b, 'end': e, 'annotations': v:false, 'type': t}
 	\ }
 
   call s:callPscIde(
@@ -1120,23 +1120,6 @@ endfunction
 " augroup PscideAfterCompletion
 "   autocmd CompleteDone * call s:completeDone(v:completed_item)
 " augroup END
-
-
-
-
-
-fun! s:jsonNULL()
-  return {'json_special_value': 'null'}
-endf
-fun! s:jsonTrue()
-  return {'json_special_value': 'true'}
-endf
-fun! s:jsonFalse()
-  return {'json_special_value': 'false'}
-endf
-fun! s:jsonToJSONBool(i)
-  return  a:i ? s:jsonTrue() : s:jsonFalse()
-endf
 
 " Parse Errors & Suggestions ------------------------------------------
 " Returns { error :: String, 
