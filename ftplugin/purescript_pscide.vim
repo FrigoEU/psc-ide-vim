@@ -434,7 +434,7 @@ endfunction
 " Add type annotation
 command! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation()
 function! PSCIDEaddTypeAnnotation()
-  let identifier = s:GetWordUnderCursor()
+  let identifier = matchstr(getline(line(".")), '^\s*\zs\k\+\ze')
 
   call s:getType(
 	\ identifier,
@@ -446,7 +446,8 @@ function! s:PSCIDEaddTypeAnnotationCallback(identifier, resp)
   if type(a:resp) == v:t_dict && a:resp["resultType"] ==# 'success' && !empty(a:resp["result"])
     let result = a:resp["result"]
     let lnr = line(".")
-    call append(lnr - 1, s:StripNewlines(result[0]['identifier']) . ' :: ' . s:StripNewlines(result[0]["type"]))
+    let indent = matchstr(getline(lnr), '^\s*\ze')
+    call append(lnr - 1, indent . s:StripNewlines(result[0]['identifier']) . ' :: ' . s:StripNewlines(result[0]["type"]))
   else
     echom "PSC-IDE: No type information found for " . a:identifier
   endif
