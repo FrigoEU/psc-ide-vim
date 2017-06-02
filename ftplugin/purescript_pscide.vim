@@ -1119,9 +1119,18 @@ function! PSCIDEerrors(llist)
   endfor
   if g:psc_ide_notify
     let errsLen = len(filter(copy(qflist), { n, e -> e["type"] ==# "E" || e["type"] ==# "F" }))
-    if errsLen
+    let wrnLen = len(filter(copy(qflist), { n, e -> e["type"] ==# "W" || e["type"] ==# "V" }))
+    if errsLen > 0
       echohl ErrorMsg
       echom "purs: " . errsLen . " " . (errsLen == 1 ? "error" : "errors")
+      echohl Normal
+    elseif wrnLen > 0
+      echohl WarningMsg
+      echom "purs: " . wrnLen . " ". (wrnLen == 1 ? "warnings" : "warning")
+      echohl Normal
+    else
+      echohl Title
+      echom "purs: ok"
       echohl Normal
     endif
   endif
