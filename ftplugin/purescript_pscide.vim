@@ -31,6 +31,38 @@ if !exists('g:psc_ide_notify')
   let g:psc_ide_notify = v:true
 endif
 
+if !exists('g:psc_ide_filter_prelude_modules')
+  let g:psc_ide_filter_prelude_modules = v:true
+endif
+
+let s:prelude = [
+  \ "Control.Applicative",
+  \ "Control.Apply",
+  \ "Control.Bind",
+  \ "Control.Category",
+  \ "Control.Monad",
+  \ "Control.Semigroupoid",
+  \ "Data.Boolean",
+  \ "Data.BooleanAlgebra",
+  \ "Data.Bounded",
+  \ "Data.CommutativeRing",
+  \ "Data.Eq",
+  \ "Data.EuclideanRing",
+  \ "Data.Field",
+  \ "Data.Function",
+  \ "Data.Functor",
+  \ "Data.HeytingAlgebra",
+  \ "Data.NaturalTransformation",
+  \ "Data.Ord",
+  \ "Data.Ordering",
+  \ "Data.Ring",
+  \ "Data.Semigroup",
+  \ "Data.Semiring",
+  \ "Data.Show",
+  \ "Data.Unit",
+  \ "Data.Void",
+  \ ]
+
 " Adding iskeyword symbols to improve GetWordUnderCursor ---------------------
 " 124 = |
 setlocal iskeyword+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,^
@@ -234,12 +266,13 @@ function! s:importIdentifier(id, module)
     return
   endif
 
-  call writefile(getline(1, '$'), s:tempfile)
+  let file = fnamemodify(bufname(""), ":p")
 
   let input = { 
         \ 'command': 'import' ,
         \ 'params': {
-        \   'file': s:tempfile, 
+        \   'file': file, 
+	\   'outfile': file,
         \   'importCommand': {
         \     'importCommand': 'addImport',
         \     'identifier': ident
@@ -249,27 +282,42 @@ function! s:importIdentifier(id, module)
     let input.params.filters = [{'filter': 'modules', 'params': {'modules': [a:module]}}]
   endif
 
+  let view = winsaveview()
+  let lines = line("$")
+
   call s:callPscIde(
 	\ input,
 	\ "Failed to import identifier " . ident, 
 	\ 0,
-	\ {resp -> s:PSCIDEimportIdentifierCallback(ident, a:id, a:module, resp)}
+	\ {resp -> s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)}
 	\ )
 endfunction
 
-function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp) 
-  "multiple possibilities
+function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines) 
   call s:log("s:PSCIDEimportIdentifierCallback", 3)
-  if type(a:resp) == type({}) && a:resp.resultType ==# "success" && type(a:resp.result[0]) == type({})
-    " filter results
+  if a:resp.resultType !=# "success"
+    echohl ErrorMsg
+    echo "purs ide: error"
+    echohl Normal
+    return
+  endif
+
+  if type(a:resp.result) == v:t_list
+    " multiple possibilities
+    let respResults = a:resp.result
+    if g:psc_ide_filter_prelude_modules && len(filter(copy(respResults), { idx, r -> r.module ==# "Prelude" }))
+      " filter prelude modules (hopefully there are no identifires in prelude
+      " that clash
+      call filter(respResults, { idx, r -> index(s:prelude, r.module) == -1 })
+    endif
     let results = []
-    for res in a:resp.result
+    for res in respResults
       if empty(filter(copy(results), { idx, val -> val.module == res.module }))
 	call add(results, res)
       endif
     endfor
     if (len(results) == 1)
-      let choice = { option: results[0], picked: v:true }
+      let choice = { "option": results[0], "picked": v:true }
     else
       let choice = s:pickOption("Multiple possibilities to import " . a:ident, results, "module")
     endif
@@ -279,45 +327,12 @@ function! s:PSCIDEimportIdentifierCallback(ident, id, module, resp)
     return
   endif
 
-  if type(a:resp) == type({}) && a:resp['resultType'] ==# "success"
-    let newlines = a:resp.result
-
-    let linesdiff = len(newlines) - line("$")
-    let nrOfOldlinesUnderLine = line(".") - 1
-    let nrOfNewlinesUnderLine = nrOfOldlinesUnderLine + linesdiff
-    let nrOfLinesToReplace = min([nrOfNewlinesUnderLine, nrOfOldlinesUnderLine])
-    let nrOfLinesToDelete = -min([0, linesdiff])
-    let nrOfLinesToAppend = max([0, linesdiff])
-
-    call s:log('linesdiff: ' . linesdiff, 3)
-    call s:log('nrOfOldlinesUnderLine: ' . nrOfOldlinesUnderLine, 3)
-    call s:log('nrOfNewlinesUnderLine: ' . nrOfNewlinesUnderLine, 3)
-    call s:log('nrOfLinesToReplace: ' . nrOfLinesToReplace, 3)
-    call s:log('nrOfLinesToDelete: ' . nrOfLinesToDelete, 3)
-    call s:log('nrOfLinesToAppend: ' . nrOfLinesToAppend, 3)
-
-    let oldCursorPos = getcurpos()
-
-    " Adding one at a time with setline + append/delete to keep line symbols and
-    " cursor as intact as possible
-    let view = winsaveview()
-    call setline(1, filter(copy(newlines), { idx -> idx < nrOfLinesToReplace + nrOfLinesToAppend }))
-
-    if (nrOfLinesToDelete > 0)
-      let view["lnum"] -= nrOfLinesToDelete
-      exe 'silent ' . (nrOfLinesToReplace + 1) . "," . (nrOfLinesToReplace + nrOfLinesToDelete) . "d_|0"
-    endif
-    if (nrOfLinesToAppend > 0)
-      let linesToAppend = filter(copy(newlines), { idx -> idx > nrOfLinesToReplace && idx <= nrOfLinesToReplace + nrOfLinesToAppend  })
-      let view["lnum"] += nrOfLinesToAppend
-      call append(line("."), linesToAppend)
-    endif
-    call winrestview(view)
-
-    call s:log("PSCIDEimportIdentifier: Succesfully imported identifier: " . a:module . " ".a:id, 3)
-  else
-    call s:log("PSCIDEimportIdentifier: Failed to import identifier " . a:ident . ". Error: " . string(a:resp["result"]), 0)
-  endif
+  let ar = &l:autoread
+  let &l:ar = 1
+  checktime %
+  let &l:ar = ar
+  let a:view.lnum = a:view.lnum + line("$") - a:lines
+  call winrestview(a:view)
 endfunction
 
 command! -buffer PSCIDEgoToDefinition call PSCIDEgoToDefinition()
