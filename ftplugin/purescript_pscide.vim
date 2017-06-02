@@ -656,7 +656,7 @@ function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
   let dir = s:findRoot()
   let key = fnamemodify(a:filename, ':s?'.dir.'/??') . "|" . string(a:lnr)
 
-  call s:log('PSCIDEapplySuggestion: lineNr: ' . a:lnr . "filename: " . a:filename . " key: " . key, 3)
+  call s:log('PSCIDEapplySuggestion: lineNr: ' . a:lnr . " filename: " . a:filename . " key: " . key, 3)
 
   if (has_key(g:psc_ide_suggestions, key))
     let found = g:psc_ide_suggestions[key]
@@ -1134,6 +1134,7 @@ function! PSCIDEerrors(llist)
       echohl Normal
     endif
   endif
+  call sort(qflist, { e1, e2 -> e1["lnum"] == e2["lnum"] ? e1["col"] - e2["col"] : e1["lnum"] - e2["lnum"] })
   call setqflist(qflist)
 endfunction
 if g:psc_ide_syntastic_mode == 0
