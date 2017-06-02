@@ -63,6 +63,17 @@ let s:prelude = [
   \ "Data.Void",
   \ ]
 
+if !exists('g:psc_ide_import_from_top')
+  " this might hide some modules, e.g. React.DOM.Dynamic will be hidden by
+  " React.DOM module, you can adjust g:psc_ide_import_from_top_do_not_hide
+  " variable.
+  let g:psc_ide_import_from_top = v:false
+endif
+
+if !exists("g:psc_ide_import_from_top_do_not_hide")
+  let g:psc_ide_import_from_top_do_not_hide = [ "React.DOM.Dynamic" ]
+endif
+
 " Adding iskeyword symbols to improve GetWordUnderCursor ---------------------
 " 124 = |
 setlocal iskeyword+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,^
@@ -293,6 +304,28 @@ function! s:importIdentifier(id, module)
 	\ )
 endfunction
 
+fun! s:TopFilter(module, modules)
+  " module :: Array String
+  " modules :: Array (Array String)
+  let mods = map(copy(g:psc_ide_import_from_top_do_not_hide), { idx, m -> split(m, '\.') })
+  return empty(filter(copy(a:modules), { idx, m -> s:IsSubmodule(a:module, m, mods) }))
+endfun
+
+fun! s:IsSubmodule(m1, m2, mods)
+  " is m1 a submodule of m2
+  " m1 :: Array String
+  " m2 :: Array String
+  if index(mods, m1) != -1
+    return v:false
+  endif
+  if len(a:m1) > len(a:m2)
+    let res = a:m1[0:len(a:m2)-1] == a:m2 ? v:true : v:false
+  else
+    let res = v:false
+  endif
+  return res
+endfun
+
 function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines) 
   call s:log("s:PSCIDEimportIdentifierCallback", 3)
   if a:resp.resultType !=# "success"
@@ -309,6 +342,10 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
       " filter prelude modules (hopefully there are no identifires in prelude
       " that clash
       call filter(respResults, { idx, r -> index(s:prelude, r.module) == -1 })
+    endif
+    if g:psc_ide_import_from_top
+      let modules = map(copy(respResults), { idx, r -> split(r.module, '\.') })
+      call filter(respResults, { idx, r -> s:TopFilter(split(r.module, '\.'), modules) })
     endif
     let results = []
     for res in respResults
