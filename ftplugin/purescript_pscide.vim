@@ -954,7 +954,7 @@ endfunction
 " and (re)starting it if not
 " Also serializes and deserializes from/to JSON
 function! s:callPscIde(input, errorm, isRetry, cb)
-  call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
+  call s:log("callPscIde: start: command: " . json_encode(a:input), 3)
 
   if s:projectvalid == 0
     call PSCIDEprojectValidate()
@@ -995,7 +995,7 @@ function! s:callPscIde(input, errorm, isRetry, cb)
 endfunction
 
 function! s:callPscIdeSync(input, errorm, isRetry)
-  call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
+  call s:log("callPscIdeSync: command: " . json_encode(a:input), 3)
 
   if s:projectvalid == 0
     call PSCIDEprojectValidate()
