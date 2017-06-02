@@ -659,7 +659,7 @@ function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
   call s:log('PSCIDEapplySuggestion: lineNr: ' . a:lnr . " filename: " . a:filename . " key: " . key, 3)
 
   if (has_key(g:psc_ide_suggestions, key))
-    let found = g:psc_ide_suggestions[key]
+    let sugg = g:psc_ide_suggestions[key]
   else
     if !a:silent
       call s:log('PSCIDEapplySuggestion: No suggestion found', 0)
@@ -667,36 +667,49 @@ function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
     return
   endif
 
-  call s:log('PSCIDEapplySuggestion: Suggestion found: ' . string(found), 3)
-
-  while found.endColumn == 1 || getline(found.endLine) == ''
-    call s:log('PSCIDEapplySuggestion: endLine moved from ' . found.endLine . " to " . (found.endLine - 1) , 3)
-    let found.endLine = found.endLine - 1
-    let found.endColumn = len(getline(found.endLine)) + 1
-  endwhile
-
-  let lines = getline(found.startLine, found.endLine)
-  call s:log('PSCIDEapplySuggestion: Lines to replace: ' . string(lines), 3)
-
-  let newl = strpart(lines[0], 0, found.startColumn - 1) .
-           \ found.replacement .
-           \ strpart(lines[len(lines) - 1], found.endColumn - 1)
-  call s:log('PSCIDEapplySuggestion: newl: ' . newl, 3)
-
-  let newlines = split(newl, '\n')
-  call s:log('PSCIDEapplySuggestion: newlines: ' . string(newlines), 3)
-
-  if len(newlines) == 1
-    call s:log('PSCIDEapplySuggestion: setline(' . found.startLine . ", " . newlines[0] .")", 3)
-    call setline(found.startLine, newlines[0])
+  call s:log('PSCIDEapplySuggestion: Suggestion found: ' . string(sugg), 3)
+  let replacement = sugg.replacement
+  let range = sugg.replaceRange
+  let startLine = range.startLine
+  let startColumn = range.startColumn
+  let endLine = range.endLine
+  let endColumn = range.endColumn
+  if startLine == endLine
+    let line = getline(startLine)
+    let replacement = substitute(replacement, '\_s*$', '\n', '')
+    let cursor = getcurpos()
+    if startColumn == 1
+      let newLines = split(replacement . line[endColumn - 1:], "\n")
+    else
+      let newLines = split(line[0:startColumn - 2] . replacement . line[endColumn - 1:], "\n")
+    endif
+    exe startLine . "d _"
+    call append(startLine - 1, newLines)
+    call cursor(cursor[1], startColumn - 1)
+    call remove(g:psc_ide_suggestions, key)
+    let g:psc_ide_suggestions = s:UpdateSuggestions(startLine, len(newLines) - 1)
   else
-    let command = string(found.startLine) . "," . string(found.endLine) . "d"
-    call s:log('PSCIDEapplySuggestion: exe ' . command , 3)
-    :exe command
-    call s:log('PSCIDEapplySuggestion: append(' . (found.startLine - 1) . ", " . string(newlines) . ")", 3)
-    call append(found.startLine - 1, newlines)
+    echom "PSCIDEapplySuggestion: multiline suggestions are not yet supported"
   endif
 endfunction
+
+fun! s:UpdateSuggestions(startLine, newLines)
+  let suggestions = {}
+  for key in keys(g:psc_ide_suggestions)
+    let sug = g:psc_ide_suggestions[key]
+    if sug.replaceRange.startLine < a:startLine
+      let suggestions[key] = sug
+    else
+      let keyParts = split(key, "|")
+      let keyParts[len(keyParts) - 1] = sug.replaceRange.startLine + a:newLines
+      let newKey = join(keyParts, "|")
+      let sug.replaceRange.startLine = sug.replaceRange.startLine + a:newLines
+      let sug.replaceRange.endLine = sug.replaceRange.endLine + a:newLines
+      let suggestions[newKey] = sug
+    endif
+  endfor
+  return suggestions
+endfun
 
 " Remove all import qualifications
 command! -buffer PSCIDEremoveImportQualifications call PSCIDEremoveImportQualifications()
@@ -1201,17 +1214,16 @@ function! ParsePscJsonOutput(errors, warnings)
 endfunction
 
 function! s:addEntry(out, suggestions, err, e)
-  let hasSuggestion = exists("a:e.suggestion") && type(a:e.suggestion) == type({}) &&
-                    \ exists("a:e.position") && type(a:e.position) == type({})
+  let hasSuggestion = type(get(a:e, "suggestion", v:null)) == v:t_dict
   let isError = a:err == 1
   let letter = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
-  let startL = (exists("a:e.position") && type(a:e.position) == type({}))
+  let startL = has_key(a:e, "position") && type(a:e.position) == v:t_dict
 	\ ? a:e.position.startLine : 1
-  let startC = (exists("a:e.position") && type(a:e.position) == type({}))
+  let startC = has_key(a:e, "position") && type(a:e.position) == v:t_dict
 	\ ? a:e.position.startColumn : 1
-  let endL = (exists("a:e.position") && type(a:e.position) == type({}))
+  let endL = has_key(a:e, "position") && type(a:e.position) == v:t_dict
 	\ ? a:e.position.endLine : 1
-  let endC = (exists("a:e.position") && type(a:e.position) == type({}))
+  let endC = has_key(a:e, "position") && type(a:e.position) == v:t_dict
 	\ ? a:e.position.endColumn : 1
   let msg = join([letter, 
                 \ a:e.filename, 
@@ -1229,14 +1241,7 @@ function! s:addEntry(out, suggestions, err, e)
 endfunction
 
 function! s:addSuggestion(suggestions, e)
-  let sugg = {'startLine':   a:e['position']['startLine'], 
-             \'startColumn': a:e['position']['startColumn'], 
-             \'endLine':     a:e['position']['endLine'], 
-             \'endColumn':   a:e['position']['endColumn'], 
-             \'filename':    a:e['filename'],
-             \'replacement': a:e['suggestion']['replacement']}
-
-   let a:suggestions[a:e.filename . "|" . string(a:e.position.startLine)] = sugg
+   let a:suggestions[a:e.filename . "|" . string(a:e.position.startLine)] = a:e.suggestion
 endfunction
 
 function! s:mysystem(a, b)
