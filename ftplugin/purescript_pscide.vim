@@ -27,6 +27,10 @@ if !exists('g:psc_ide_check_output_dir')
   let g:psc_ide_check_output_dir = 1
 endif
 
+if !exists('g:psc_ide_notify')
+  let g:psc_ide_notify = v:true
+endif
+
 " Adding iskeyword symbols to improve GetWordUnderCursor ---------------------
 " 124 = |
 setlocal iskeyword+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,^
@@ -1098,20 +1102,29 @@ function! PSCIDEerrors(llist)
   let qflist = []
   for e in a:llist
     let eparts = split(e, ":")
-    let bufnr = bufnr(eparts[1])
+    let [type, filename, lnum, col, endLnum, endCol] = eparts[0:5]
+    let bufnr = bufnr(filename)
     if bufnr != -1
       call add(
-	    \   qflist
-	    \ , { "bufnr": bufnr(eparts[1])
-	    \   , "filename": eparts[1]
-	    \   , "lnum": eparts[2]
-	    \   , "col": eparts[3]
-	    \   , "text": join(filter(eparts, {idx -> idx >= 4}), ":")
-	    \   , "type": eparts[0]
+	    \ qflist
+	    \ , { "bufnr": bufnr
+	    \   , "filename": filename
+	    \   , "lnum": lnum
+	    \   , "col": col
+	    \   , "text": join(filter(eparts, {idx -> idx >= 6}), ":")
+	    \   , "type": type
 	    \   }
 	    \ )
     endif
   endfor
+  if g:psc_ide_notify
+    let errsLen = len(filter(copy(qflist), { n, e -> e["type"] ==# "E" || e["type"] ==# "F" }))
+    if errsLen
+      echohl ErrorMsg
+      echom "purs: " . errsLen . " " . (errsLen == 1 ? "error" : "errors")
+      echohl Normal
+    endif
+  endif
   call setqflist(qflist)
 endfunction
 if g:psc_ide_syntastic_mode == 0
@@ -1183,13 +1196,19 @@ function! s:addEntry(out, suggestions, err, e)
   let isError = a:err == 1
   let letter = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
   let startL = (exists("a:e.position") && type(a:e.position) == type({}))
-               \ ? a:e.position.startLine : 1
+	\ ? a:e.position.startLine : 1
   let startC = (exists("a:e.position") && type(a:e.position) == type({}))
-               \ ? a:e.position.startColumn : 1
+	\ ? a:e.position.startColumn : 1
+  let endL = (exists("a:e.position") && type(a:e.position) == type({}))
+	\ ? a:e.position.endLine : 1
+  let endC = (exists("a:e.position") && type(a:e.position) == type({}))
+	\ ? a:e.position.endColumn : 1
   let msg = join([letter, 
                 \ a:e.filename, 
                 \ startL,
                 \ startC,
+		\ endL,
+		\ endC,
                 \ a:e.message], ":")
 
   call add(a:out, msg)
