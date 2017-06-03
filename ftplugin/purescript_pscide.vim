@@ -35,6 +35,10 @@ if !exists('g:psc_ide_filter_prelude_modules')
   let g:psc_ide_filter_prelude_modules = v:true
 endif
 
+if !exists('g:psc_ide_omnicompletion_filter_modules')
+  let g:psc_ide_omnicompletion_filter_modules = v:false
+endif
+
 let s:prelude = [
   \ "Control.Applicative",
   \ "Control.Apply",
@@ -875,29 +879,54 @@ endfunction
 set omnifunc=PSCIDEomni
 
 " OMNICOMPLETION FUNCTION ----------------------------------------------------
-"Omnicompletion function
-function! PSCIDEomni(findstart,base)
+fun! PSCIDEomni(findstart, base)
   if a:findstart 
     let col   = col(".")
     let line  = getline(".")
 
     " search backwards for start of identifier (iskeyword pattern)
     let start = col
-    while start>0 && (line[start-2] =~ "\\k" || line[start-2] =~ "\\.")
+    while start > 0 && (line[start - 2] =~ '\k' || line[start - 2] =~ '\.')
       let start -= 1
     endwhile
 
     "Looking for the start of the identifier that we want to complete
-    return start-1
+    return start - 1
   else
-    let str = type(a:base) == type('a') ? a:base : string(a:base)
+    let str = type(a:base) == v:t_string ? a:base : string(a:base)
     call s:log('PSCIDEOmni: Looking for completions for: ' . str, 3)
 
     let currentModule = s:ExtractModule()
     call s:log('PSCIDEOmni currentModule: ' . currentModule, 3)
 
+    if match(str, '\.') != -1
+      let str_ = split(str, '\.')
+      let qualifier = join(str_[0:len(str_)-2], ".")
+      let str = str_[len(str_) - 1]
+      let imports = s:ListImports(currentModule)
+      let modules = []
+      for mod in imports
+	if get(mod, "qualifier", "") == qualifier || get(mod, "module", "") == qualifier
+	  call add(modules, mod.module)
+	endif
+      endfor
+
+      let filters = [s:prefixFilter(str)]
+      if len(modules)
+	call add(filters, s:modulesFilter(modules))
+      endif
+      let matcher = s:flexMatcher(str)
+    else
+      let qualifier = ""
+      let filters = [s:prefixFilter(str)]
+      if g:psc_ide_omnicompletion_filter_modules
+	call add(filters, s:modulesFilter(map(s:ListImports(currentModule), { n, m -> m.module })))
+      endif
+      let matcher = s:flexMatcher(str)
+    endif
+
     let resp = s:callPscIdeSync(
-	  \ {'command': 'complete', 'params': {'filters': [s:prefixFilter(str)], 'matcher': s:flexMatcher(str), 'currentModule': currentModule}},
+	  \ {'command': 'complete', 'params': {'filters': filters, 'matcher': matcher, 'currentModule': currentModule}},
 	  \ 'Failed to get completions for: '. str,
 	  \ 0)
 
@@ -915,7 +944,7 @@ function! PSCIDEomni(findstart,base)
       " that clash
       call s:FilterPrelude(entries)
     endif
-    if g:psc_ide_import_from_top
+    if g:psc_ide_filter_submodules
       call s:FilterTop(entries)
     endif
     " vimL does not have compare function for strings
@@ -923,7 +952,7 @@ function! PSCIDEomni(findstart,base)
     if type(entries)==type([])
       for entry in entries
         if entry['identifier'] =~ '^' . str
-          let e = {'word': entry['identifier'], 'menu': s:StripNewlines(entry['type']), 'info': entry['module'], 'dup': 0}
+          let e = {'word': (empty(qualifier) ? "" : qualifier . ".") . entry['identifier'], 'menu': s:StripNewlines(entry['type']), 'info': entry['module'], 'dup': 0}
           let existing = s:findInListBy(result, 'word', e['word'])
 
           if existing != {}
@@ -941,7 +970,7 @@ function! PSCIDEomni(findstart,base)
     endif
     return result
   endif
-endfunction
+endfun
 
 function! s:findInListBy(list, key, str)
   let i = 0
