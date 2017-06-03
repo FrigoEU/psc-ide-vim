@@ -290,7 +290,7 @@ function! s:importIdentifier(id, module)
         \   } } }
 
   if a:module != ""
-    let input.params.filters = [{'filter': 'modules', 'params': {'modules': [a:module]}}]
+    let input.params.filters = [s:modulesFilter([a:module])]
   endif
 
   let view = winsaveview()
@@ -692,7 +692,7 @@ function! s:getType(identifier, cb)
   call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
   call s:callPscIde(
-	\ {'command': 'type', 'params': {'search': a:identifier, 'filters': [{'filter': 'modules' , 'params': {'modules': importedModules } }], 'currentModule': currentModule}},
+	\ {'command': 'type', 'params': {'search': a:identifier, 'filters': [s:modulesFilter(importedModules)], 'currentModule': currentModule}},
 	\  'Failed to get type info for: ' . a:identifier,
 	\ 0,
 	\ {resp -> a:cb(resp)}
@@ -959,12 +959,16 @@ function! s:findInListBy(list, key, str)
 endfunction
 
 function! s:prefixFilter(s) 
-  return {"filter": "prefix", "params": { "search": a:s } }
+  return { "filter": "prefix", "params": { "search": a:s } }
 endfunction
 
 function! s:flexMatcher(s)
-  return {"matcher": "flex", "params": {"search": a:s} }
+  return { "matcher": "flex", "params": { "search": a:s } }
 endfunction
+
+fun! s:modulesFilter(modules)
+  return { "filter": "modules", "params": { "modules": a:modules } }
+endfun
 
 " PSCIDE HELPER FUNCTION -----------------------------------------------------
 " Issues the commands to the server
