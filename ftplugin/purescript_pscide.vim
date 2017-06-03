@@ -304,7 +304,7 @@ function! s:importIdentifier(id, module)
 	\ )
 endfunction
 
-fun! s:TopFilter(module, modules)
+fun! s:FilterTopFn(module, modules)
   " module :: Array String
   " modules :: Array (Array String)
   let mods = map(copy(g:psc_ide_import_from_top_do_not_hide), { idx, m -> split(m, '\.') })
@@ -326,6 +326,15 @@ fun! s:IsSubmodule(m1, m2, mods)
   return res
 endfun
 
+fun! s:FilterTop(respResults)
+  let modules = map(copy(respResults), { idx, r -> split(r.module, '\.') })
+  call filter(a:respResults, { idx, r -> s:FilterTopFn(split(r.module, '\.'), modules) })
+endfun
+
+fun! s:FilterPrelude(respResults)
+  call filter(a:respResults, { idx, r -> index(s:prelude, r.module) == -1 })
+endfun
+
 function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines) 
   call s:log("s:PSCIDEimportIdentifierCallback", 3)
   if a:resp.resultType !=# "success"
@@ -341,11 +350,10 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
     if g:psc_ide_filter_prelude_modules && len(filter(copy(respResults), { idx, r -> r.module ==# "Prelude" }))
       " filter prelude modules (hopefully there are no identifires in prelude
       " that clash
-      call filter(respResults, { idx, r -> index(s:prelude, r.module) == -1 })
+      call s:FilterPrelude(respResults)
     endif
     if g:psc_ide_import_from_top
-      let modules = map(copy(respResults), { idx, r -> split(r.module, '\.') })
-      call filter(respResults, { idx, r -> s:TopFilter(split(r.module, '\.'), modules) })
+      call s:FilterTop(respResults)
     endif
     let results = []
     for res in respResults
@@ -902,6 +910,16 @@ function! PSCIDEomni(findstart,base)
 
     "Popuplating the omnicompletion list
     let result = []
+    if g:psc_ide_filter_prelude_modules && len(filter(copy(entries), { idx, r -> r.module ==# "Prelude" }))
+      " filter prelude modules (hopefully there are no identifires in prelude
+      " that clash
+      call s:FilterPrelude(entries)
+    endif
+    if g:psc_ide_import_from_top
+      call s:FilterTop(entries)
+    endif
+    " vimL does not have compare function for strings
+    call sort(entries, { e1, e2 -> sort([e1.identifier, e2.identifier]) == [e2.identifier, e1.identifier]})
     if type(entries)==type([])
       for entry in entries
         if entry['identifier'] =~ '^' . str
@@ -1194,9 +1212,7 @@ function! PSCIDEerrors(llist)
       echom "purs: " . wrnLen . " ". (wrnLen == 1 ? "warnings" : "warning")
       echohl Normal
     else
-      echohl Title
       echom "purs: ok"
-      echohl Normal
     endif
   endif
   call sort(qflist, { e1, e2 -> e1["lnum"] == e2["lnum"] ? e1["col"] - e2["col"] : e1["lnum"] - e2["lnum"] })
