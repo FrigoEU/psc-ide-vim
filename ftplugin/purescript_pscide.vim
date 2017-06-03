@@ -299,6 +299,8 @@ function! s:importIdentifier(id, module)
 
   let view = winsaveview()
   let lines = line("$")
+  " updated the file
+  update
 
   call s:callPscIde(
 	\ input,
