@@ -63,15 +63,15 @@ let s:prelude = [
   \ "Data.Void",
   \ ]
 
-if !exists('g:psc_ide_import_from_top')
+if !exists('g:psc_ide_filter_submodules')
   " this might hide some modules, e.g. React.DOM.Dynamic will be hidden by
-  " React.DOM module, you can adjust g:psc_ide_import_from_top_do_not_hide
+  " React.DOM module, you can adjust g:psc_ide_filter_submodules_do_not_hide
   " variable.
-  let g:psc_ide_import_from_top = v:false
+  let g:psc_ide_filter_submodules = v:false
 endif
 
-if !exists("g:psc_ide_import_from_top_do_not_hide")
-  let g:psc_ide_import_from_top_do_not_hide = [ "React.DOM.Dynamic" ]
+if !exists("g:psc_ide_filter_submodules_do_not_hide")
+  let g:psc_ide_filter_submodules_do_not_hide = [ "React.DOM.Dynamic" ]
 endif
 
 " Adding iskeyword symbols to improve GetWordUnderCursor ---------------------
@@ -307,7 +307,7 @@ endfunction
 fun! s:FilterTopFn(module, modules)
   " module :: Array String
   " modules :: Array (Array String)
-  let mods = map(copy(g:psc_ide_import_from_top_do_not_hide), { idx, m -> split(m, '\.') })
+  let mods = map(copy(g:psc_ide_filter_submodules_do_not_hide), { idx, m -> split(m, '\.') })
   return empty(filter(copy(a:modules), { idx, m -> s:IsSubmodule(a:module, m, mods) }))
 endfun
 
@@ -352,7 +352,7 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
       " that clash
       call s:FilterPrelude(respResults)
     endif
-    if g:psc_ide_import_from_top
+    if g:psc_ide_filter_submodules
       call s:FilterTop(respResults)
     endif
     let results = []
