@@ -237,9 +237,17 @@ endfunction
 
 " LOAD -----------------------------------------------------------------------
 " Load module of current buffer + its dependencies into `purs ide server`
-command! -buffer PSCIDEload call PSCIDEload(0)
-function! PSCIDEload(silent)
-  let loglevel = a:silent == 1 ? 1 : 0
+command! -buffer -bang PSCIDEload call PSCIDEload(0, <q-bang>)
+function! PSCIDEload(logLevel, bang)
+
+  if a:bang == "!"
+    return s:callPscIde(
+      \ {"command": "reset"},
+      \ "Failed to reset",
+      \ 0,
+      \ { resp -> resp["resultType"] == "success" ? PSCIDEload(a:logLevel, "") : "" }
+      \ )
+  endif
 
   let input = {'command': 'load'}
 
@@ -247,15 +255,15 @@ function! PSCIDEload(silent)
 	\ input,
 	\ "Failed to load",
 	\ 0,
-	\ {msg -> s:PSCIDEloadCallback(loglevel, msg)}
+	\ { resp -> s:PSCIDEloadCallback(a:logLevel, resp)}
 	\ )
 endfunction
 
-function! s:PSCIDEloadCallback(loglevel, resp)
+function! s:PSCIDEloadCallback(logLevel, resp)
   if type(a:resp) == type({}) && a:resp['resultType'] ==# "success"
-    call s:log("PSCIDEload: Successfully loaded modules: " . string(a:resp["result"]), a:loglevel)
+    call s:log("PSCIDEload: Successfully loaded modules: " . string(a:resp["result"]), a:logLevel)
   else
-    call s:log("PSCIDEload: Failed to load. Error.", a:loglevel)
+    call s:log("PSCIDEload: Failed to load. Error.", a:logLevel)
   endif
 endfunction
 
@@ -1147,7 +1155,7 @@ function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
   if type(cwdresp2Decoded) == type({}) && cwdresp2Decoded.resultType ==# 'success' 
      \ && cwdresp2Decoded.result == a:expectedCWD
     call s:log("s:PscIdeRetryCallback: Server successfully contacted! Loading current module.", 1)
-    call PSCIDEload(1)
+    call PSCIDEload(1, "")
   else
     call s:log("s:PscIdeRetryCallback: Server still can't be contacted, aborting...", 1)
     return
@@ -1275,7 +1283,7 @@ if g:psc_ide_syntastic_mode == 0
 endif
 
 silent! call PSCIDEstart(0)
-silent! call PSCIDEload(0)
+silent! call PSCIDEload(0, "")
 
 " PSCIDEerr ------------------------------------------------------------------
 fun PSCIDEerr(nr)
