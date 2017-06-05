@@ -314,14 +314,14 @@ fun! s:FilterTopFn(module, modules)
   " module :: Array String
   " modules :: Array (Array String)
   let mods = map(copy(g:psc_ide_filter_submodules_do_not_hide), { idx, m -> split(m, '\.') })
-  return empty(filter(copy(a:modules), { idx, m -> s:IsSubmodule(a:module, m, mods) }))
+  return empty(filter(copy(a:modules), { idx, m -> s:IsSubmodule(a:module, m, a:modules) }))
 endfun
 
 fun! s:IsSubmodule(m1, m2, mods)
   " is m1 a submodule of m2
   " m1 :: Array String
   " m2 :: Array String
-  if index(mods, m1) != -1
+  if index(a:mods, a:m1) != -1
     return v:false
   endif
   if len(a:m1) > len(a:m2)
@@ -333,7 +333,7 @@ fun! s:IsSubmodule(m1, m2, mods)
 endfun
 
 fun! s:FilterTop(respResults)
-  let modules = map(copy(respResults), { idx, r -> split(r.module, '\.') })
+  let modules = map(copy(a:respResults), { idx, r -> split(r.module, '\.') })
   call filter(a:respResults, { idx, r -> s:FilterTopFn(split(r.module, '\.'), modules) })
 endfun
 
