@@ -948,14 +948,6 @@ fun! PSCIDEomni(findstart, base)
 
     "Popuplating the omnicompletion list
     let result = []
-    if g:psc_ide_filter_prelude_modules && len(filter(copy(entries), { idx, r -> r.module ==# "Prelude" }))
-      " filter prelude modules (hopefully there are no identifires in prelude
-      " that clash
-      call s:FilterPrelude(entries)
-    endif
-    if g:psc_ide_filter_submodules
-      call s:FilterTop(entries)
-    endif
     let hasPreview = index(split(&l:completeopt, ','), 'preview') != -1
     " vimL does not have compare function for strings, and uniq must run after
     " sort.
