@@ -928,7 +928,14 @@ fun! PSCIDEomni(findstart, base)
     endif
 
     let resp = s:callPscIdeSync(
-	  \ {'command': 'complete', 'params': {'filters': filters, 'matcher': matcher, 'currentModule': currentModule}},
+	  \ {'command': 'complete'
+	  \ , 'params':
+	  \   { 'filters': filters
+	  \   , 'matcher': matcher
+	  \   , 'currentModule': currentModule
+	  \   , 'options': { 'groupReexports': v:true }
+	  \   }
+	  \ },
 	  \ 'Failed to get completions for: '. str,
 	  \ 0)
 
