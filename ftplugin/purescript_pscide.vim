@@ -39,6 +39,17 @@ if !exists('g:psc_ide_omnicompletion_filter_modules')
   let g:psc_ide_omnicompletion_filter_modules = v:false
 endif
 
+if !exists('g:psc_ide_omnicompletion_sort_by')
+  " flex / identifier / module
+  let g:psc_ide_omnicompletion_sort_by = "flex"
+endif
+
+if !exists("g:psc_ide_omnicompletion_prefix_filter")
+  " with this option will let purs ide filter by prefix (this disables flex
+  " matching)
+  let g:psc_ide_omnicompletion_prefix_filter = v:false
+endif
+
 let s:prelude = [
   \ "Control.Applicative",
   \ "Control.Apply",
@@ -901,6 +912,11 @@ fun! PSCIDEomni(findstart, base)
     let currentModule = s:ExtractModule()
     call s:log('PSCIDEOmni currentModule: ' . currentModule, 3)
 
+    let filters = []
+    if g:psc_ide_omnicompletion_prefix_filter
+      call add(filters, s:prefixFilter(str))
+    endif
+
     if match(str, '\.') != -1
       let str_ = split(str, '\.')
       let qualifier = join(str_[0:len(str_)-2], ".")
@@ -913,14 +929,12 @@ fun! PSCIDEomni(findstart, base)
 	endif
       endfor
 
-      let filters = [s:prefixFilter(str)]
       if len(modules)
 	call add(filters, s:modulesFilter(modules))
       endif
       let matcher = s:flexMatcher(str)
     else
       let qualifier = ""
-      let filters = [s:prefixFilter(str)]
       if g:psc_ide_omnicompletion_filter_modules
 	call add(filters, s:modulesFilter(map(s:ListImports(currentModule), { n, m -> m.module })))
       endif
@@ -951,13 +965,15 @@ fun! PSCIDEomni(findstart, base)
     let hasPreview = index(split(&l:completeopt, ','), 'preview') != -1
     " vimL does not have compare function for strings, and uniq must run after
     " sort.
-    call uniq(
-	  \ sort(entries, { e1, e2 -> 
-		\ g:psc_ide_omnicompletion_sort_by == "module" 
-		  \ ? e1.module == e2.module
-		  \ : sort([e1.identifier, e2.identifier]) == [e2.identifier, e1.identifier]}),
-	  \ { e1, e2 -> !s:compareByDefinedAt(e1, e2) }
-	  \ )
+    if g:psc_ide_omnicompletion_sort_by != "flex"
+      call uniq(
+	    \ sort(entries, { e1, e2 -> 
+		  \ g:psc_ide_omnicompletion_sort_by == "module" 
+		    \ ? e1.module == e2.module
+		    \ : sort([e1.identifier, e2.identifier]) == [e2.identifier, e1.identifier]}),
+	    \ { e1, e2 -> !s:compareByDefinedAt(e1, e2) }
+	    \ )
+    endif
     for entry in entries
 
       let detail = printf("\t%-25S\t\t%s", entry['module'], entry["type"])
