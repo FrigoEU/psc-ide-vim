@@ -960,15 +960,15 @@ fun! PSCIDEomni(findstart, base)
 	  \ )
     for entry in entries
 
+      let detail = printf("\t%-25S\t\t%s", entry['module'], entry["type"])
       let e =
 	    \ { 'word': (empty(qualifier) ? "" : qualifier . ".") . entry['identifier']
-	    \ , 'menu': hasPreview ? entry["type"] : printf("\t%-25S\t\t%s", entry['module'], "(" . entry["type"] . ")")
-	    \ , 'info': entry["module"] . "\t\t" . entry['type']
+	    \ , 'menu': hasPreview ? entry["type"] : detail
+	    \ , 'info': detail
 	    \ , 'dup': 1
 	    \ }
       call add(result, e)
     endfor
-    echom string(result)
     return result
   endif
 endfun
