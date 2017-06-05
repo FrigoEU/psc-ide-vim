@@ -956,45 +956,44 @@ fun! PSCIDEomni(findstart, base)
     if g:psc_ide_filter_submodules
       call s:FilterTop(entries)
     endif
-    " vimL does not have compare function for strings
-    call sort(entries, { e1, e2 -> sort([e1.identifier, e2.identifier]) == [e2.identifier, e1.identifier]})
-    if type(entries)==type([])
-      for entry in entries
-        if entry['identifier'] =~ '^' . str
-          let e = {'word': (empty(qualifier) ? "" : qualifier . ".") . entry['identifier'], 'menu': s:StripNewlines(entry['type']), 'info': entry['module'], 'dup': 0}
-          let existing = s:findInListBy(result, 'word', e['word'])
+    let hasPreview = index(split(&l:completeopt, ','), 'preview') != -1
+    " vimL does not have compare function for strings, and uniq must run after
+    " sort.
+    call uniq(
+	  \ sort(entries, { e1, e2 -> 
+		\ g:psc_ide_omnicompletion_sort_by == "module" 
+		  \ ? e1.module == e2.module
+		  \ : sort([e1.identifier, e2.identifier]) == [e2.identifier, e1.identifier]}),
+	  \ { e1, e2 -> !s:compareByDefinedAt(e1, e2) }
+	  \ )
+    for entry in entries
 
-          if existing != {}
-            let e['menu'] = e['menu'] . ' (' . e['info'] . ')'
-            let e['dup'] = 1
-            if existing['dup'] == 0
-              let existing['menu'] = existing['menu'] . ' (' . existing['info'] . ')'
-              let existing['dup'] = 1
-            endif
-          endif
-
-          call add(result, e)
-        endif
-      endfor
-    endif
+      let e =
+	    \ { 'word': (empty(qualifier) ? "" : qualifier . ".") . entry['identifier']
+	    \ , 'menu': hasPreview ? entry["type"] : printf("\t%-25S\t\t%s", entry['module'], "(" . entry["type"] . ")")
+	    \ , 'info': entry["module"] . "\t\t" . entry['type']
+	    \ , 'dup': 1
+	    \ }
+      call add(result, e)
+    endfor
+    echom string(result)
     return result
   endif
 endfun
 
-function! s:findInListBy(list, key, str)
-  let i = 0
-  let l = len(a:list)
-  let found = {}
-  
-  while found == {} && i < l
-    if a:list[i][a:key] == a:str
-      let found = a:list[i]
-    endif
-    let i = i + 1
-  endwhile
-
-  return found
-endfunction
+fun! s:compareByDefinedAt(e1, e2)
+  let d1 = a:e1["definedAt"]
+  let d2 = a:e2["definedAt"]
+  if d1["name"] != d2["name"]
+	\ || d1["start"][0] != d2["start"][0]
+	\ || d1["start"][1] != d2["start"][1]
+	\ || d1["end"][0] != d2["end"][0]
+	\ || d1["end"][1] != d2["end"][1]
+    return v:false
+  else
+    return v:true
+  endif
+endfun
 
 function! s:prefixFilter(s) 
   return { "filter": "prefix", "params": { "search": a:s } }
