@@ -1286,7 +1286,7 @@ silent! call PSCIDEstart(0)
 silent! call PSCIDEload(0, "")
 
 " PSCIDEerr ------------------------------------------------------------------
-fun PSCIDEerr(nr)
+fun! PSCIDEerr(nr)
   let qf = getqflist()
   if a:nr > 0 && a:nr < len(qf) + 1
     let e = qf[a:nr - 1]
