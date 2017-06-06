@@ -730,21 +730,23 @@ endfunction
 
 " APPLYSUGGESTION ------------------------------------------------------
 " Apply suggestion in loclist to buffer --------------------------------
-command! -buffer PSCIDEapplySuggestion call PSCIDEapplySuggestion()
-function! PSCIDEapplySuggestion()
-  let lnr = line(".")
-  let filename = expand("%:p")
-  call PSCIDEapplySuggestionPrime(lnr, filename, 0)
+command! -buffer -bang PSCIDEapplySuggestion call PSCIDEapplySuggestion(<q-bang>)
+function! PSCIDEapplySuggestion(bang)
+  if empty(a:bang)
+    call PSCIDEapplySuggestionPrime(expand("%:p") . "|" . line("."), v:true, 0)
+  else
+    for key in keys(g:psc_ide_suggestions)
+      call PSCIDEapplySuggestionPrime(key, v:true, 0)
+    endfor
+  endif
 endfunction
 
-function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
-  let dir = s:findRoot()
-  let key = a:filename . "|" . string(a:lnr)
+function! PSCIDEapplySuggestionPrime(key, cursor, silent)
 
-  call s:log('PSCIDEapplySuggestion: lineNr: ' . a:lnr . " filename: " . a:filename . " key: " . key, 3)
+  call s:log('PSCIDEapplySuggestion: a:key: ' . a:key, 3)
 
-  if (has_key(g:psc_ide_suggestions, key))
-    let sugg = g:psc_ide_suggestions[key]
+  if (has_key(g:psc_ide_suggestions, a:key))
+    let sugg = g:psc_ide_suggestions[a:key]
   else
     if !a:silent
       call s:log('PSCIDEapplySuggestion: No suggestion found', 0)
@@ -770,8 +772,10 @@ function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
     endif
     exe startLine . "d _"
     call append(startLine - 1, newLines)
-    call cursor(cursor[1], startColumn - 1)
-    call remove(g:psc_ide_suggestions, key)
+    if a:cursor
+      call cursor(cursor[1], startColumn - 1)
+    endif
+    call remove(g:psc_ide_suggestions, a:key)
     let g:psc_ide_suggestions = s:UpdateSuggestions(startLine, len(newLines) - 1)
   else
     echom "PSCIDEapplySuggestion: multiline suggestions are not yet supported"
