@@ -89,7 +89,7 @@ if !exists("g:psc_ide_filter_submodules_do_not_hide")
   let g:psc_ide_filter_submodules_do_not_hide = [ "React.DOM.Dynamic" ]
 endif
 
-" Adding iskeyword symbols to improve GetWordUnderCursor ---------------------
+" Adding iskeyword symbols to improve <cword> expansion- ---------------------
 " 124 = |
 setlocal iskeyword+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,^
 
@@ -285,18 +285,17 @@ function! s:ExtractModule()
 endfunction
 
 " Import given identifier
-command! -buffer PSCIDEimportIdentifier call PSCIDEimportIdentifier()
-function! PSCIDEimportIdentifier()
-  call s:importIdentifier(s:GetWordUnderCursor(), "")
+command! -buffer PSCIDEimportIdentifier call PSCIDEimportIdentifier(expand("<cword>"))
+function! PSCIDEimportIdentifier(ident)
+  call s:importIdentifier(a:ident, "")
 endfunction
-function! s:importIdentifier(id, module)
-  let ident = a:id
+function! s:importIdentifier(ident, module)
 
   call s:log('PSCIDEimportIdentifier', 3)
-  call s:log('ident: ' . ident, 3)
+  call s:log('ident: ' . a:ident, 3)
   call s:log('s:tempfile: ' . s:tempfile, 3)
 
-  if (ident == "")
+  if (a:ident == "")
     return
   endif
 
@@ -309,7 +308,7 @@ function! s:importIdentifier(id, module)
 	\   'outfile': file,
         \   'importCommand': {
         \     'importCommand': 'addImport',
-        \     'identifier': ident
+        \     'identifier': a:ident
         \   } } }
 
   if a:module != ""
@@ -323,9 +322,9 @@ function! s:importIdentifier(id, module)
 
   call s:callPscIde(
 	\ input,
-	\ "Failed to import identifier " . ident, 
+	\ "Failed to import identifier " . a:ident, 
 	\ 0,
-	\ {resp -> s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)}
+	\ {resp -> s:PSCIDEimportIdentifierCallback(resp, a:ident, view, lines)}
 	\ )
 endfunction
 
@@ -405,23 +404,22 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
   call winrestview(a:view)
 endfunction
 
-command! -buffer PSCIDEgoToDefinition call PSCIDEgoToDefinition()
-function! PSCIDEgoToDefinition()
-  let identifier = s:GetWordUnderCursor()
-  call s:log('PSCIDEgoToDefinition identifier: ' . identifier, 3)
+command! -buffer PSCIDEgoToDefinition call PSCIDEgoToDefinition(expand("<cword>"))
+function! PSCIDEgoToDefinition(ident)
+  call s:log('PSCIDEgoToDefinition identifier: ' . a:ident, 3)
 
   let currentModule = s:ExtractModule()
   call s:log('PSCIDEgoToDefinition currentModule: ' . currentModule, 3)
 
   call s:callPscIde(
-	\   {'command': 'type', 'params': {'search': identifier, 'filters': []}, 'currentModule': currentModule},
-	\ 'Failed to get location info for: ' . identifier,
+	\   {'command': 'type', 'params': {'search': a:ident, 'filters': []}, 'currentModule': currentModule},
+	\ 'Failed to get location info for: ' . a:ident,
 	\ 0,
-	\ { resp -> s:PSCIDEgoToDefinitionCallback(identifier, resp) }
+	\ { resp -> s:PSCIDEgoToDefinitionCallback(a:ident, resp) }
 	\ )
 endfunction
 
-function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
+function! s:PSCIDEgoToDefinitionCallback(ident, resp)
   call s:log("s:PSCIDEgoToDefinitionCallback", 3)
   let results = []
   for res in a:resp.result
@@ -436,7 +434,7 @@ function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
   endfor
   if type(a:resp) == v:t_dict && a:resp.resultType ==# "success"
     if len(results) > 1
-      let choice = s:pickOption("Multiple possibilities for " . a:identifier, results, "module")
+      let choice = s:pickOption("Multiple possibilities for " . a:ident, results, "module")
     elseif len(results) == 1
       let choice = {"picked": v:true, "option": results[0]}
     else
@@ -445,12 +443,12 @@ function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
     if choice.picked && type(choice.option.definedAt) == type({})
       call s:goToDefinition(choice.option.definedAt)
     elseif type(choice.option) == v:t_dict
-      echom "PSCIDE: No location information found for: " . a:identifier . " in module " . choice.option.module
+      echom "PSCIDE: No location information found for: " . a:ident . " in module " . choice.option.module
     else
-      echom "PSCIDE: No location information found for: " . a:identifier
+      echom "PSCIDE: No location information found for: " . a:ident
     endif
   else
-    echom "PSCIDE: No location information found for: " . a:identifier
+    echom "PSCIDE: No location information found for: " . a:ident
   endif
 endfunction
 
@@ -521,24 +519,22 @@ function! s:PSCIDErebuildCallback(filename, resp)
 endfunction
 
 " Add type annotation
-command! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation()
-function! PSCIDEaddTypeAnnotation()
-  let identifier = matchstr(getline(line(".")), '^\s*\zs\k\+\ze')
-
+command! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))
+function! PSCIDEaddTypeAnnotation(ident)
   call s:getType(
-	\ identifier,
-	\ { resp -> s:PSCIDEaddTypeAnnotationCallback(identifier, resp) }
+	\ a:ident,
+	\ { resp -> s:PSCIDEaddTypeAnnotationCallback(a:ident, resp) }
 	\ )
 endfunction
 
-function! s:PSCIDEaddTypeAnnotationCallback(identifier, resp)
+function! s:PSCIDEaddTypeAnnotationCallback(ident, resp)
   if type(a:resp) == v:t_dict && a:resp["resultType"] ==# 'success' && !empty(a:resp["result"])
     let result = a:resp["result"]
     let lnr = line(".")
     let indent = matchstr(getline(lnr), '^\s*\ze')
     call append(lnr - 1, indent . s:StripNewlines(result[0]['identifier']) . ' :: ' . s:StripNewlines(result[0]["type"]))
   else
-    echom "PSC-IDE: No type information found for " . a:identifier
+    echom "PSC-IDE: No type information found for " . a:ident
   endif
 endfunction
 
@@ -593,7 +589,7 @@ function! PSCIDEcaseSplit()
   let lnr = line(".")
   let line = getline(lnr)
 
-  let word = s:GetWordUnderCursor()
+  let word = expand("<cword>")
   let b = match(line, word)
   let e = matchend(line, word)
 
@@ -628,23 +624,22 @@ endfunction
 
 " TYPE -----------------------------------------------------------------------
 " Get type of word under cursor
-command! -buffer PSCIDEtype call PSCIDEtype()
-function! PSCIDEtype()
-  let identifier = s:GetWordUnderCursor()
+command! -buffer PSCIDEtype call PSCIDEtype(expand("<cword>"))
+function! PSCIDEtype(ident)
 
   call s:getType(
-	\ identifier,
-	\ { resp -> s:PSCIDEtypeCallback(identifier, resp.result) }
+	\ a:ident,
+	\ { resp -> s:PSCIDEtypeCallback(a:ident, resp.result) }
 	\ )
 endfunction
 
-function! s:PSCIDEtypeCallback(identifier, result)
+function! s:PSCIDEtypeCallback(ident, result)
   if type(a:result) == type([])
     for e in a:result
       echom s:formattype(e)
     endfor
   else
-    echom "PSC-IDE: No type information found for " . a:identifier
+    echom "PSC-IDE: No type information found for " . a:ident
   endif
 endfunction
 
@@ -807,7 +802,7 @@ function! PSCIDEremoveImportQualifications()
   let replace = "import \\1"
   let command = "silent %s:" . captureregex . ":" . replace . ":g|norm!``"
   call s:log('Executing PSCIDEremoveImportQualifications command: ' . command, 3)
-  :exe command
+  exe command
 endfunction
 
 " Add all import qualifications
@@ -835,19 +830,18 @@ endfunction
 
 
 " PURSUIT --------------------------------------------------------------------
-command! -buffer PSCIDEpursuit call PSCIDEpursuit()
-function! PSCIDEpursuit()
-  let identifier = s:GetWordUnderCursor()
+command! -buffer PSCIDEpursuit call PSCIDEpursuit(expand("<cword>"))
+function! PSCIDEpursuit(ident)
 
   call s:callPscIde(
-	\ {'command': 'pursuit', 'params': {'query': identifier, 'type': "completion"}},
-	\ 'Failed to get pursuit info for: ' . identifier,
+	\ {'command': 'pursuit', 'params': {'query': a:ident, 'type': "completion"}},
+	\ 'Failed to get pursuit info for: ' . a:ident,
 	\ 0,
 	\ { resp -> s:PSCIDEpursuitCallback(resp) }
 	\ )
 endfunction
 
-function! s:PSCIDEpuresuitCallback(resp)
+function! s:PSCIDEpursuitCallback(resp)
   if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
     if len(a:resp["result"]) > 0
       for e in a:resp["result"]
@@ -1270,10 +1264,6 @@ function! s:CleanEnd(s)
   return substitute(a:s, '\s*\n*\s*$', '', 'g')
 endfunction
 
-function! s:GetWordUnderCursor()
-  return expand("<cword>")
-endfunction
-
 function! s:log(str, level)
   if g:psc_ide_log_level >= a:level
     echom a:str
@@ -1318,6 +1308,8 @@ function! PSCIDEerrors(llist)
   call sort(qflist, { e1, e2 -> e1["lnum"] == e2["lnum"] ? e1["col"] - e2["col"] : e1["lnum"] - e2["lnum"] })
   call setqflist(qflist)
 endfunction
+
+" AUTOSTART ------------------------------------------------------------------
 if g:psc_ide_syntastic_mode == 0
   com! PSCIDErebuild call PSCIDErebuild(1, function("PSCIDEerrors"))
   augroup purescript
