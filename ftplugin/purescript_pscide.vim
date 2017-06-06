@@ -739,7 +739,7 @@ endfunction
 
 function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
   let dir = s:findRoot()
-  let key = fnamemodify(a:filename, ':s?'.dir.'/??') . "|" . string(a:lnr)
+  let key = a:filename . "|" . string(a:lnr)
 
   call s:log('PSCIDEapplySuggestion: lineNr: ' . a:lnr . " filename: " . a:filename . " key: " . key, 3)
 
@@ -1022,6 +1022,19 @@ endfunction
 fun! s:modulesFilter(modules)
   return { "filter": "modules", "params": { "modules": a:modules } }
 endfun
+
+" SEARCH ---------------------------------------------------------------------
+" fun! s:search(ident)
+  " let resp = s:callPscIdeSync(
+	" \ {'command': 'complete'
+	" \ , 'params':
+	" \   , 'matcher': matcher
+	" \   , 'options': { 'groupReexports': v:true }
+	" \   }
+	" \ },
+	" \ 'Failed to get completions for: '. str,
+	" \ 0)
+" endfun
 
 " PSCIDE HELPER FUNCTION -----------------------------------------------------
 " Issues the commands to the server
