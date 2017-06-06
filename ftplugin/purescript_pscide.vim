@@ -1028,17 +1028,43 @@ fun! s:modulesFilter(modules)
 endfun
 
 " SEARCH ---------------------------------------------------------------------
-" fun! s:search(ident)
-  " let resp = s:callPscIdeSync(
-	" \ {'command': 'complete'
-	" \ , 'params':
-	" \   , 'matcher': matcher
-	" \   , 'options': { 'groupReexports': v:true }
-	" \   }
-	" \ },
-	" \ 'Failed to get completions for: '. str,
-	" \ 0)
-" endfun
+com! -buffer -nargs=1 PSCIDEsearch call PSCIDEsearch(<q-args>)
+fun! PSCIDEsearch(ident)
+  let matcher = s:flexMatcher(a:ident)
+  call s:callPscIde(
+	\ {'command': 'complete'
+	\ , 'params':
+	\   { 'matcher': matcher
+	\   , 'options': { 'groupReexports': v:true }
+	\   }
+	\ },
+	\ 'Failed to get completions for: '. a:ident,
+	\ 0,
+	\ { resp -> s:searchFn(resp) }
+	\ )
+endfun
+
+fun! s:searchFn(resp)
+  if get(a:resp, "resultType", "error") !=# "success"
+    return
+  endif
+  let llist = []
+  for res in get(a:resp, "result", [])
+    let llentry = {}
+    let bufnr = bufnr(res.definedAt.name)
+    if bufnr != -1
+      let llentry.bufnr = bufnr
+    endif
+    let llentry.filename = res.definedAt.name
+    let llentry.lnum = res.definedAt.start[0]
+    let llentry.col = res.definedAt.start[1]
+    let llentry.text = res.type
+    call add(llist, llentry)
+  endfor
+  " echom json_encode(a:resp)
+  call setloclist(0, llist)
+  lopen
+endfun
 
 " PSCIDE HELPER FUNCTION -----------------------------------------------------
 " Issues the commands to the server
