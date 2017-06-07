@@ -1109,9 +1109,10 @@ fun! s:searchFn(resp)
       let llentry.bufnr = bufnr
     endif
     let llentry.filename = res.definedAt.name
+    let llentry.module = res.module
     let llentry.lnum = res.definedAt.start[0]
     let llentry.col = res.definedAt.start[1]
-    let llentry.text = printf("%-25S\t%s", res.identifier, res.type)
+    let llentry.text = printf("%s %s", res.identifier, res.type)
     call add(llist, llentry)
   endfor
   " echom json_encode(a:resp)
