@@ -242,7 +242,7 @@ function! PSCIDEload(logLevel, bang)
   if a:bang == "!"
     return s:callPscIde(
       \ {"command": "reset"},
-      \ "Failed to reset",
+      \ "failed to reset",
       \ 0,
       \ { resp -> resp["resultType"] == "success" ? PSCIDEload(a:logLevel, "") : "" }
       \ )
@@ -591,7 +591,6 @@ function! PSCIDEcaseSplit(type)
   let line = getline(lnr)
   let len = len(matchstr(line[begin:], '^\k*'))
   let word = line[:len]
-  echom begin . " " . len . " '" . line . "' word: " . word 
 
   call winrestview(winview)
 
@@ -1166,6 +1165,60 @@ function! s:callPscIdeSync(input, errorm, isRetry)
   let resp = s:mysystem("purs ide client -p " . g:psc_ide_server_port, enc)
   return s:PscIdeCallback(a:input, a:errorm, a:isRetry, 0, resp)
 endfunction
+
+" ADD IMPORTS  --------------------------------------------------------------
+fun! PSCIDEimportModule(module)
+  let args = filter(split(a:module, ' '), { idx, p -> p != ' ' })
+  if len(args) >= 2
+    let importCommand =
+	  \ { "importCommand": "addQualifiedImport"
+	  \ , "module": args[0]
+	  \ , "qualifier": args[1]
+	  \ }
+  else
+    let importCommand =
+	  \ { "importCommand": "addImplicitImport"
+	  \ , "module": args[0]
+	  \ }
+  endif
+  let params =
+	\ { "file": expand("%:p")
+	\ , "importCommand": importCommand
+	\ }
+
+  call s:callPscIde(
+	\ { "command": "import" , "params": params }
+	\ , "failed to add import",
+	\ 0,
+	\ function("s:PSCIDEimportModuleCallback")
+	\ )
+endfun
+
+fun! s:PSCIDEimportModuleCallback(resp)
+  if type(a:resp) == v:t_dict && a:resp.resultType ==# "success"
+    let view = winsaveview()
+    %d_
+    call append(0, a:resp.result)
+    let view.lnum += 1
+    call winrestview(view)
+  else
+    call s:echoError(get(a:resp, "result", "error"))
+  endif
+endfun
+
+com! -buffer -nargs=+ -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(<q-args>)
+fun! PSCIDEimportModuleCompletion(ArgLead, CmdLine, CursorPos)
+  let resp = s:callPscIdeSync(
+	\ {'command': 'list', 'params': {'type': 'loadedModules'}},
+	\ 'Failed to get loaded modules',
+	\ 0
+	\ )
+  if type(resp) == v:t_dict && resp.resultType == "success"
+    return join(resp.result, "\n")
+  else
+    return ""
+  endif
+endfun
 
 " UTILITY FUNCTIONS ----------------------------------------------------------
 function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
