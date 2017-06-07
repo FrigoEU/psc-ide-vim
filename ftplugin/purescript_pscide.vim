@@ -1052,7 +1052,7 @@ fun! s:searchFn(resp)
     let llentry.filename = res.definedAt.name
     let llentry.lnum = res.definedAt.start[0]
     let llentry.col = res.definedAt.start[1]
-    let llentry.text = res.type
+    let llentry.text = printf("%-25S\t%s", res.identifier, res.type)
     call add(llist, llentry)
   endfor
   " echom json_encode(a:resp)
