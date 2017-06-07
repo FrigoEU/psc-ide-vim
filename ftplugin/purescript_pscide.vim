@@ -46,8 +46,8 @@ endif
 
 if !exists("g:psc_ide_omnicompletion_prefix_filter")
   " with this option will let purs ide filter by prefix (this disables flex
-  " matching)
-  let g:psc_ide_omnicompletion_prefix_filter = v:false
+  " matching) (tip: use i^xu when searching for a command)
+  let g:psc_ide_omnicompletion_prefix_filter = v:true
 endif
 
 let s:prelude = [
@@ -857,7 +857,7 @@ function! s:formatpursuit(record)
   return "In " . s:CleanEnd(s:StripNewlines(a:record["package"])) . " " . s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['ident']) . ' :: ' . s:StripNewlines(a:record['type']))
 endfunction
 
-" VALIDATE -----------------------------------------------------------------------
+" VALIDATE -------------------------------------------------------------------
 command! -buffer PSCIDEprojectValidate call PSCIDEprojectValidate()
 function! PSCIDEprojectValidate()
   let problems = s:projectProblems()
@@ -894,11 +894,8 @@ function! s:PSCIDElistCallback(resp)
   endif
 endfunction
 
-" SET UP OMNICOMPLETION ------------------------------------------------------
-set omnifunc=PSCIDEomni
-
-" OMNICOMPLETION FUNCTION ----------------------------------------------------
-fun! PSCIDEomni(findstart, base)
+" COMPLETION FUNCTION --------------------------------------------------------
+fun! s:completeFn(findstart, base, commandFn)
   if a:findstart 
     let col   = col(".")
     let line  = getline(".")
@@ -912,62 +909,25 @@ fun! PSCIDEomni(findstart, base)
     "Looking for the start of the identifier that we want to complete
     return start - 1
   else
-    let str = type(a:base) == v:t_string ? a:base : string(a:base)
-    call s:log('PSCIDEOmni: Looking for completions for: ' . str, 3)
 
-    let currentModule = s:ExtractModule()
-    call s:log('PSCIDEOmni currentModule: ' . currentModule, 3)
-
-    let filters = []
-    if g:psc_ide_omnicompletion_prefix_filter
-      call add(filters, s:prefixFilter(str))
-    endif
-
-    if match(str, '\.') != -1
-      let str_ = split(str, '\.')
+    if match(a:base, '\.') != -1
+      let str_ = split(a:base, '\.')
       let qualifier = join(str_[0:len(str_)-2], ".")
-      let str = str_[len(str_) - 1]
-      let imports = s:ListImports(currentModule)
-      let modules = []
-      for mod in imports
-	if get(mod, "qualifier", "") == qualifier || get(mod, "module", "") == qualifier
-	  call add(modules, mod.module)
-	endif
-      endfor
-
-      if len(modules)
-	call add(filters, s:modulesFilter(modules))
-      endif
-      let matcher = s:flexMatcher(str)
+      let ident= str_[len(str_) - 1]
     else
+      let ident = a:base
       let qualifier = ""
-      if g:psc_ide_omnicompletion_filter_modules
-	call add(filters, s:modulesFilter(map(s:ListImports(currentModule), { n, m -> m.module })))
-      endif
-      let matcher = s:flexMatcher(str)
     endif
 
     let resp = s:callPscIdeSync(
-	  \ {'command': 'complete'
-	  \ , 'params':
-	  \   { 'filters': filters
-	  \   , 'matcher': matcher
-	  \   , 'currentModule': currentModule
-	  \   , 'options': { 'groupReexports': v:true }
-	  \   }
-	  \ },
-	  \ 'Failed to get completions for: '. str,
+	  \ a:commandFn(ident, qualifier),
+	  \ 'Failed to get completions for: '. a:base,
 	  \ 0)
 
-    if type(resp) == type({}) && resp.resultType ==# 'success'
-      call s:log('PSCIDEOmni: Found Entries: ' . string(resp.result), 3)
-      let entries = resp["result"] "Entries = list of {module, identifier, type}
-    else 
-      let entries = []
-    endif
-
+    let entries = get(resp, "result", [])
     "Popuplating the omnicompletion list
     let result = []
+
     let hasPreview = index(split(&l:completeopt, ','), 'preview') != -1
     " vimL does not have compare function for strings, and uniq must run after
     " sort.
@@ -980,11 +940,10 @@ fun! PSCIDEomni(findstart, base)
 	    \ { e1, e2 -> !s:compareByDefinedAt(e1, e2) }
 	    \ )
     endif
-    for entry in entries
 
+    for entry in entries
       let detail = printf("\t%-25S\t\t%s", entry['module'], entry["type"])
-      let e =
-	    \ { 'word': (empty(qualifier) ? "" : qualifier . ".") . entry['identifier']
+      let e = { 'word': (empty(qualifier) ? "" : qualifier . ".") . entry['identifier']
 	    \ , 'menu': hasPreview ? entry["type"] : detail
 	    \ , 'info': detail
 	    \ , 'dup': 1
@@ -993,6 +952,44 @@ fun! PSCIDEomni(findstart, base)
     endfor
     return result
   endif
+endfun
+
+fun! s:omniCommand(ident, qualifier)
+  let currentModule = s:ExtractModule()
+
+  let filters = []
+  if g:psc_ide_omnicompletion_prefix_filter
+    call add(filters, s:prefixFilter(a:ident))
+  endif
+
+  if !empty(a:qualifier)
+    let imports = s:ListImports(currentModule)
+    let modules = []
+    for mod in imports
+      if get(mod, "qualifier", "") == a:qualifier || get(mod, "module", "") == a:qualifier
+	call add(modules, mod.module)
+      endif
+    endfor
+
+    if len(modules)
+      call add(filters, s:modulesFilter(modules))
+    endif
+    let matcher = s:flexMatcher(a:ident)
+  else
+    if g:psc_ide_omnicompletion_filter_modules
+      call add(filters, s:modulesFilter(map(s:ListImports(currentModule), { n, m -> m.module })))
+    endif
+    let matcher = s:flexMatcher(a:ident)
+  endif
+
+  return {'command': 'complete'
+	 \ , 'params':
+	 \   { 'filters': filters
+	 \   , 'matcher': matcher
+	 \   , 'currentModule': currentModule
+	 \   , 'options': { 'groupReexports': v:true }
+	 \   }
+	 \ }
 endfun
 
 fun! s:compareByDefinedAt(e1, e2)
@@ -1020,6 +1017,35 @@ endfunction
 fun! s:modulesFilter(modules)
   return { "filter": "modules", "params": { "modules": a:modules } }
 endfun
+
+" SET UP OMNICOMPLETION ------------------------------------------------------
+fun! PSCIDEomni(findstart, base)
+  if a:findstart
+    return s:completeFn(a:findstart, a:base, function("s:omniCommand"))
+  else
+    let results = s:completeFn(a:findstart, a:base, function("s:omniCommand"))
+    if empty(results)
+      let results = PSCIDEcomplete(a:findstart, a:base)
+    endif
+    return results
+  endif
+endfun
+
+set omnifunc=PSCIDEomni
+
+" SET UP USERCOMPLETION ------------------------------------------------------
+fun! PSCIDEcomplete(findstart, base)
+  return s:completeFn(a:findstart, a:base, { ident, qualifier ->
+	\ {'command': 'complete'
+	\ , 'params':
+	\   { 'matcher': s:flexMatcher(a:base)
+	\   , 'options': { 'groupReexports': v:true }
+	\   }
+	\ }
+	\ })
+endfun
+
+set completefunc=PSCIDEcomplete
 
 " SEARCH ---------------------------------------------------------------------
 com! -buffer -nargs=1 PSCIDEsearch call PSCIDEsearch(<q-args>)
