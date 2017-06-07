@@ -583,26 +583,21 @@ endfunction
 " CASESPLIT
 " Hover cursor over variable in function declaration -> pattern match on all
 " different cases of the variable
-command! -buffer PSCIDEcaseSplit call PSCIDEcaseSplit()
-function! PSCIDEcaseSplit()
+command! -buffer -nargs=1 PSCIDEcaseSplit call PSCIDEcaseSplit(<q-args>)
+function! PSCIDEcaseSplit(type)
+  let winview = winsaveview()
   let lnr = line(".")
+  let begin = s:findStart()
   let line = getline(lnr)
+  let len = len(matchstr(line[begin:], '^\k*'))
+  let word = line[:len]
+  echom begin . " " . len . " '" . line . "' word: " . word 
 
-  let word = expand("<cword>")
-  let b = match(line, word)
-  let e = matchend(line, word)
-
-  let t = input("Type: ")
-
-  call s:log('PSCIDEcaseSplit: ', 3)
-  call s:log('line: ' . line, 3)
-  call s:log('start position: ' . string(b), 3)
-  call s:log('end position: ' . string(e), 3)
-  call s:log('type: ' . t, 3)
+  call winrestview(winview)
 
   let command = {
 	\ 'command': 'caseSplit',
-	\ 'params': { 'line': line, 'begin': b, 'end': e, 'annotations': v:false, 'type': t}
+	\ 'params': { 'line': line, 'begin': begin, 'end': begin + len, 'annotations': v:false, 'type': a:type}
 	\ }
 
   call s:callPscIde(
@@ -615,7 +610,6 @@ endfunction
 
 function! s:PSCIDEcaseSplitCallback(lnr, resp)
   if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
-    call s:log('PSCIDEcaseSplit results: ' . string(a:resp.result), 3)
     call append(a:lnr, a:resp.result)
     normal dd
   else
@@ -908,20 +902,24 @@ function! s:PSCIDElistCallback(resp)
   endif
 endfunction
 
+fun! s:findStart()
+  let col   = col(".")
+  let line  = getline(".")
+
+  " search backwards for start of identifier (iskeyword pattern)
+  let start = col
+  while start > 0 && (line[start - 2] =~ '\k' || line[start - 2] =~ '\.')
+    let start -= 1
+  endwhile
+
+  "Looking for the start of the identifier that we want to complete
+  return start - 1
+endfun
+
 " COMPLETION FUNCTION --------------------------------------------------------
 fun! s:completeFn(findstart, base, commandFn)
   if a:findstart 
-    let col   = col(".")
-    let line  = getline(".")
-
-    " search backwards for start of identifier (iskeyword pattern)
-    let start = col
-    while start > 0 && (line[start - 2] =~ '\k' || line[start - 2] =~ '\.')
-      let start -= 1
-    endwhile
-
-    "Looking for the start of the identifier that we want to complete
-    return start - 1
+    return s:findStart()
   else
 
     if match(a:base, '\.') != -1
