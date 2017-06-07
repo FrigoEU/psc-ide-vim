@@ -259,10 +259,10 @@ function! PSCIDEload(logLevel, bang)
 endfunction
 
 function! s:PSCIDEloadCallback(logLevel, resp)
-  if type(a:resp) == type({}) && a:resp['resultType'] ==# "success"
-    call s:log("PSCIDEload: Successfully loaded modules: " . string(a:resp["result"]), a:logLevel)
+  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# "success"
+    call s:log("purs ide: successfully loaded modules: " . string(a:resp["result"]), a:logLevel)
   else
-    call s:log("PSCIDEload: Failed to load. Error.", a:logLevel)
+    call s:echoError(get(a:resp, "result", "error"))
   endif
 endfunction
 
@@ -360,10 +360,7 @@ endfun
 function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines) 
   call s:log("s:PSCIDEimportIdentifierCallback", 3)
   if a:resp.resultType !=# "success"
-    echohl ErrorMsg
-    echo "purs ide: error"
-    echohl Normal
-    return
+    return s:echoError(get(a:resp, "result", "error"))
   endif
 
   if type(a:resp.result) == v:t_list
@@ -441,12 +438,12 @@ function! s:PSCIDEgoToDefinitionCallback(ident, resp)
     if choice.picked && type(choice.option.definedAt) == type({})
       call s:goToDefinition(choice.option.definedAt)
     elseif type(choice.option) == v:t_dict
-      echom "PSCIDE: No location information found for: " . a:ident . " in module " . choice.option.module
+      call s:echoWarn("no location information found for: " . a:ident . " in module " . choice.option.module)
     else
-      echom "PSCIDE: No location information found for: " . a:ident
+      call s:echoWarn("no location information found for: " . a:ident)
     endif
   else
-    echom "PSCIDE: No location information found for: " . a:ident
+    call s:echoError(get(a:resp, "result", "error"))
   endif
 endfunction
 
@@ -497,21 +494,21 @@ function! PSCIDErebuild(async, ...)
 endfunction
 
 function! s:PSCIDErebuildCallback(filename, resp) 
-  if type(a:resp) == type({}) && has_key(a:resp, "resultType") 
-     \ && has_key (a:resp, "result") && type(a:resp.result) == type([])
+  if type(a:resp) == v:t_dict && has_key(a:resp, "resultType") 
+     \ && has_key (a:resp, "result") && type(a:resp.result) == v:t_list
     if a:resp.resultType == "error"
       let out = ParsePscJsonOutput(a:resp.result, [])
     else
       let out = ParsePscJsonOutput([], a:resp.result)
     endif
     if out.error != ""
-      call s:log("PSCIDErebuild: Failed to interpret " . string(a:resp.result), 0)
+      call s:echoError("failed to interpret " . string(a:resp.result))
     endif
 
     let g:psc_ide_suggestions = out.suggestions
     return out.llist
   else
-    call s:log("PSCIDErebuild: Failed to rebuild " . a:filename, 0)
+    call s:echoError("failed to rebuild")
     return []
   endif
 endfunction
@@ -532,7 +529,7 @@ function! s:PSCIDEaddTypeAnnotationCallback(ident, resp)
     let indent = matchstr(getline(lnr), '^\s*\ze')
     call append(lnr - 1, indent . s:StripNewlines(result[0]['identifier']) . ' :: ' . s:StripNewlines(result[0]["type"]))
   else
-    echom "PSC-IDE: No type information found for " . a:ident
+    call s:echoWarn("no type information found for " .a:indent)
   endif
 endfunction
 
@@ -549,8 +546,10 @@ function! PSCIDEcwd()
 endfunction
 
 function! s:PSCIDEcwdCallback(resp)
-  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
-    echom "PSC-IDE: Current working directory: " . a:resp["result"]
+  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
+    call s:echoLog("current working directory: " . a:resp.result)
+  else
+    call s:echoError(get(a:resp, "result", "error))
   endif
 endfunction
 
@@ -572,10 +571,12 @@ function! PSCIDEaddClause()
 endfunction
 
 function! s:PSCIDEaddClauseCallback(lnr, resp)
-  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success' && type(a:resp.result) == type([])     
+  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
     call s:log('PSCIDEaddClause results: ' . string(a:resp.result), 3)
     call append(a:lnr, a:resp.result)
     normal dd
+  else
+    call s:echoError(get(a:resp, "result", "error"))
   endif
 endfunction
 
@@ -613,10 +614,12 @@ function! PSCIDEcaseSplit()
 endfunction
 
 function! s:PSCIDEcaseSplitCallback(lnr, resp)
-  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success' && type(a:resp.result) == type([])     
+  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
     call s:log('PSCIDEcaseSplit results: ' . string(a:resp.result), 3)
     call append(a:lnr, a:resp.result)
     normal dd
+  else
+    call s:echoError(get(a:resp, "result", "error"))
   endif
 endfunction
 
@@ -691,7 +694,6 @@ endfunction
 
 function! s:ListImports(module)
   let filename = expand("%:p")
-  call s:log('PSCIDE s:ListImports ' . a:module . ' in file ' . filename, 1)
   let resp = s:callPscIdeSync(
 	\ {'command': 'list', 'params': {'type': 'import', 'file': filename}},
 	\ 'Failed to get imports for: ' . a:module,
@@ -699,10 +701,11 @@ function! s:ListImports(module)
 	\ )
   call s:log("PSCIDE s:ListImports result: " . string(resp), 3)
   " Only need module names right now, so pluck just those.
-  if type(resp) == type({}) && resp['resultType'] ==# 'success'
+  if type(a:resp) == v:t_dict && resp['resultType'] ==# 'success'
     " psc-ide >=0.11 returns imports on 'imports' property.
-    return type(resp['result']) == type([]) ? resp['result'] : resp['result']['imports']
-    endif
+    return type(resp.result) == v:t_list ? resp.result : resp.result.imports
+  else
+    call s:echoError(get(resp, "result", "error"))
   endif
 endfunction
 
@@ -853,13 +856,13 @@ function! PSCIDEpursuit(ident)
 endfunction
 
 function! s:PSCIDEpursuitCallback(resp)
-  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
+  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
     if len(a:resp["result"]) > 0
       for e in a:resp["result"]
         echom s:formatpursuit(e)
       endfor
     else
-      echom "PSC-IDE: No results found on Pursuit"
+      call s:echoError(get(a:resp, "result", "error"))
     endif
   endif
 endfunction
@@ -894,13 +897,13 @@ function! PSCIDElist()
 endfunction
 
 function! s:PSCIDElistCallback(resp)
-  if type(a:resp) == type({}) && a:resp['resultType'] ==# 'success'
+  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
     if len(a:resp["result"]) > 0
       for m in a:resp["result"]
         echom m
       endfor
     else
-      echom "PSC-IDE: No loaded modules found"
+      call s:echoError(get(a:resp, "result", "error"))
     endif
   endif
 endfunction
@@ -1077,7 +1080,7 @@ endfun
 
 fun! s:searchFn(resp)
   if get(a:resp, "resultType", "error") !=# "success"
-    return
+    return s:echoError(get(a:resp, "result", "error"))
   endif
   let llist = []
   for res in get(a:resp, "result", [])
@@ -1339,7 +1342,7 @@ function! PSCIDEerrors(llist)
       echom "purs: " . wrnLen . " ". (wrnLen == 1 ? "warnings" : "warning")
       echohl Normal
     else
-      echom "purs: ok"
+      call s:echoLog("success")
     endif
   endif
   call sort(qflist, { e1, e2 -> e1["lnum"] == e2["lnum"] ? e1["col"] - e2["col"] : e1["lnum"] - e2["lnum"] })
@@ -1444,3 +1447,19 @@ endfunction
 function! s:mysystem(a, b)
   return system(a:a, a:b . "\n")
 endfunction
+
+fun! s:echoError(msg)
+  echohl ErrorMsg
+  echom "purs ide: " . a:msg
+  echohl Normal
+endfun
+
+fun! s:echoWarn(msg)
+  echohl WarningMsg
+  echom "purs ide: " . a:msg
+  echohl Normal
+endfun
+
+fun! s:echoLog(msg)
+  echom "purs ide: " .a:msg
+endfun
