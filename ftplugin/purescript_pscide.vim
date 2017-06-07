@@ -284,7 +284,7 @@ function! s:ExtractModule()
 endfunction
 
 " Import given identifier
-command! -buffer PSCIDEimportIdentifier call PSCIDEimportIdentifier(expand("<cword>"))
+command! -buffer -nargs=* PSCIDEimportIdentifier call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : expand("<cword>"))
 function! PSCIDEimportIdentifier(ident)
   call s:importIdentifier(a:ident, "")
 endfunction
@@ -399,15 +399,11 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
   call winrestview(a:view)
 endfunction
 
-command! -buffer PSCIDEgoToDefinition call PSCIDEgoToDefinition(expand("<cword>"))
+command! -buffer -nargs=* PSCIDEgoToDefinition call PSCIDEgoToDefinition(len(<q-args>) ? <q-args> : expand("<cword>"))
 function! PSCIDEgoToDefinition(ident)
-  call s:log('PSCIDEgoToDefinition identifier: ' . a:ident, 3)
-
   let currentModule = s:ExtractModule()
-  call s:log('PSCIDEgoToDefinition currentModule: ' . currentModule, 3)
-
   call s:callPscIde(
-	\   {'command': 'type', 'params': {'search': a:ident, 'filters': []}, 'currentModule': currentModule},
+	\ {'command': 'type', 'params': {'search': a:ident, 'filters': []}, 'currentModule': currentModule},
 	\ 'Failed to get location info for: ' . a:ident,
 	\ 0,
 	\ { resp -> s:PSCIDEgoToDefinitionCallback(a:ident, resp) }
@@ -618,7 +614,7 @@ endfunction
 
 " TYPE -----------------------------------------------------------------------
 " Get type of word under cursor
-command! -buffer PSCIDEtype call PSCIDEtype(expand("<cword>"), v:true)
+command! -buffer -nargs=* PSCIDEtype call PSCIDEtype(len(<q-args>) ? <q-args> : expand("<cword>"), v:true)
 function! PSCIDEtype(ident, filterModules)
   call s:getType(
 	\ a:ident,
@@ -694,7 +690,7 @@ function! s:ListImports(module)
 	\ )
   call s:log("PSCIDE s:ListImports result: " . string(resp), 3)
   " Only need module names right now, so pluck just those.
-  if type(a:resp) == v:t_dict && resp['resultType'] ==# 'success'
+  if type(resp) == v:t_dict && resp['resultType'] ==# 'success'
     " psc-ide >=0.11 returns imports on 'imports' property.
     return type(resp.result) == v:t_list ? resp.result : resp.result.imports
   else
@@ -837,7 +833,7 @@ endfunction
 
 
 " PURSUIT --------------------------------------------------------------------
-command! -buffer PSCIDEpursuit call PSCIDEpursuit(expand("<cword>"))
+command! -buffer -nargs=* PSCIDEpursuit call PSCIDEpursuit(len(<q-args>) ? <q-args> : expand("<cword>"))
 function! PSCIDEpursuit(ident)
 
   call s:callPscIde(
@@ -1059,7 +1055,7 @@ endfun
 setl completefunc=PSCIDEcomplete
 
 " SEARCH ---------------------------------------------------------------------
-com! -buffer -nargs=1 PSCIDEsearch call PSCIDEsearch(<q-args>)
+com! -buffer -nargs=* PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : expand("<cword>"))
 fun! PSCIDEsearch(ident)
   let matcher = s:flexMatcher(a:ident)
   call s:callPscIde(
@@ -1206,7 +1202,7 @@ fun! s:PSCIDEimportModuleCallback(resp)
   endif
 endfun
 
-com! -buffer -nargs=+ -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(<q-args>)
+com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(len(<q-args>) ? <q-args> : expand("<cword>"))
 fun! PSCIDEimportModuleCompletion(ArgLead, CmdLine, CursorPos)
   let resp = s:callPscIdeSync(
 	\ {'command': 'list', 'params': {'type': 'loadedModules'}},
