@@ -5,6 +5,10 @@ else
   finish
 endif
 
+if !exists("g:loaded_psc_ide_vim")
+  let g:loaded_psc_ide_vim = v:false
+endif
+
 if !exists('g:psc_ide_suggestions')
   let g:psc_ide_suggestions = {}
 endif
@@ -101,6 +105,46 @@ endif
 
 let g:syntastic_purescript_checkers = ['pscide']
 
+" COMMANDS -------------------------------------------------------------------
+com! -buffer PSCIDEend call PSCIDEend()
+com! -buffer -bang PSCIDEload call PSCIDEload(0, <q-bang>)
+com! -buffer -nargs=* PSCIDEimportIdentifier call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : expand("<cword>"))
+com! -buffer -nargs=* PSCIDEgoToDefinition call PSCIDEgoToDefinition(len(<q-args>) ? <q-args> : expand("<cword>"))
+com! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))
+com! -buffer PSCIDEcwd call PSCIDEcwd()
+com! -buffer PSCIDEaddClause call PSCIDEaddClause()
+com! -buffer -nargs=1 PSCIDEcaseSplit call PSCIDEcaseSplit(<q-args>)
+com! -buffer -nargs=* PSCIDEtype call PSCIDEtype(len(<q-args>) ? <q-args> : expand("<cword>"), v:true)
+com! PSCIDElistImports call PSCIDElistImports()
+com! -buffer -bang PSCIDEapplySuggestion call PSCIDEapplySuggestion(<q-bang>)
+com! -buffer PSCIDEremoveImportQualifications call PSCIDEremoveImportQualifications()
+com! -buffer PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
+com! -buffer -nargs=* PSCIDEpursuit call PSCIDEpursuit(len(<q-args>) ? <q-args> : expand("<cword>"))
+com! -buffer PSCIDEprojectValidate call PSCIDEprojectValidate()
+com! -buffer PSCIDElist call PSCIDElist()
+com! -buffer -count=1 PSCIDEerr call PSCIDEerr(<count>)
+com! -buffer PSCIDEstart call PSCIDEstart(0)
+com! -buffer -nargs=* PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : expand("<cword>"))
+com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(len(<q-args>) ? <q-args> : expand("<cword>"))
+
+" AUTOSTART ------------------------------------------------------------------
+if g:psc_ide_syntastic_mode == 0
+  com! PSCIDErebuild call PSCIDErebuild(1, function("PSCIDEerrors"))
+  augroup purescript
+    au! BufWritePost *.purs call PSCIDErebuild(1, function("PSCIDEerrors"))
+  augroup END
+endif
+
+silent! call PSCIDEstart(0)
+silent! call PSCIDEload(0, "")
+
+" INTERNALS -------------------------------------------------------------------
+" execute only once so we do not redefine functions when they are running
+if g:loaded_psc_ide_vim
+  finish
+endif
+let g:loaded_psc_ide_vim = v:true
+
 " START ----------------------------------------------------------------------
 if !exists('s:pscidestarted')
   let s:pscidestarted = 0
@@ -116,7 +160,6 @@ let s:psc_ide_server = v:none
 "Looks for bower.json, assumes that's the root directory, starts
 "`purs ide server` in the background
 "Returns Nothing
-command! -buffer PSCIDEstart call PSCIDEstart(0)
 function! PSCIDEstart(silent)
   if s:pscidestarted == 1 
     return
@@ -197,7 +240,6 @@ endfunction
 
 " END ------------------------------------------------------------------------
 " Tell the `purs ide server` to quit
-command! -buffer PSCIDEend call PSCIDEend()
 function! PSCIDEend()
   if s:pscideexternal == 1
     return
@@ -236,7 +278,6 @@ endfunction
 
 " LOAD -----------------------------------------------------------------------
 " Load module of current buffer + its dependencies into `purs ide server`
-command! -buffer -bang PSCIDEload call PSCIDEload(0, <q-bang>)
 function! PSCIDEload(logLevel, bang)
 
   if a:bang == "!"
@@ -284,7 +325,6 @@ function! s:ExtractModule()
 endfunction
 
 " Import given identifier
-command! -buffer -nargs=* PSCIDEimportIdentifier call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : expand("<cword>"))
 function! PSCIDEimportIdentifier(ident)
   call s:importIdentifier(a:ident, "")
 endfunction
@@ -399,7 +439,6 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
   call winrestview(a:view)
 endfunction
 
-command! -buffer -nargs=* PSCIDEgoToDefinition call PSCIDEgoToDefinition(len(<q-args>) ? <q-args> : expand("<cword>"))
 function! PSCIDEgoToDefinition(ident)
   let currentModule = s:ExtractModule()
   call s:callPscIde(
@@ -510,7 +549,6 @@ function! s:PSCIDErebuildCallback(filename, resp)
 endfunction
 
 " Add type annotation
-command! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))
 function! PSCIDEaddTypeAnnotation(ident)
   call s:getType(
 	\ a:ident,
@@ -531,7 +569,6 @@ endfunction
 
 " CWD ------------------------------------------------------------------------
 " Get current working directory of `pure ide server`
-command! -buffer PSCIDEcwd call PSCIDEcwd()
 function! PSCIDEcwd()
   call s:callPscIde(
 	\ {'command': 'cwd'},
@@ -551,7 +588,6 @@ endfunction
 
 " ADDCLAUSE
 " Makes template function implementation from signature
-command! -buffer PSCIDEaddClause call PSCIDEaddClause()
 function! PSCIDEaddClause()
   let lnr = line(".")
   let line = getline(lnr)
@@ -579,7 +615,6 @@ endfunction
 " CASESPLIT
 " Hover cursor over variable in function declaration -> pattern match on all
 " different cases of the variable
-command! -buffer -nargs=1 PSCIDEcaseSplit call PSCIDEcaseSplit(<q-args>)
 function! PSCIDEcaseSplit(type)
   let winview = winsaveview()
   let lnr = line(".")
@@ -614,7 +649,6 @@ endfunction
 
 " TYPE -----------------------------------------------------------------------
 " Get type of word under cursor
-command! -buffer -nargs=* PSCIDEtype call PSCIDEtype(len(<q-args>) ? <q-args> : expand("<cword>"), v:true)
 function! PSCIDEtype(ident, filterModules)
   call s:getType(
 	\ a:ident,
@@ -637,13 +671,12 @@ endfunction
 
 " LISTIMPORTS -----------------------------------------------------------------------
 " List the modules imported by the current module
-command! PSCIDElistImports call PSCIDElistImports()
 function! PSCIDElistImports()
   let currentModule = s:ExtractModule()
   call s:log('PSCIDElistImports ' . currentModule, 3)
   let imports =  s:ListImports(currentModule)
   for import in imports
-    call s:EchoImport(import)
+    call s:echoImport(import)
   endfor
   if (len(imports) == 0)
     echom "PSC-IDE: No import information found for " . currentModule
@@ -651,7 +684,7 @@ function! PSCIDElistImports()
 
 endfunction
 
-function! s:EchoImport(import)
+function! s:echoImport(import)
   echohl Identifier
   echon a:import["module"]
   echohl Normal
@@ -728,7 +761,6 @@ endfunction
 
 " APPLYSUGGESTION ------------------------------------------------------
 " Apply suggestion in loclist to buffer --------------------------------
-command! -buffer -bang PSCIDEapplySuggestion call PSCIDEapplySuggestion(<q-bang>)
 function! PSCIDEapplySuggestion(bang)
   if empty(a:bang)
     call PSCIDEapplySuggestionPrime(expand("%:p") . "|" . line("."), v:true, 0)
@@ -799,7 +831,6 @@ fun! s:UpdateSuggestions(startLine, newLines)
 endfun
 
 " Remove all import qualifications
-command! -buffer PSCIDEremoveImportQualifications call PSCIDEremoveImportQualifications()
 function! PSCIDEremoveImportQualifications()
   let captureregex = "import\\s\\(\\S\\+\\)\\s*(.*)"
   let replace = "import \\1"
@@ -809,7 +840,6 @@ function! PSCIDEremoveImportQualifications()
 endfunction
 
 " Add all import qualifications
-command! -buffer PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
 function! PSCIDEaddImportQualifications()
   let foundLines = []
   let filename = expand("%:p")
@@ -833,7 +863,6 @@ endfunction
 
 
 " PURSUIT --------------------------------------------------------------------
-command! -buffer -nargs=* PSCIDEpursuit call PSCIDEpursuit(len(<q-args>) ? <q-args> : expand("<cword>"))
 function! PSCIDEpursuit(ident)
 
   call s:callPscIde(
@@ -861,7 +890,6 @@ function! s:formatpursuit(record)
 endfunction
 
 " VALIDATE -------------------------------------------------------------------
-command! -buffer PSCIDEprojectValidate call PSCIDEprojectValidate()
 function! PSCIDEprojectValidate()
   let problems = s:projectProblems()
 
@@ -875,7 +903,6 @@ function! PSCIDEprojectValidate()
 endfunction
 
 " LIST -----------------------------------------------------------------------
-command! -buffer PSCIDElist call PSCIDElist()
 function! PSCIDElist()
   let resp = s:callPscIdeSync(
 	\ {'command': 'list', 'params': {'type': 'loadedModules'}},
@@ -1055,7 +1082,6 @@ endfun
 setl completefunc=PSCIDEcomplete
 
 " SEARCH ---------------------------------------------------------------------
-com! -buffer -nargs=* PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : expand("<cword>"))
 fun! PSCIDEsearch(ident)
   let matcher = s:flexMatcher(a:ident)
   call s:callPscIde(
@@ -1202,7 +1228,6 @@ fun! s:PSCIDEimportModuleCallback(resp)
   endif
 endfun
 
-com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(len(<q-args>) ? <q-args> : expand("<cword>"))
 fun! PSCIDEimportModuleCompletion(ArgLead, CmdLine, CursorPos)
   let resp = s:callPscIdeSync(
 	\ {'command': 'list', 'params': {'type': 'loadedModules'}},
@@ -1396,17 +1421,6 @@ function! PSCIDEerrors(llist)
   call setqflist(qflist)
 endfunction
 
-" AUTOSTART ------------------------------------------------------------------
-if g:psc_ide_syntastic_mode == 0
-  com! PSCIDErebuild call PSCIDErebuild(1, function("PSCIDEerrors"))
-  augroup purescript
-    au! BufWritePost *.purs call PSCIDErebuild(1, function("PSCIDEerrors"))
-  augroup END
-endif
-
-silent! call PSCIDEstart(0)
-silent! call PSCIDEload(0, "")
-
 " PSCIDEerr ------------------------------------------------------------------
 fun! PSCIDEerr(nr)
   let qf = getqflist()
@@ -1422,7 +1436,6 @@ fun! PSCIDEerr(nr)
   endif
 endfun
 
-command! -buffer -count=1 PSCIDEerr call PSCIDEerr(<count>)
 
 " Parse Errors & Suggestions -------------------------------------------------
 " Returns { error :: String, 
