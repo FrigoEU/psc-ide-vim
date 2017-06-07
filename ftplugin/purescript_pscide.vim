@@ -624,20 +624,22 @@ endfunction
 
 " TYPE -----------------------------------------------------------------------
 " Get type of word under cursor
-command! -buffer PSCIDEtype call PSCIDEtype(expand("<cword>"))
-function! PSCIDEtype(ident)
-
+command! -buffer PSCIDEtype call PSCIDEtype(expand("<cword>"), v:true)
+function! PSCIDEtype(ident, filterModules)
   call s:getType(
 	\ a:ident,
-	\ { resp -> s:PSCIDEtypeCallback(a:ident, resp.result) }
+	\ a:filterModules,
+	\ { resp -> s:PSCIDEtypeCallback(a:ident, resp.result, a:filterModules) }
 	\ )
 endfunction
 
-function! s:PSCIDEtypeCallback(ident, result)
-  if type(a:result) == type([])
+function! s:PSCIDEtypeCallback(ident, result, filterModules)
+  if !empty(a:result) && type(a:result) == v:t_list
     for e in a:result
       echom s:formattype(e)
     endfor
+  elseif a:filterModules
+    call PSCIDEtype(a:ident, v:false)
   else
     echom "PSC-IDE: No type information found for " . a:ident
   endif
@@ -706,14 +708,25 @@ function! s:ListImports(module)
   endif
 endfunction
 
-function! s:getType(identifier, cb)
+function! s:getType(ident, filterModules, cb)
   let currentModule = s:ExtractModule()
-  let importedModules = add(map(s:ListImports(currentModule), {key, val -> val["module"]}), currentModule)
+  if a:filterModules
+    let modules = add(map(s:ListImports(currentModule), {key, val -> val["module"]}), currentModule)
+    let filters = s:modulesFilter(modules)
+  else
+    let filters = []
+  endif
   call s:log('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
   call s:callPscIde(
-	\ {'command': 'type', 'params': {'search': a:identifier, 'filters': [s:modulesFilter(importedModules)], 'currentModule': currentModule}},
-	\  'Failed to get type info for: ' . a:identifier,
+	\ { 'command': 'type'
+	\ , 'params':
+	\     { 'search': a:ident
+	\     , 'filters': filters
+	\     , 'currentModule': currentModule
+	\     }
+	\ },
+	\  'Failed to get type info for: ' . a:ident,
 	\ 0,
 	\ {resp -> a:cb(resp)}
 	\ )
