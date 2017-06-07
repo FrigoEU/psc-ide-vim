@@ -1,10 +1,9 @@
 " Inits ----------------------------------------------------------------------
-if exists('g:loaded_psc_ide_vim')
+if !exists("b:loaded_psc_ide_vim")
+  let b:loaded_psc_ide_vim = v:true
+else
   finish
 endif
-let g:loaded_psc_ide_vim = 1
-
-let s:tempfile = tempname()
 
 if !exists('g:psc_ide_suggestions')
   let g:psc_ide_suggestions = {}
@@ -293,7 +292,6 @@ function! s:importIdentifier(ident, module)
 
   call s:log('PSCIDEimportIdentifier', 3)
   call s:log('ident: ' . a:ident, 3)
-  call s:log('s:tempfile: ' . s:tempfile, 3)
 
   if (a:ident == "")
     return
