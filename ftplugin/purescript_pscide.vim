@@ -51,7 +51,7 @@ if !exists('s:projectvalid')
   let s:projectvalid = 0
 endif
 
-let s:psc_ide_server = v:none
+let s:psc_ide_server = v:null
 "Looks for bower.json, assumes that's the root directory, starts
 "`purs ide server` in the background
 "Returns Nothing
@@ -79,20 +79,23 @@ function! PSCIDEstart(silent)
 	\ ]
 
   exe "lcd" dir
-  let s:psc_ide_server = job_start(
+  let jobid = async#job#start(
 	\ command,
-	\ { "stoponexit": "term"
-	\ , "err_mode": "raw"
-	\ , "err_cb": { ch, msg -> s:log("purs ide server error: " . string(msg), 0) }
-	\ , "in_io": "null"
-	\ , "out_io": "null"
-	\ }
+	\ { "on_stderr": { ch, msg -> s:log("purs ide server error: " . string(msg), 0) }
+	\ , "on_stdout": { ch, msg -> s:log("purs ide server got stdout: " . string(msg), 0) }
+	\ , "on_exit": function("s:onServerExit")
+  \ }
 	\ )
   lcd -
 
   call s:log("PSCIDEstart: Sleeping for 100ms so server can start up", 1)
   sleep 100m
   let s:pscidestarted = 1
+endfunction
+
+function! s:onServerExit(ch, msg, ev)
+  call s:log("purs ide server exited: " . string(ev), 0)
+  let s:pscidestarted = 0
 endfunction
 
 if v:version > 704 || (v:version == 704 && has('patch279'))
@@ -115,7 +118,7 @@ function! s:pickOption(message, options, labelKey)
   if choice
     return {'picked': v:true, 'option': a:options[choice - 1]}
   else
-    return {'picked': v:false, 'option': v:none}
+    return {'picked': v:false, 'option': v:null}
   endif
 endfunction
 
@@ -141,15 +144,13 @@ function! PSCIDEend()
   if s:pscideexternal == 1
     return
   endif
-  let filename = tempname()
-  call writefile([json_encode({'command': 'quit'})], filename)
-  return job_start(
+  let jobid = async#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	\ { "exit_cb": {job, status -> s:PSCIDEendCallback() }
-	\ , "err_cb": {err -> s:log("PSCIDEend error: " . string(err), 0)}
-	\ , "in_io": "file"
-	\ , "in_name": filename
+	\ { "on_exit": {job, status, ev -> s:PSCIDEendCallback() }
+	\ , "on_stderr": {err -> s:log("PSCIDEend error: " . string(err), 0)}
 	\ })
+  call async#job#send(jobid, json_encode({'command': 'quit'}))
+  call async#job#stop(jobid)
 endfunction
 
 function! s:PSCIDEendCallback() 
@@ -351,7 +352,7 @@ function! s:PSCIDEgoToDefinitionCallback(identifier, resp)
     elseif len(results) == 1
       let choice = {"picked": v:true, "option": results[0]}
     else
-      let choice = {"picked": v:false, "option": v:none}
+      let choice = {"picked": v:false, "option": v:null}
     endif
     if choice.picked && type(choice.option.definedAt) == type({})
       call s:goToDefinition(choice.option.definedAt)
@@ -544,7 +545,7 @@ function! PSCIDEtype()
 
   call s:getType(
 	\ identifier,
-	\ { resp -> s:PSCIDEtypeCallback(identifier, resp.result) }
+	\ { resp -> s:PSCIDEtypeCallback(identifier, resp["result"]) }
 	\ )
 endfunction
 
@@ -587,9 +588,9 @@ function! s:EchoImport(import)
       echon ident 
       echohl Normal
       if (idx < len - 1)
-	echon ", "
+        echon ", "
       else
-	echon ")"
+	      echon ")"
       endif
       let idx += 1
     endfor
@@ -647,7 +648,6 @@ function! s:ListImports(module)
   if type(resp) == type({}) && resp['resultType'] ==# 'success'
     " psc-ide >=0.11 returns imports on 'imports' property.
     return type(resp['result']) == type([]) ? resp['result'] : resp['result']['imports']
-    endif
   endif
 endfunction
 
@@ -925,33 +925,26 @@ function! s:callPscIde(input, errorm, isRetry, cb)
     let expectedCWD = fnamemodify(s:findRoot(), ":p:h")
     call s:log("callPscIde: cwd " . expectedCWD, 3)
     let cwdcommand = {'command': 'cwd'}
-    let tempfile = tempname()
-    call writefile([json_encode(cwdcommand)], tempfile)
 
     call s:log("callPscIde: No server found, looking for external server", 1)
-    call job_start(
+    let jobid = async#job#start(
 	  \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	  \ { "out_cb": {ch, msg -> s:PscIdeStartCallback(a:input, a:errorm, a:cb, cwdcommand, msg)}
-	  \ , "err_cb": {ch, err -> s:log("s:callPscIde error: " . string(err), 3)}
-	  \ , "in_io": "file"
-	  \ , "in_name": tempfile
+	  \ { "on_stdout": {ch, msg -> s:PscIdeStartCallback(a:input, a:errorm, a:cb, cwdcommand, msg)}
+	  \ , "on_stderr": {ch, err -> s:log("s:callPscIde error: " . string(err), 3)}
 	  \ })
-    call delete(tempfile)
+    call async#job#stop(jobid)
     return
   endif
 
   let enc = json_encode(a:input)
-  let tempfile = tempname()
-  call writefile([enc], tempfile, "b")
   call s:log("callPscIde: purs ide client: " . enc, 3)
-  call job_start(
+  let jobid = async#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	\ { "out_cb": {ch, msg -> a:cb(s:PscIdeCallback(a:input, a:errorm, a:isRetry, a:cb, msg))}
-	\ , "in_io": "file"
-	\ , "in_name": tempfile
-	\ , "err_cb": {ch, err -> s:log("s:callPscIde error: " . string(err), 3)}
+	\ { "on_stdout": {ch, msg -> a:cb(s:PscIdeCallback(a:input, a:errorm, a:isRetry, a:cb, msg))}
+	\ , "on_stderr": {ch, err -> s:log("s:callPscIde error: " . string(err), 0)}
 	\ })
-  call delete(tempfile)
+  call async#job#send(jobid, enc ."\n")
+  " call async#job#stop(jobid)
 endfunction
 
 function! s:callPscIdeSync(input, errorm, isRetry)
@@ -963,7 +956,7 @@ function! s:callPscIdeSync(input, errorm, isRetry)
 
   if s:pscidestarted == 0
 
-    let expectedCWD = s:findRoot()
+    let expectedCWD = fnamemodify(s:findRoot(), ":p:h")
     let cwdcommand = {'command': 'cwd'}
 
     call s:log("callPscIde: No server found, looking for external server", 1)
@@ -979,7 +972,7 @@ endfunction
 
 " UTILITY FUNCTIONS ----------------------------------------------------------
 function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
-  let expectedCWD = s:findRoot()
+  let expectedCWD = fnamemodify(s:findRoot(), ":p:h")
   try
     let cwdrespDecoded = json_decode(a:cwdresp)
   catch /.*/
@@ -1015,16 +1008,13 @@ function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
 	  \ )
     return s:PscIdeRetryCallback(a:input, a:errorm, 0, expectedCWD, cwdresp)
   endif
-  let tempfile = tempname()
-  call writefile([json_encode(a:cwdcommand)], tempfile)
-  call job_start(
+  let jobid = async#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	\ { "out_cb": { ch, resp -> s:PscIdeRetryCallback(a:input, a:errorm, a:cb, expectedCWD, resp) }
-	\ , "in_io": "file"
-	\ , "in_name": tempfile
-	\ , "err_cb": { ch, err -> s:log("s:PscIdeStartCallback error: " . err, 3) }
+	\ { "on_stdout": { ch, resp -> s:PscIdeRetryCallback(a:input, a:errorm, a:cb, expectedCWD, resp) }
+	\ , "on_stderr": { ch, err -> s:log("s:PscIdeStartCallback error: " . err, 3) }
 	\ })
-  call delete(tempfile)
+  call async#job#send(jobid, json_encode(a:cwdcommand))
+  call async#job#stop(jobid)
 endfunction
 
 function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
@@ -1036,6 +1026,7 @@ function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
   endtry
   call s:log("s:PscIdeRetryCallback: Decoded response of trying to reach server again: " 
 	     \ . string(cwdresp2Decoded), 1)
+  call s:log("s:PscIdeRetryCallback: Expecting CWD: " . a:expectedCWD, 1)
 
   if type(cwdresp2Decoded) == type({}) && cwdresp2Decoded.resultType ==# 'success' 
      \ && cwdresp2Decoded.result == a:expectedCWD
@@ -1062,24 +1053,27 @@ function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
 	  \ )
     return s:PscIdeCallback(a:input, a:errorm, 1, 0, resp)
   endif
-  let tempfile = tempname()
-  call writefile([enc], tempfile, "b")
   call s:log("callPscIde: purs ide client: " . enc, 3)
-  call job_start(
+  let jobid = async#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	\ { "out_cb": {ch, resp -> a:cb(s:PscIdeCallback(a:input, a:errorm, 1, a:cb, resp))}
-	\ , "in_io": "file"
-	\ , "in_name": tempfile
-	\ , "err_cb": {ch, err -> s:log("s:PscIdeRetryCallback error: " . err, 3)}
+	\ { "on_stdout": {ch, resp -> a:cb(s:PscIdeCallback(a:input, a:errorm, 1, a:cb, resp))}
+	\ , "on_stderr": {ch, err -> s:log("s:PscIdeRetryCallback error: " . err, 3)}
 	\ })
-  call delete(tempfile)
+  call async#job#send(jobid, enc)
+  call async#job#stop(jobid)
 endfunction
 
 function! s:PscIdeCallback(input, errorm, isRetry, cb, resp)
-  call s:log("s:PscIdeCallback: Raw response: " . a:resp, 3)
+  call s:log("s:PscIdeCallback: Raw response: " . string(a:resp), 3)
+
+  if (type(a:resp) == type([]))
+    let json = a:resp[0]
+  else
+    let json = a:resp
+  endif
 
   try
-    let decoded = json_decode(a:resp)
+    let decoded = json_decode(json)
   catch /.*/
     let s:pscidestarted = 0
     let s:pscideexternal = 0
@@ -1095,6 +1089,7 @@ function! s:PscIdeCallback(input, errorm, isRetry, cb, resp)
     endif
   endtry
 
+  call s:log("s:PscIdeCallback: Input: " . string(a:input), 3)
   call s:log("s:PscIdeCallback: Decoded response: " . string(decoded), 3)
 
   if (type(decoded) != type({}) || decoded['resultType'] !=# 'success') 
