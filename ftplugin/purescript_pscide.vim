@@ -1044,7 +1044,7 @@ fun! PSCIDEomni(findstart, base)
   endif
 endfun
 
-set omnifunc=PSCIDEomni
+setl omnifunc=PSCIDEomni
 
 " SET UP USERCOMPLETION ------------------------------------------------------
 fun! PSCIDEcomplete(findstart, base)
@@ -1058,7 +1058,7 @@ fun! PSCIDEcomplete(findstart, base)
 	\ })
 endfun
 
-set completefunc=PSCIDEcomplete
+setl completefunc=PSCIDEcomplete
 
 " SEARCH ---------------------------------------------------------------------
 com! -buffer -nargs=1 PSCIDEsearch call PSCIDEsearch(<q-args>)
