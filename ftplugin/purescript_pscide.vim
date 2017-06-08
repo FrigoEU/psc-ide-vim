@@ -306,10 +306,12 @@ function! PSCIDEload(logLevel, bang)
 endfunction
 
 function! s:PSCIDEloadCallback(logLevel, resp)
-  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# "success"
-    call s:log("purs ide: successfully loaded modules: " . string(a:resp["result"]), a:logLevel)
-  else
-    call s:echoError(get(a:resp, "result", "error"))
+  if type(a:resp) == v:t_dict
+    if a:resp['resultType'] ==# "success"
+      call s:log("purs ide: successfully loaded modules: " . string(a:resp["result"]), a:logLevel)
+    else
+      call s:echoError(get(a:resp, "result", "error"))
+    endif
   endif
 endfunction
 
