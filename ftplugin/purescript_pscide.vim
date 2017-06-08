@@ -185,8 +185,8 @@ function! PSCIDEstart(silent)
   exe "lcd" dir
   let jobid = async#job#start(
 	\ command,
-	\ { "on_stderr": { ch, msg -> s:log("purs ide server error: " . string(msg), 0) }
-	\ , "on_stdout": { ch, msg -> s:log("purs ide server got stdout: " . string(msg), 0) }
+	\ { "on_stderr": { ch, msg -> s:echoWarn(s:toString(msg), v:true) }
+	\ , "on_stdout": { ch, msg -> s:echoLog(s:toString(msg), v:true) }
 	\ , "on_exit": function("s:onServerExit")
   \ }
 	\ )
@@ -198,7 +198,7 @@ function! PSCIDEstart(silent)
 endfunction
 
 function! s:onServerExit(ch, msg, ev)
-  call s:echoWarn("server exited: " . string(a:ev))
+  call s:echoLog(s:toString(a:ev), v:true)
   let s:pscidestarted = 0
 endfunction
 
@@ -250,7 +250,8 @@ function! PSCIDEend()
   let jobid = async#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "on_exit": {job, status, ev -> s:PSCIDEendCallback() }
-	\ , "on_stderr": {err -> s:log("PSCIDEend error: " . string(err), 0)}
+	\ , "on_stdout": {err -> s:echoWarn(s:toString(err), v:true)}
+	\ , "on_stderr": {err -> s:echoWarn(s:toString(err), v:true)}
 	\ })
   call async#job#send(jobid, json_encode({'command': 'quit'}))
   call async#job#stop(jobid)
@@ -932,8 +933,6 @@ function! s:PSCIDElistCallback(resp)
     endif
   elseif type(a:resp) == v:t_dict
     call s:echoError(get(a:resp, "result", "error"))
-  else
-    call s:echoError("error")
   endif
 endfunction
 
@@ -1271,7 +1270,7 @@ function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
       call s:log("s:PscIdeStartCallback: Starting new server", 1)
       call PSCIDEstart(1)
     else
-      call s:log("s:PscIdeStartCallback: External server CWD matches with what we need", 1)
+      call s:echoLog("started", v:true)
       let s:pscidestarted = 1
       let s:pscideexternal = 1
     endif
@@ -1290,7 +1289,7 @@ function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
   let jobid = async#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "on_stdout": { ch, resp -> s:PscIdeRetryCallback(a:input, a:errorm, a:cb, expectedCWD, resp) }
-	\ , "on_stderr": { ch, err -> s:log("s:PscIdeStartCallback error: " . err, 3) }
+	\ , "on_stderr": { ch, err -> s:echoWarn(s:toString(err)) }
 	\ })
   call async#job#send(jobid, json_encode(a:cwdcommand))
   call async#job#stop(jobid)
@@ -1519,18 +1518,35 @@ function! s:mysystem(a, b)
   return system(a:a, a:b . "\n")
 endfunction
 
-fun! s:echoError(msg)
+fun! s:toString(msg)
+  if type(a:msg) == v:t_list
+    return join(map(copy(a:msg), { idx, msg -> s:toString(msg) }), " ")
+  elseif type(a:msg) == v:t_dict
+    let msg = {}
+    for key in a:msg
+      msg[key] = s:toString(a:msg[key])
+    endfor
+    return string(msg)
+  else
+    return string(a:msg)
+  endif
+endfun
+
+fun! s:echoError(msg, ...)
+  let title = a:0 > 0 && a:1 ? "purs ide server: " : "purs ide: "
   echohl ErrorMsg
-  echom "purs ide: " . a:msg
+  echom title . a:msg
   echohl Normal
 endfun
 
-fun! s:echoWarn(msg)
+fun! s:echoWarn(msg, ...)
+  let title = a:0 > 0 && a:1 ? "purs ide server: " : "purs ide: "
   echohl WarningMsg
-  echom "purs ide: " . a:msg
+  echom title . a:msg
   echohl Normal
 endfun
 
-fun! s:echoLog(msg)
-  echom "purs ide: " .a:msg
+fun! s:echoLog(msg, ...)
+  let title = a:0 > 0 && a:1 ? "purs ide server: " : "purs ide: "
+  echom title .a:msg
 endfun
