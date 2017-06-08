@@ -198,7 +198,7 @@ function! PSCIDEstart(silent)
 endfunction
 
 function! s:onServerExit(ch, msg, ev)
-  call s:log("purs ide server exited: " . string(ev), 0)
+  call s:echoWarn("server exited: " . string(a:ev))
   let s:pscidestarted = 0
 endfunction
 
