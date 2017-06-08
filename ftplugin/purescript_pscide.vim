@@ -929,9 +929,11 @@ function! s:PSCIDElistCallback(resp)
       for m in a:resp["result"]
         echom m
       endfor
-    else
-      call s:echoError(get(a:resp, "result", "error"))
     endif
+  elseif type(a:resp) == v:t_dict
+    call s:echoError(get(a:resp, "result", "error"))
+  else
+    call s:echoError("error")
   endif
 endfunction
 
