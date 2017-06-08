@@ -1523,7 +1523,9 @@ function! s:mysystem(a, b)
 endfunction
 
 fun! s:toString(msg)
-  if type(a:msg) == v:t_list
+  if type(a:msg) == v:t_string
+    echo a:msg
+  elseif type(a:msg) == v:t_list
     return join(map(copy(a:msg), { idx, msg -> s:toString(msg) }), " ")
   elseif type(a:msg) == v:t_dict
     let msg = {}
