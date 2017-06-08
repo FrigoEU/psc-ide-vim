@@ -201,8 +201,11 @@ function! PSCIDEstart(silent)
   let s:pscidestarted = 1
 endfunction
 
+let s:onServerExit = v:true
 function! s:onServerExit(ch, msg, ev)
-  call s:echoLog(s:toString(a:ev), v:true)
+  if s:onServerExit
+    call s:echoLog(s:toString(a:ev), v:true)
+  endif
   let s:pscidestarted = 0
 endfunction
 
@@ -251,14 +254,20 @@ function! PSCIDEend()
   if s:pscideexternal == 1
     return
   endif
-  let jobid = async#job#start(
-	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	\ { "on_exit": {job, status, ev -> s:PSCIDEendCallback() }
-	\ , "on_stdout": {err -> s:echoWarn(s:toString(err), v:true)}
-	\ , "on_stderr": {err -> s:echoWarn(s:toString(err), v:true)}
-	\ })
-  call async#job#send(jobid, json_encode({'command': 'quit'}))
-  call async#job#stop(jobid)
+  let s:onServerExit = v:false
+  let resp = systemlist(
+	\ "purs ide client -p " .g:psc_ide_server_port,
+	\ json_encode({"command": "quit"})
+	\ )
+  let s:onServerExit = v:true
+  let resp = join(resp, ' ')
+  if (resp =~ 'end of file$')
+    call s:echoLog("exit", v:true)
+  elseif (resp =~ 'couldn''t connect to purs ide server')
+    call s:echoLog("not running", v:true)
+  else
+    call s:echoLog(resp, v:true)
+  endif
 endfunction
 
 function! s:PSCIDEendCallback() 
