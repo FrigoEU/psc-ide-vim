@@ -766,9 +766,19 @@ function! PSCIDEapplySuggestion(bang)
   if empty(a:bang)
     call PSCIDEapplySuggestionPrime(expand("%:p") . "|" . line("."), v:true, 0)
   else
-    for key in keys(g:psc_ide_suggestions)
-      call PSCIDEapplySuggestionPrime(key, v:true, 0)
-    endfor
+    let l = 0
+    let len = len(keys(g:psc_ide_suggestions))
+    while l < len
+      " PSCIDEapplySuggestionPrime will change g:psc_ide_suggestions keys on
+      " the fly
+      let keys = keys(g:psc_ide_suggestions)
+      if len(keys) > 0
+	let key = keys[0]
+	call PSCIDEapplySuggestionPrime(key, v:true, 0)
+      else
+	break
+      endif
+    endwhile
   endif
 endfunction
 
@@ -807,13 +817,13 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
       call cursor(cursor[1], startColumn - 1)
     endif
     call remove(g:psc_ide_suggestions, a:key)
-    let g:psc_ide_suggestions = s:UpdateSuggestions(startLine, len(newLines) - 1)
+    let g:psc_ide_suggestions = s:updateSuggestions(startLine, len(newLines) - 1)
   else
     echom "PSCIDEapplySuggestion: multiline suggestions are not yet supported"
   endif
 endfunction
 
-fun! s:UpdateSuggestions(startLine, newLines)
+fun! s:updateSuggestions(startLine, newLines)
   let suggestions = {}
   for key in keys(g:psc_ide_suggestions)
     let sug = g:psc_ide_suggestions[key]
