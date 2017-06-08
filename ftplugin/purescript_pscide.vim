@@ -128,19 +128,23 @@ com! -buffer -nargs=* PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : 
 com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(len(<q-args>) ? <q-args> : expand("<cword>"))
 
 " AUTOSTART ------------------------------------------------------------------
-if g:psc_ide_syntastic_mode == 0
-  com! PSCIDErebuild call PSCIDErebuild(1, function("PSCIDEerrors"))
-  augroup purescript
-    au! BufWritePost *.purs call PSCIDErebuild(1, function("PSCIDEerrors"))
-  augroup END
-endif
+fun! s:autoStart()
+  if g:psc_ide_syntastic_mode == 0
+    com! PSCIDErebuild call PSCIDErebuild(1, function("PSCIDEerrors"))
+    augroup purescript
+      au! BufWritePost *.purs call PSCIDErebuild(1, function("PSCIDEerrors"))
+      au! BufAdd *.purs call PSCIDErebuild(1, function("PSCIDEerrors"))
+    augroup END
+  endif
 
-silent! call PSCIDEstart(0)
-silent! call PSCIDEload(0, "")
+  silent! call PSCIDEstart(0)
+  silent! call PSCIDEload(0, "")
+endfun
 
 " INTERNALS -------------------------------------------------------------------
 " execute only once so we do not redefine functions when they are running
 if g:loaded_psc_ide_vim
+  call s:autoStart()
   finish
 endif
 let g:loaded_psc_ide_vim = v:true
@@ -1550,3 +1554,6 @@ fun! s:echoLog(msg, ...)
   let title = a:0 > 0 && a:1 ? "purs ide server: " : "purs ide: "
   echom title .a:msg
 endfun
+
+" AUTOSTART ------------------------------------------------------------------
+call s:autoStart()
