@@ -1130,6 +1130,7 @@ fun! s:searchFn(resp)
   endfor
   " echom json_encode(a:resp)
   call setloclist(0, llist)
+  call setloclist(0, [], 'a', {'title': 'PureScript Search'})
   lopen
 endfun
 
@@ -1428,6 +1429,7 @@ function! PSCIDEerrors(llist)
   endif
   call sort(qflist, { e1, e2 -> e1["lnum"] == e2["lnum"] ? e1["col"] - e2["col"] : e1["lnum"] - e2["lnum"] })
   call setqflist(qflist)
+  call setqflist([], 'a', {'title': 'PureScript Errors'})
 endfunction
 
 " PSCIDEerr ------------------------------------------------------------------
