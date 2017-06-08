@@ -190,9 +190,9 @@ function! PSCIDEstart(silent)
   let jobid = async#job#start(
 	\ command,
 	\ { "on_stderr": { ch, msg -> s:echoWarn(s:toString(msg), v:true) }
-	\ , "on_stdout": { ch, msg -> s:echoLog(s:toString(msg), v:true) }
+	\ , "on_stdout": { ch, msg -> type(msg) == v:t_string ? s:echoLog(msg) : v:null }
 	\ , "on_exit": function("s:onServerExit")
-  \ }
+	\ }
 	\ )
   lcd -
 
