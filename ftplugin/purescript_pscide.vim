@@ -1370,9 +1370,13 @@ function! s:PscIdeCallback(input, errorm, isRetry, cb, resp)
   catch /.*/
     let s:pscidestarted = 0
     let s:pscideexternal = 0
+    let decoded =
+	  \ { "resultType": "error"
+	  \ , "result": "failed to decode response"
+	  \ }
 
     if a:isRetry
-      call s:log("s:PscIdeCallback: Error: Failed to contact server", 0)
+      call s:echoLog("failed to contact server", v:true)
     endif
     if !a:isRetry
       " Seems saving often causes `purs ide server` to crash. Haven't been able
