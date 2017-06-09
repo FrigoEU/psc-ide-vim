@@ -31,9 +31,7 @@ This plugin provides two kinds of syntax checking with syntastic. Controlling wh
 * :PSCIDEcaseSplit : Splits variables in a function declaration into its different constructors. Will probably get improved soon so you don't have to input the type yourself
 
 ![:PSCIDEcaseSplit gif](http://frigoeu.github.io/gifs/casesplit.gif)
-* :PSCIDEremoveImportQualifications : Remove all qualifications from your imports
 
-![:PSCIDEremoveimport gif](http://frigoeu.github.io/gifs/removeimport.gif)
 * :PSCIDEaddImportQualifications : Applies all import qualification suggestions in one go. Same as :PSCIDEapplySuggestion, but applies it to every line starting with "import"
 
 ![:PSCIDEaddimport gif](http://frigoeu.github.io/gifs/addimport.gif)
