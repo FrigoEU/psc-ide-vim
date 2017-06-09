@@ -723,16 +723,6 @@ function! PSCIDEapplySuggestionPrime(lnr, filename, silent)
   endif
 endfunction
 
-" Remove all import qualifications
-command! -buffer PSCIDEremoveImportQualifications call PSCIDEremoveImportQualifications()
-function! PSCIDEremoveImportQualifications()
-  let captureregex = "import\\s\\(\\S\\+\\)\\s*(.*)"
-  let replace = "import \\1"
-  let command = "silent %s:" . captureregex . ":" . replace . ":g|norm!``"
-  call s:log('Executing PSCIDEremoveImportQualifications command: ' . command, 3)
-  :exe command
-endfunction
-
 " Add all import qualifications
 command! -buffer PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
 function! PSCIDEaddImportQualifications()
