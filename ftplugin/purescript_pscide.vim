@@ -1140,16 +1140,13 @@ endfunction
 
 
 fun! s:jsonNULL()
-  return {'json_special_value': 'null'}
+  return v:null
 endf
 fun! s:jsonTrue()
-  return {'json_special_value': 'true'}
+  return v:true
 endf
 fun! s:jsonFalse()
-  return {'json_special_value': 'false'}
-endf
-fun! s:jsonToJSONBool(i)
-  return  a:i ? s:jsonTrue() : s:jsonFalse()
+  return v:false
 endf
 
 " Parse Errors & Suggestions ------------------------------------------
