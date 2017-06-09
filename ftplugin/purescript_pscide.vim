@@ -94,7 +94,6 @@ function! PSCIDEstart(silent)
 endfunction
 
 function! s:onServerExit(ch, msg, ev)
-  call s:log("purs ide server exited: " . string(ev), 0)
   let s:pscidestarted = 0
 endfunction
 
@@ -149,8 +148,7 @@ function! PSCIDEend()
 	\ { "on_exit": {job, status, ev -> s:PSCIDEendCallback() }
 	\ , "on_stderr": {err -> s:log("PSCIDEend error: " . string(err), 0)}
 	\ })
-  call async#job#send(jobid, json_encode({'command': 'quit'}))
-  call async#job#stop(jobid)
+  call async#job#send(jobid, json_encode({'command': 'quit'}) . "\n")
 endfunction
 
 function! s:PSCIDEendCallback() 
@@ -922,7 +920,7 @@ function! s:callPscIde(input, errorm, isRetry, cb)
 	  \ { "on_stdout": {ch, msg -> s:PscIdeStartCallback(a:input, a:errorm, a:cb, cwdcommand, msg)}
 	  \ , "on_stderr": {ch, err -> s:log("s:callPscIde error: " . string(err), 3)}
 	  \ })
-    call async#job#stop(jobid)
+    call async#job#send(jobid, json_encode(cwdcommand) . "\n")
     return
   endif
 
@@ -933,12 +931,12 @@ function! s:callPscIde(input, errorm, isRetry, cb)
 	\ { "on_stdout": {ch, msg -> a:cb(s:PscIdeCallback(a:input, a:errorm, a:isRetry, a:cb, msg))}
 	\ , "on_stderr": {ch, err -> s:log("s:callPscIde error: " . string(err), 0)}
 	\ })
-  call async#job#send(jobid, enc ."\n")
-  " call async#job#stop(jobid)
+  call async#job#send(jobid, enc . "\n")
+  " call async#job#stop(jobid) " Not needed I think, \n stops job
 endfunction
 
 function! s:callPscIdeSync(input, errorm, isRetry)
-  call s:log("callPscIde: start: Executing command: " . string(a:input), 3)
+  call s:log("callPscIdeSync: start: Executing command: " . string(a:input), 3)
 
   if s:projectvalid == 0
     call PSCIDEprojectValidate()
@@ -1003,14 +1001,20 @@ function! s:PscIdeStartCallback(input, errorm, cb, cwdcommand, cwdresp)
 	\ { "on_stdout": { ch, resp -> s:PscIdeRetryCallback(a:input, a:errorm, a:cb, expectedCWD, resp) }
 	\ , "on_stderr": { ch, err -> s:log("s:PscIdeStartCallback error: " . err, 3) }
 	\ })
-  call async#job#send(jobid, json_encode(a:cwdcommand))
-  call async#job#stop(jobid)
+  call async#job#send(jobid, json_encode(a:cwdcommand) . "\n")
 endfunction
 
 function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
-  call s:log("s:PscIdeRetryCallback: Raw response of trying to reach server again: " . a:cwdresp2, 1)
+  call s:log("s:PscIdeRetryCallback: Raw response of trying to reach server again: " . string(a:cwdresp2), 1)
+
+  if (type(a:cwdresp2) == type([]))
+    let json = a:cwdresp2[0]
+  else
+    let json = a:cwdresp2
+  endif
+
   try
-    let cwdresp2Decoded = json_decode(a:cwdresp2)
+    let cwdresp2Decoded = json_decode(json)
   catch /.*/
     let cwdresp2Decoded = {"resultType": "failed", "error": a:cwdresp2}
   endtry
@@ -1049,8 +1053,7 @@ function! s:PscIdeRetryCallback(input, errorm, cb, expectedCWD, cwdresp2)
 	\ { "on_stdout": {ch, resp -> a:cb(s:PscIdeCallback(a:input, a:errorm, 1, a:cb, resp))}
 	\ , "on_stderr": {ch, err -> s:log("s:PscIdeRetryCallback error: " . err, 3)}
 	\ })
-  call async#job#send(jobid, enc)
-  call async#job#stop(jobid)
+  call async#job#send(jobid, enc . "\n")
 endfunction
 
 function! s:PscIdeCallback(input, errorm, isRetry, cb, resp)
