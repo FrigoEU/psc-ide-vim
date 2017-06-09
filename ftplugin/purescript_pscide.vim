@@ -117,7 +117,6 @@ com! -buffer -nargs=1 PSCIDEcaseSplit call PSCIDEcaseSplit(<q-args>)
 com! -buffer -nargs=* PSCIDEtype call PSCIDEtype(len(<q-args>) ? <q-args> : expand("<cword>"), v:true)
 com! PSCIDElistImports call PSCIDElistImports()
 com! -buffer -bang PSCIDEapplySuggestion call PSCIDEapplySuggestion(<q-bang>)
-com! -buffer PSCIDEremoveImportQualifications call PSCIDEremoveImportQualifications()
 com! -buffer PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
 com! -buffer -nargs=* PSCIDEpursuit call PSCIDEpursuit(len(<q-args>) ? <q-args> : expand("<cword>"))
 com! -buffer PSCIDEprojectValidate call PSCIDEprojectValidate()
@@ -848,15 +847,6 @@ fun! s:updateSuggestions(startLine, newLines)
   endfor
   return suggestions
 endfun
-
-" Remove all import qualifications
-function! PSCIDEremoveImportQualifications()
-  let captureregex = "import\\s\\(\\S\\+\\)\\s*(.*)"
-  let replace = "import \\1"
-  let command = "silent %s:" . captureregex . ":" . replace . ":g|norm!``"
-  call s:log('Executing PSCIDEremoveImportQualifications command: ' . command, 3)
-  exe command
-endfunction
 
 " Add all import qualifications
 function! PSCIDEaddImportQualifications()
