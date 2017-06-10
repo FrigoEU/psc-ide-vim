@@ -121,7 +121,6 @@ com! -buffer PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
 com! -buffer -nargs=* PSCIDEpursuit call PSCIDEpursuit(len(<q-args>) ? <q-args> : expand("<cword>"))
 com! -buffer PSCIDEprojectValidate call PSCIDEprojectValidate()
 com! -buffer PSCIDElist call PSCIDElist()
-com! -buffer -count=1 PSCIDEerr call PSCIDEerr(<count>)
 com! -buffer PSCIDEstart call PSCIDEstart(0)
 com! -buffer -nargs=* PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : expand("<cword>"))
 com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(len(<q-args>) ? <q-args> : expand("<cword>"))
@@ -539,17 +538,10 @@ endfunction
 function! s:PSCIDErebuildCallback(filename, resp) 
   if type(a:resp) == v:t_dict && has_key(a:resp, "resultType") 
      \ && has_key (a:resp, "result") && type(a:resp.result) == v:t_list
-    if a:resp.resultType == "error"
-      let out = ParsePscJsonOutput(a:resp.result, [])
-    else
-      let out = ParsePscJsonOutput([], a:resp.result)
-    endif
-    if out.error != ""
-      call s:echoError("failed to interpret " . string(a:resp.result))
-    endif
+    let out = s:qfList(a:resp.result, a:resp.resultType)
 
     let g:psc_ide_suggestions = out.suggestions
-    return out.llist
+    return out.qfList
   else
     call s:echoError("failed to rebuild")
     return []
@@ -1401,27 +1393,28 @@ endfunction
 
 " INIT -----------------------------------------------------------------------
 function! PSCIDEerrors(llist)
-  let qflist = []
+  let qfList = []
   for e in a:llist
-    let eparts = split(e, ":")
-    let [type, filename, lnum, col, endLnum, endCol] = eparts[0:5]
-    let bufnr = bufnr(filename)
-    if bufnr != -1
+    if e.bufnr != -1
+      let text = split(e.text, '\n')
       call add(
-	    \ qflist
-	    \ , { "bufnr": bufnr
-	    \   , "filename": filename
-	    \   , "lnum": lnum
-	    \   , "col": col
-	    \   , "text": join(filter(eparts, {idx -> idx >= 6}), ":")
-	    \   , "type": type
+	    \ qfList
+	    \ , { "bufnr": e.bufnr
+	    \   , "filename": e.filename
+	    \   , "lnum": e.lnum
+	    \   , "col": e.col
+	    \   , "text": text[0]
+	    \   , "type": e.type
 	    \   }
 	    \ )
+      for line in text[1:]
+	call add(qfList, {"text": line})
+      endfor
     endif
   endfor
   if g:psc_ide_notify
-    let errsLen = len(filter(copy(qflist), { n, e -> e["type"] ==# "E" || e["type"] ==# "F" }))
-    let wrnLen = len(filter(copy(qflist), { n, e -> e["type"] ==# "W" || e["type"] ==# "V" }))
+    let errsLen = len(filter(copy(qfList), { n, e -> get(e, "type", "") ==# "E" || get(e, "type", "") ==# "F" }))
+    let wrnLen = len(filter(copy(qfList), { n, e -> get(e, "type", "") ==# "W" || get(e, "type", "") ==# "V" }))
     if errsLen > 0
       echohl ErrorMsg
       echom "purs: " . errsLen . " " . (errsLen == 1 ? "error" : "errors")
@@ -1434,88 +1427,42 @@ function! PSCIDEerrors(llist)
       call s:echoLog("success")
     endif
   endif
-  call sort(qflist, { e1, e2 -> e1["lnum"] == e2["lnum"] ? e1["col"] - e2["col"] : e1["lnum"] - e2["lnum"] })
-  call setqflist(qflist)
+  call setqflist(qfList)
   call setqflist([], 'a', {'title': 'PureScript Errors'})
 endfunction
 
-" PSCIDEerr ------------------------------------------------------------------
-fun! PSCIDEerr(nr)
-  let qf = getqflist()
-  if a:nr > 0 && a:nr < len(qf) + 1
-    let e = qf[a:nr - 1]
-    echo getline(e["lnum"])
-    let col = e["col"]
-    echon "\n" . repeat(" ", col - 1)
-    echohl Error
-    echon "^\n\n"
-    echohl Normal
-    echo e["text"]
-  endif
-endfun
-
-
 " Parse Errors & Suggestions -------------------------------------------------
-" Returns { error :: String, 
-"           llist :: Array (String in errorformat), 
-"           suggestions :: StrMap { startLine :: Int,
-"                                  startColumn :: Int,
-"                                  endLine :: Int,
-"                                  endColumn :: Int,
-"                                  filename :: String,
-"                                  replacement :: String } }
-" Key of suggestions = <filename>|<linenr>
-function! ParsePscJsonOutput(errors, warnings)
-  let out = []
+function! s:qfList(errors, resultType)
+  let qfList = []
   let suggestions = {}
 
-  for e in a:warnings
-    try
-      call s:addEntry(out, suggestions, 0, e)
-    catch /\m^Vim\%((\a\+)\)\=:E716/
-      return {'error': 'ParsePscJsonOutput: unrecognized warning format', 
-            \ 'llist': [], 
-            \ 'suggestions': []}
-    endtry
-  endfor
   for e in a:errors
-    try
-      call s:addEntry(out, suggestions, 1, e)
-    catch /\m^Vim\%((\a\+)\)\=:E716/
-      return {'error': 'ParsePscJsonOutput: unrecognized error format', 
-            \ 'llist': [], 
-            \ 'suggestions': []}
-    endtry
+    call add(qfList, s:qfEntry(e, a:resultType ==# "error"))
+    if type(get(e, "suggestion", v:null)) == v:t_dict
+      call s:addSuggestion(suggestions, e)
+    endif
   endfor
 
-  return {'error': "", 'llist': out, 'suggestions': suggestions}
+  call sort(qfList, { e1, e2 -> e1["lnum"] == e2["lnum"] ? e1["col"] - e2["col"] : e1["lnum"] - e2["lnum"] })
+  return {"qfList": qfList, "suggestions": suggestions}
 endfunction
 
-function! s:addEntry(out, suggestions, err, e)
-  let hasSuggestion = type(get(a:e, "suggestion", v:null)) == v:t_dict
+function! s:qfEntry(e, err)
   let isError = a:err == 1
-  let letter = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
-  let startL = has_key(a:e, "position") && type(a:e.position) == v:t_dict
+  let hasSuggestion = type(get(a:e, "suggestion", v:null)) == v:t_dict
+  let type = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
+  let lnum = has_key(a:e, "position") && type(a:e.position) == v:t_dict
 	\ ? a:e.position.startLine : 1
-  let startC = has_key(a:e, "position") && type(a:e.position) == v:t_dict
+  let col = has_key(a:e, "position") && type(a:e.position) == v:t_dict
 	\ ? a:e.position.startColumn : 1
-  let endL = has_key(a:e, "position") && type(a:e.position) == v:t_dict
-	\ ? a:e.position.endLine : 1
-  let endC = has_key(a:e, "position") && type(a:e.position) == v:t_dict
-	\ ? a:e.position.endColumn : 1
-  let msg = join([letter, 
-                \ a:e.filename, 
-                \ startL,
-                \ startC,
-		\ endL,
-		\ endC,
-                \ a:e.message], ":")
-
-  call add(a:out, msg)
-
-  if hasSuggestion
-    call s:addSuggestion(a:suggestions, a:e)
-  endif
+  return
+	\ { "filename": a:e.filename
+	\ , "bufnr": bufnr(a:e.filename)
+	\ , "lnum": lnum
+	\ , "col": col
+	\ , "text": a:e.message
+	\ , "type": type
+	\ }
 endfunction
 
 function! s:addSuggestion(suggestions, e)
