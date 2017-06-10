@@ -94,7 +94,9 @@ endif
 
 " Adding iskeyword symbols to improve <cword> expansion- ---------------------
 " 124 = |
-setlocal iskeyword+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,^
+setl iskeyword+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,^
+setl omnifunc=PSCIDEomni
+setl completefunc=PSCIDEcomplete
 
 " Syntastic initialization ---------------------------------------------------
 if exists('g:syntastic_extra_filetypes')
@@ -1074,8 +1076,6 @@ fun! PSCIDEomni(findstart, base)
   endif
 endfun
 
-setl omnifunc=PSCIDEomni
-
 " SET UP USERCOMPLETION ------------------------------------------------------
 fun! PSCIDEcomplete(findstart, base)
   return s:completeFn(a:findstart, a:base, { ident, qualifier ->
@@ -1087,8 +1087,6 @@ fun! PSCIDEcomplete(findstart, base)
 	\ }
 	\ })
 endfun
-
-setl completefunc=PSCIDEcomplete
 
 " SEARCH ---------------------------------------------------------------------
 fun! PSCIDEsearch(ident)
