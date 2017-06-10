@@ -1225,7 +1225,9 @@ fun! s:PSCIDEimportModuleCallback(resp)
     let view = winsaveview()
     %d_
     call append(0, a:resp.result)
+    $d_
     let view.lnum += 1
+    let view.topline += 1
     call winrestview(view)
   else
     call s:echoError(get(a:resp, "result", "error"))
