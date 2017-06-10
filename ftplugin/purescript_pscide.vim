@@ -130,10 +130,10 @@ com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimport
 " AUTOSTART ------------------------------------------------------------------
 fun! s:autoStart()
   if g:psc_ide_syntastic_mode == 0
-    com! PSCIDErebuild call PSCIDErebuild(1, function("PSCIDEerrors"))
+    com! PSCIDErebuild call PSCIDErebuild(v:true, function("PSCIDEerrors"))
     augroup purescript
-      au! BufWritePost *.purs call PSCIDErebuild(1, function("PSCIDEerrors"))
-      au! BufAdd *.purs call PSCIDErebuild(1, function("PSCIDEerrors"))
+      au! BufWritePost *.purs call PSCIDErebuild(v:true, function("PSCIDEerrors"))
+      au! BufAdd *.purs call PSCIDErebuild(v:true, function("PSCIDEerrors"))
     augroup END
   endif
 
@@ -446,6 +446,9 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
   let &l:ar = ar
   let a:view.lnum = a:view.lnum + line("$") - a:lines
   call winrestview(a:view)
+
+  " trigger PSCIDErebuild through autocmd
+  update
 endfunction
 
 function! PSCIDEgoToDefinition(ident)
@@ -515,37 +518,46 @@ function! PSCIDErebuild(async, ...)
   let filename = expand("%:p")
   let input = {'command': 'rebuild', 'params': {'file': filename}}
 
-  if a:0 > 0 && type(a:1) == v:t_func
+  if a:0 >= 1 && type(a:1) == v:t_func
     let CallBack = a:1
   else
     let CallBack = {resp -> resp}
   endif
 
+  if a:0 >= 2
+    let silent = a:2
+  else
+    let silent = v:false
+  endif
+
   if a:async
     call s:callPscIde(
 	  \ input,
+	  \ "failed to rebuild",
 	  \ 0,
-	  \ 0,
-	  \ { msg -> CallBack(s:PSCIDErebuildCallback(filename, msg)) }
+	  \ { msg -> CallBack(s:PSCIDErebuildCallback(filename, msg, silent)) }
 	  \ )
   else
     let resp = s:PSCIDErebuildCallback(
 	      \ filename,
 	      \ s:callPscIdeSync(input, 0, 0),
+	      \ silent
 	      \ )
     return CallBack(resp)
   endif
 endfunction
 
-function! s:PSCIDErebuildCallback(filename, resp) 
+function! s:PSCIDErebuildCallback(filename, resp, silent) 
   if type(a:resp) == v:t_dict && has_key(a:resp, "resultType") 
      \ && has_key (a:resp, "result") && type(a:resp.result) == v:t_list
-    let out = s:qfList(a:resp.result, a:resp.resultType)
+    let out = s:qfList(a:filename, a:resp.result, a:resp.resultType)
 
     let g:psc_ide_suggestions = out.suggestions
     return out.qfList
   else
-    call s:echoError("failed to rebuild")
+    if !a:silent
+      call s:echoError("failed to rebuild")
+    endif
     return []
   endif
 endfunction
@@ -820,6 +832,9 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
     endif
     call remove(g:psc_ide_suggestions, a:key)
     let g:psc_ide_suggestions = s:updateSuggestions(startLine, len(newLines) - 1)
+
+    " trigger PSCIDErebuild through autocmd
+    update
   else
     echom "PSCIDEapplySuggestion: multiline suggestions are not yet supported"
   endif
@@ -1223,6 +1238,9 @@ fun! s:PSCIDEimportModuleCallback(resp)
   else
     call s:echoError(get(a:resp, "result", "error"))
   endif
+
+  " trigger PSCIDErebuild through autocmd
+  update
 endfun
 
 fun! PSCIDEimportModuleCompletion(ArgLead, CmdLine, CursorPos)
@@ -1391,7 +1409,13 @@ function! s:log(str, level)
 endfunction
 
 " INIT -----------------------------------------------------------------------
-function! PSCIDEerrors(llist)
+function! PSCIDEerrors(llist, ...)
+  if a:0 > 1
+    let silent = a:1
+  else
+    let silent = v:false
+  endif
+
   let qfList = []
   for e in a:llist
     if e.bufnr != -1
@@ -1411,7 +1435,7 @@ function! PSCIDEerrors(llist)
       endfor
     endif
   endfor
-  if g:psc_ide_notify
+  if !silent && g:psc_ide_notify
     let errsLen = len(filter(copy(qfList), { n, e -> get(e, "type", "") ==# "E" || get(e, "type", "") ==# "F" }))
     let wrnLen = len(filter(copy(qfList), { n, e -> get(e, "type", "") ==# "W" || get(e, "type", "") ==# "V" }))
     if errsLen > 0
@@ -1431,12 +1455,12 @@ function! PSCIDEerrors(llist)
 endfunction
 
 " Parse Errors & Suggestions -------------------------------------------------
-function! s:qfList(errors, resultType)
+function! s:qfList(filename, errors, resultType)
   let qfList = []
   let suggestions = {}
 
   for e in a:errors
-    call add(qfList, s:qfEntry(e, a:resultType ==# "error"))
+    call add(qfList, s:qfEntry(e, a:filename, a:resultType ==# "error"))
     if type(get(e, "suggestion", v:null)) == v:t_dict
       call s:addSuggestion(suggestions, e)
     endif
@@ -1446,7 +1470,7 @@ function! s:qfList(errors, resultType)
   return {"qfList": qfList, "suggestions": suggestions}
 endfunction
 
-function! s:qfEntry(e, err)
+function! s:qfEntry(e, filename, err)
   let isError = a:err == 1
   let hasSuggestion = type(get(a:e, "suggestion", v:null)) == v:t_dict
   let type = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
@@ -1455,8 +1479,8 @@ function! s:qfEntry(e, err)
   let col = has_key(a:e, "position") && type(a:e.position) == v:t_dict
 	\ ? a:e.position.startColumn : 1
   return
-	\ { "filename": a:e.filename
-	\ , "bufnr": bufnr(a:e.filename)
+	\ { "filename": a:filename
+	\ , "bufnr": bufnr(a:filename)
 	\ , "lnum": lnum
 	\ , "col": col
 	\ , "text": a:e.message
