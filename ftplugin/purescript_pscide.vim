@@ -1420,7 +1420,7 @@ function! PSCIDEerrors(llist)
       echohl Normal
     elseif wrnLen > 0
       echohl WarningMsg
-      echom "purs: " . wrnLen . " ". (wrnLen == 1 ? "warnings" : "warning")
+      echom "purs: " . wrnLen . " ". (wrnLen == 1 ? "warning" : "warnings")
       echohl Normal
     else
       call s:echoLog("success")
