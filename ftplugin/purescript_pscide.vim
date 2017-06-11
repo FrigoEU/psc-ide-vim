@@ -514,7 +514,7 @@ function! s:goToDefinition(definedAt)
 endfunction
 
 function! PSCIDErebuild(async, ...)
-  let g:psc_ide_suggestions = {}
+
   let filename = expand("%:p")
   let input = {'command': 'rebuild', 'params': {'file': filename}}
 
@@ -548,6 +548,7 @@ function! PSCIDErebuild(async, ...)
 endfunction
 
 function! s:PSCIDErebuildCallback(filename, resp, silent) 
+  let g:psc_ide_suggestions = {}
   if type(a:resp) == v:t_dict && has_key(a:resp, "resultType") 
      \ && has_key (a:resp, "result") && type(a:resp.result) == v:t_list
     let out = s:qfList(a:filename, a:resp.result, a:resp.resultType)
