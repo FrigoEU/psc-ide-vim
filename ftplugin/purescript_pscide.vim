@@ -1515,20 +1515,20 @@ endfun
 fun! s:echoError(msg, ...)
   let title = a:0 > 0 && a:1 ? "purs ide server: " : "purs ide: "
   echohl ErrorMsg
-  echom title . a:msg
+  echom title . join(split(a:msg, '\n'), ' ')
   echohl Normal
 endfun
 
 fun! s:echoWarn(msg, ...)
   let title = a:0 > 0 && a:1 ? "purs ide server: " : "purs ide: "
   echohl WarningMsg
-  echom title . a:msg
+  echom title . join(split(a:msg, '\n'), ' ')
   echohl Normal
 endfun
 
 fun! s:echoLog(msg, ...)
   let title = a:0 > 0 && a:1 ? "purs ide server: " : "purs ide: "
-  echom title .a:msg
+  echom title . join(split(a:msg, '\n'), ' ')
 endfun
 
 fun! PSCIDEgetKeyword()
