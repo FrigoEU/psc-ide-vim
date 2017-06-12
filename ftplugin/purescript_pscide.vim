@@ -562,6 +562,7 @@ endfunction
 function! PSCIDEaddTypeAnnotation(ident)
   call s:getType(
 	\ a:ident,
+	\ v:true,
 	\ { resp -> s:PSCIDEaddTypeAnnotationCallback(a:ident, resp) }
 	\ )
 endfunction
@@ -573,7 +574,7 @@ function! s:PSCIDEaddTypeAnnotationCallback(ident, resp)
     let indent = matchstr(getline(lnr), '^\s*\ze')
     call append(lnr - 1, indent . s:StripNewlines(result[0]['identifier']) . ' :: ' . s:StripNewlines(result[0]["type"]))
   else
-    call s:echoWarn("no type information found for " .a:indent)
+    call s:echoWarn("no type information found for " .a:ident)
   endif
 endfunction
 
