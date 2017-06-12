@@ -746,7 +746,7 @@ function! s:getType(ident, filterModules, cb)
   let currentModule = s:ExtractModule()
   if a:filterModules
     let modules = add(map(s:ListImports(currentModule), {key, val -> val["module"]}), currentModule)
-    let filters = s:modulesFilter(modules)
+    let filters = [s:modulesFilter(modules)]
   else
     let filters = []
   endif
