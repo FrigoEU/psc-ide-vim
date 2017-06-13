@@ -42,7 +42,7 @@ fun! purescript#ide#call(input, errorm, isRetry, cb)
     let jobid = async#job#start(
 	  \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	  \ { "on_stdout": {ch, msg -> s:startFn(a:input, a:errorm, a:cb, cwdcommand, msg)}
-	  \ , "on_stderr": {ch, err -> purescript#ide#utils#debug("s:callPscIde error: " . string(err), 3)}
+	  \ , "on_stderr": {ch, err -> purescript#ide#utils#debug("purescript#ide#call error: " . string(err), 3)}
 	  \ })
     call async#job#send(jobid, json_encode(cwdcommand) . "\n")
     return
@@ -52,7 +52,7 @@ fun! purescript#ide#call(input, errorm, isRetry, cb)
   let jobid = async#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "on_stdout": {ch, msg -> a:cb(s:callFn(a:input, a:errorm, a:isRetry, a:cb, msg))}
-	\ , "on_stderr": {ch, err -> purescript#ide#utils#debug("s:callPscIde error: " . string(err), 0)}
+	\ , "on_stderr": {ch, err -> purescript#ide#utils#debug("purescript#ide#call error: " . string(err), 0)}
 	\ })
   call async#job#send(jobid, enc . "\n")
   " call async#job#stop(jobid) " Not needed I think, \n stops job
@@ -114,7 +114,7 @@ fun! s:startFn(input, errorm, cb, cwdcommand, cwdresp)
   else
     let jobid = async#job#start(
 	  \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	  \ { "on_stdout": { ch, resp -> s:retryFn(a:input, a:errorm, a:cb, expectedCWD, resp) }
+	  \ { "on_stdout": { ch, resp -> s:retryFn(a:input, a:errorm, a:cb, cwd, resp) }
 	  \ , "on_stderr": { ch, err -> purescript#ide#utils#warn(purescript#ide#utils#toString(err)) }
 	  \ })
     call async#job#send(jobid, json_encode(a:cwdcommand) . "\n")
@@ -196,7 +196,7 @@ fun! s:callFn(input, errorm, isRetry, cb, resp)
       " Seems saving often causes `purs ide server` to crash. Haven't been able
       " to figure out why. It doesn't crash when I run it externally...
       " retrying is then the next best thing
-      return s:callPscIde(a:input, a:errorm, 1, a:cb) " Keeping track of retries so we only retry once
+      return purescript#ide#call(a:input, a:errorm, 1, a:cb) " Keeping track of retries so we only retry once
     endif
   endtry
 

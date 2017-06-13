@@ -17,11 +17,11 @@ fun! purescript#ide#utils#toString(msg)
   if type(a:msg) == v:t_string
     echo a:msg
   elseif type(a:msg) == v:t_list
-    return join(map(copy(a:msg), { idx, msg -> s:toString(msg) }), " ")
+    return join(map(copy(a:msg), { idx, msg -> purescript#ide#utils#toString(msg) }), " ")
   elseif type(a:msg) == v:t_dict
     let msg = {}
     for key in a:msg
-      msg[key] = s:toString(a:msg[key])
+      msg[key] = purescript#ide#utils#toString(a:msg[key])
     endfor
     return string(msg)
   else
