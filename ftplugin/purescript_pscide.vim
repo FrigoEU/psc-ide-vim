@@ -1268,7 +1268,7 @@ endfunction
 
 fun! PSCIDEgetKeyword()
   let isk = &l:isk
-  setl isk+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,~,^
+  setl isk+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,~,?,^
   let keyword = expand("<cword>")
   let &l:isk = isk
   return keyword
