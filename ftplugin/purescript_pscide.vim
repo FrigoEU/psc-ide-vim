@@ -53,33 +53,35 @@ if !exists("g:psc_ide_omnicompletion_prefix_filter")
   let g:psc_ide_omnicompletion_prefix_filter = v:true
 endif
 
-let s:prelude = [
-  \ "Control.Applicative",
-  \ "Control.Apply",
-  \ "Control.Bind",
-  \ "Control.Category",
-  \ "Control.Monad",
-  \ "Control.Semigroupoid",
-  \ "Data.Boolean",
-  \ "Data.BooleanAlgebra",
-  \ "Data.Bounded",
-  \ "Data.CommutativeRing",
-  \ "Data.Eq",
-  \ "Data.EuclideanRing",
-  \ "Data.Field",
-  \ "Data.Function",
-  \ "Data.Functor",
-  \ "Data.HeytingAlgebra",
-  \ "Data.NaturalTransformation",
-  \ "Data.Ord",
-  \ "Data.Ordering",
-  \ "Data.Ring",
-  \ "Data.Semigroup",
-  \ "Data.Semiring",
-  \ "Data.Show",
-  \ "Data.Unit",
-  \ "Data.Void",
-  \ ]
+if !exists("g:psc_ide_prelude")
+  let g:psc_ide_prelude = [
+    \ "Control.Applicative",
+    \ "Control.Apply",
+    \ "Control.Bind",
+    \ "Control.Category",
+    \ "Control.Monad",
+    \ "Control.Semigroupoid",
+    \ "Data.Boolean",
+    \ "Data.BooleanAlgebra",
+    \ "Data.Bounded",
+    \ "Data.CommutativeRing",
+    \ "Data.Eq",
+    \ "Data.EuclideanRing",
+    \ "Data.Field",
+    \ "Data.Function",
+    \ "Data.Functor",
+    \ "Data.HeytingAlgebra",
+    \ "Data.NaturalTransformation",
+    \ "Data.Ord",
+    \ "Data.Ordering",
+    \ "Data.Ring",
+    \ "Data.Semigroup",
+    \ "Data.Semiring",
+    \ "Data.Show",
+    \ "Data.Unit",
+    \ "Data.Void",
+    \ ]
+endif
 
 if !exists('g:psc_ide_filter_submodules')
   " this might hide some modules, e.g. React.DOM.Dynamic will be hidden by
@@ -375,7 +377,7 @@ fun! s:FilterTop(respResults)
 endfun
 
 fun! s:FilterPrelude(respResults)
-  call filter(a:respResults, { idx, r -> index(s:prelude, r.module) == -1 })
+  call filter(a:respResults, { idx, r -> index(g:psc_ide_prelude, r.module) == -1 })
 endfun
 
 function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines) 
