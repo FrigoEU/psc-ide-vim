@@ -53,7 +53,3 @@ fun! purescript#ide#utils#debug(str, level)
     echom a:str
   endif
 endfun
-
-fun! purescript#ide#utils#system(prog, input)
-  return system(a:prog, a:input . "\n")
-endfun
