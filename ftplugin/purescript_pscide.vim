@@ -111,7 +111,7 @@ let g:syntastic_purescript_checkers = ['pscide']
 " COMMANDS -------------------------------------------------------------------
 com! -buffer PSCIDEend call PSCIDEend()
 com! -buffer -bang PSCIDEload call PSCIDEload(0, <q-bang>)
-com! -buffer -nargs=* PSCIDEimportIdentifier call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
+com! -buffer -nargs=* -complete=custom,PSCIDEimportCompletion PSCIDEimportIdentifier call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer -nargs=* PSCIDEgoToDefinition call PSCIDEgoToDefinition(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))
 com! -buffer PSCIDEcwd call PSCIDEcwd()
@@ -348,6 +348,18 @@ function! s:importIdentifier(ident, module)
 	\ {resp -> s:PSCIDEimportIdentifierCallback(resp, a:ident, view, lines)}
 	\ )
 endfunction
+
+fun! PSCIDEimportCompletion(argLead, cmdLead, cursorPos)
+  let res = s:completeFn(v:false, a:argLead, { ident, qualifer ->
+	\ {'command': 'complete'
+	\ , 'params':
+	\   { 'matcher': s:flexMatcher(a:argLead)
+	\   , 'options': { 'groupReexports': v:true }
+	\   }
+	\ }
+	\ })
+  return join(map(res, {idx, r -> r.word}), "\n")
+endfun
 
 fun! s:FilterTopFn(module, modules)
   " module :: Array String
