@@ -115,7 +115,7 @@ com! -buffer -nargs=* PSCIDEgoToDefinition call PSCIDEgoToDefinition(len(<q-args
 com! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))
 com! -buffer PSCIDEcwd call PSCIDEcwd()
 com! -buffer PSCIDEaddClause call PSCIDEaddClause()
-com! -buffer -nargs=1 PSCIDEcaseSplit call PSCIDEcaseSplit(<q-args>)
+com! -buffer PSCIDEcaseSplit call PSCIDEcaseSplit()
 com! -buffer -nargs=* PSCIDEtype call PSCIDEtype(len(<q-args>) ? <q-args> : expand("<cword>"), v:true)
 com! PSCIDElistImports call PSCIDElistImports()
 com! -buffer -bang PSCIDEapplySuggestion call PSCIDEapplySuggestion(<q-bang>)
@@ -626,7 +626,7 @@ endfunction
 " CASESPLIT
 " Hover cursor over variable in function declaration -> pattern match on all
 " different cases of the variable
-function! PSCIDEcaseSplit(type)
+function! PSCIDEcaseSplit()
   let winview = winsaveview()
   let lnr = line(".")
   let begin = s:findStart()
@@ -634,11 +634,15 @@ function! PSCIDEcaseSplit(type)
   let len = len(matchstr(line[begin:], '^\k*'))
   let word = line[:len]
 
+  call inputsave()
+  let type = input('Type: ')
+  call inputrestore()
+
   call winrestview(winview)
 
   let command = {
 	\ 'command': 'caseSplit',
-	\ 'params': { 'line': line, 'begin': begin, 'end': begin + len, 'annotations': v:false, 'type': a:type}
+	\ 'params': { 'line': line, 'begin': begin, 'end': begin + len, 'annotations': v:false, 'type': type}
 	\ }
 
   call s:callPscIde(
