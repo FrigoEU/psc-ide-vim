@@ -1034,8 +1034,11 @@ fun! s:omniCommand(ident, qualifier)
 endfun
 
 fun! s:compareByDefinedAt(e1, e2)
-  let d1 = a:e1["definedAt"]
-  let d2 = a:e2["definedAt"]
+  let d1 = get(a:e1, "definedAt", v:null)
+  let d2 = get(a:e2, "definedAt", v:null)
+  if type(d1) != v:t_dict || type(d2) != v:t_dict
+    return v:false
+  endif
   if d1["name"] != d2["name"]
 	\ || d1["start"][0] != d2["start"][0]
 	\ || d1["start"][1] != d2["start"][1]
