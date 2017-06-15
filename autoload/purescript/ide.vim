@@ -54,7 +54,7 @@ fun! purescript#ide#call(input, errorm, isRetry, cb, ...)
   let jobid = async#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "on_stdout": {ch, msg -> a:cb(s:callFn(a:input, a:errorm, a:isRetry, a:cb, msg))}
-	\ , "on_stderr": {ch, err -> purescript#ide#utils#debug("purescript#ide#call error: " . string(err), 0)}
+	\ , "on_stderr": {ch, err -> purescript#ide#utils#debug("purescript#ide#call error: " . purescript#ide#utils#toString(err), 0)}
 	\ })
   call async#job#send(jobid, enc . "\n")
   " call async#job#stop(jobid) " Not needed I think, \n stops job
@@ -218,4 +218,12 @@ fun! s:callFn(input, errorm, isRetry, cb, resp, ...)
     call purescript#ide#utils#log(a:errorm)
   endif
   return decoded
+endfun
+
+fun! purescript#ide#handlePursError(resp)
+  if type(a:resp) == v:t_dict
+    call purescript#ide#utils#error(get(a:resp, "result", "error"))
+  else if type(a:resp) == v:t_string
+    call purescript#ide#utils#error(a:resp)
+  endif
 endfun

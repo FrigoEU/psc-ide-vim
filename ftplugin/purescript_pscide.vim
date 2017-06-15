@@ -282,13 +282,10 @@ function! PSCIDEload(logLevel, bang)
 endfunction
 
 function! s:PSCIDEloadCallback(logLevel, resp)
-  if type(a:resp) == v:t_dict
-    if a:resp['resultType'] ==# "success"
-      call purescript#ide#utils#debug("purs ide: successfully loaded modules: " . string(a:resp["result"]), a:logLevel)
-    else
-      call purescript#ide#utils#error(get(a:resp, "result", "error"))
-    endif
+  if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
+    return purescript#ide#handlePursError(a:resp)
   endif
+  call purescript#ide#utils#log(tolower(a:resp["result"]))
 endfunction
 
 function! s:ExtractModule()
@@ -396,9 +393,8 @@ fun! s:FilterPrelude(respResults)
 endfun
 
 function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines) 
-  call purescript#ide#utils#debug("s:PSCIDEimportIdentifierCallback", 3)
-  if a:resp.resultType !=# "success"
-    return purescript#ide#utils#error(get(a:resp, "result", "error"))
+  if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
+    return purescript#ide#handlePursError(a:resp)
   endif
 
   if type(a:resp.result) == v:t_list
@@ -451,7 +447,9 @@ function! PSCIDEgoToDefinition(ident)
 endfunction
 
 function! s:PSCIDEgoToDefinitionCallback(ident, resp)
-  call purescript#ide#utils#debug("s:PSCIDEgoToDefinitionCallback", 3)
+  if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
+    return purescript#ide#handlePursError(a:resp)
+  endif
   let results = []
   for res in a:resp.result
     if empty(filter(copy(results), { idx, val -> 
@@ -463,23 +461,19 @@ function! s:PSCIDEgoToDefinitionCallback(ident, resp)
       call add(results, res)
     endif
   endfor
-  if type(a:resp) == v:t_dict && a:resp.resultType ==# "success"
-    if len(results) > 1
-      let choice = s:pickOption("Multiple possibilities for " . a:ident, results, "module")
-    elseif len(results) == 1
-      let choice = {"picked": v:true, "option": results[0]}
-    else
-      let choice = {"picked": v:false, "option": v:null}
-    endif
-    if choice.picked && type(choice.option.definedAt) == type({})
-      call s:goToDefinition(choice.option.definedAt)
-    elseif type(choice.option) == v:t_dict
-      call purescript#ide#utils#warn("no location information found for: " . a:ident . " in module " . choice.option.module)
-    else
-      call purescript#ide#utils#warn("no location information found for: " . a:ident)
-    endif
+  if len(results) > 1
+    let choice = s:pickOption("Multiple possibilities for " . a:ident, results, "module")
+  elseif len(results) == 1
+    let choice = {"picked": v:true, "option": results[0]}
   else
-    call purescript#ide#utils#error(get(a:resp, "result", "error"))
+    let choice = {"picked": v:false, "option": v:null}
+  endif
+  if choice.picked && type(choice.option.definedAt) == type({})
+    call s:goToDefinition(choice.option.definedAt)
+  elseif type(choice.option) == v:t_dict
+    call purescript#ide#utils#warn("no location information found for: " . a:ident . " in module " . choice.option.module)
+  else
+    call purescript#ide#utils#warn("no location information found for: " . a:ident)
   endif
 endfunction
 
@@ -562,7 +556,10 @@ function! PSCIDEaddTypeAnnotation(ident)
 endfunction
 
 function! s:PSCIDEaddTypeAnnotationCallback(ident, resp)
-  if type(a:resp) == v:t_dict && a:resp["resultType"] ==# 'success' && !empty(a:resp["result"])
+  if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
+    return purescript#ide#handlePursError(a:resp)
+  endif
+  if !empty(a:resp["result"])
     let result = a:resp["result"]
     let lnr = line(".")
     let indent = matchstr(getline(lnr), '^\s*\ze')
@@ -584,11 +581,10 @@ function! PSCIDEcwd()
 endfunction
 
 function! s:PSCIDEcwdCallback(resp)
-  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
-    call purescript#ide#utils#log("current working directory: " . a:resp.result)
-  else
-    call purescript#ide#utils#error(get(a:resp, "result", "error"))
+  if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
+    return purescript#ide#handlePursError(a:resp)
   endif
+  call purescript#ide#utils#log("current working directory: " . a:resp.result)
 endfunction
 
 " ADDCLAUSE
@@ -608,13 +604,13 @@ function! PSCIDEaddClause()
 endfunction
 
 function! s:PSCIDEaddClauseCallback(lnr, resp)
-  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
-    call purescript#ide#utils#debug('PSCIDEaddClause results: ' . string(a:resp.result), 3)
-    call append(a:lnr, a:resp.result)
-    normal dd
-  else
-    call purescript#ide#utils#error(get(a:resp, "result", "error"))
+  if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
+    return purescript#ide#handlePursError(a:resp)
   endif
+
+  call purescript#ide#utils#debug('PSCIDEaddClause results: ' . string(a:resp.result), 3)
+  call append(a:lnr, a:resp.result)
+  normal dd
 endfunction
 
 " CASESPLIT
@@ -644,12 +640,11 @@ function! PSCIDEcaseSplit(type)
 endfunction
 
 function! s:PSCIDEcaseSplitCallback(lnr, resp)
-  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
-    call append(a:lnr, a:resp.result)
-    normal dd
-  else
-    call purescript#ide#utils#error(get(a:resp, "result", "error"))
+  if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
+    return purescript#ide#handlePursError(a:resp)
   endif
+  call append(a:lnr, a:resp.result)
+  normal dd
 endfunction
 
 " TYPE -----------------------------------------------------------------------
@@ -670,7 +665,7 @@ function! s:PSCIDEtypeCallback(ident, result, filterModules)
   elseif a:filterModules
     call PSCIDEtype(a:ident, v:false)
   else
-    echom "PSC-IDE: No type information found for " . a:ident
+    call purescript#ide#utils#log("no type information found for " . a:ident)
   endif
 endfunction
 
@@ -732,7 +727,7 @@ function! s:ListImports(module)
     " psc-ide >=0.11 returns imports on 'imports' property.
     return type(resp.result) == v:t_list ? resp.result : resp.result.imports
   else
-    call purescript#ide#utils#error(get(resp, "result", "error"))
+    call purescript#ide#handlePursError(resp)
   endif
 endfunction
 
