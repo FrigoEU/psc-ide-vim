@@ -111,7 +111,7 @@ let g:syntastic_purescript_checkers = ['pscide']
 " COMMANDS -------------------------------------------------------------------
 com! -buffer PSCIDEend call PSCIDEend()
 com! -buffer -bang PSCIDEload call PSCIDEload(0, <q-bang>)
-com! -buffer -nargs=* -complete=custom,PSCIDEimportCompletion PSCIDEimportIdentifier call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
+com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEimportIdentifier call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer -nargs=* PSCIDEgoToDefinition call PSCIDEgoToDefinition(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))
 com! -buffer PSCIDEcwd call PSCIDEcwd()
@@ -349,7 +349,7 @@ function! s:importIdentifier(ident, module)
 	\ )
 endfunction
 
-fun! PSCIDEimportCompletion(argLead, cmdLead, cursorPos)
+fun! PSCIDEcompleteIdentifier(argLead, cmdLead, cursorPos)
   let res = s:completeFn(v:false, a:argLead, { ident, qualifer ->
 	\ {'command': 'complete'
 	\ , 'params':
