@@ -882,19 +882,29 @@ function! PSCIDEpursuit(ident)
 endfunction
 
 function! s:PSCIDEpursuitCallback(resp)
-  if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
-    if len(a:resp["result"]) > 0
-      for e in a:resp["result"]
-        echom s:formatpursuit(e)
-      endfor
-    else
-      call purescript#ide#utils#error(get(a:resp, "result", "error"))
-    endif
+  if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
+    return purescript#ide#handlePursError(a:resp)
+  endif
+  if len(a:resp.result) > 1
+    call setloclist(0, map(a:resp.result, { idx, r -> { "text": s:formatpursuit(r) }}))
+    lopen
+    wincmd p
+  else
+    call purescript#ide#utils#log(s:formatpursuit(a:resp.result[0]))
   endif
 endfunction
 
 function! s:formatpursuit(record)
-  return "In " . s:CleanEnd(s:StripNewlines(a:record["package"])) . " " . s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['ident']) . ' :: ' . s:StripNewlines(a:record['type']))
+  let package = s:CleanEnd(s:StripNewlines(get(a:record, "package", "")))
+  let module = s:CleanEnd(s:StripNewlines(get(a:record, "module", "")))
+  let ident = s:CleanEnd(s:StripNewlines(get(a:record, "ident", "")))
+  let type = get(a:record, "type", "")
+  if empty(type)
+    let type = ""
+  else
+    let type = "∷ " . s:CleanEnd(s:StripNewlines(type))
+  endif
+  return printf("%-20s %s.%s %s", package, module, ident, type)
 endfunction
 
 " VALIDATE -------------------------------------------------------------------
