@@ -585,7 +585,7 @@ function! s:PSCIDEcwdCallback(resp)
   if type(a:resp) == v:t_dict && a:resp['resultType'] ==# 'success'
     call purescript#ide#utils#log("current working directory: " . a:resp.result)
   else
-    call purescript#ide#utils#error(get(a:resp, "result", "error))
+    call purescript#ide#utils#error(get(a:resp, "result", "error"))
   endif
 endfunction
 
