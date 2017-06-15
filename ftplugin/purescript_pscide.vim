@@ -358,7 +358,7 @@ fun! PSCIDEcompleteIdentifier(argLead, cmdLead, cursorPos)
 	\   }
 	\ }
 	\ })
-  return join(map(res, {idx, r -> r.word}), "\n")
+  return join(uniq(sort(map(res, {idx, r -> r.word}))), "\n")
 endfun
 
 fun! s:FilterTopFn(module, modules)
