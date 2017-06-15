@@ -121,7 +121,7 @@ fun! s:startFn(input, errorm, cb, cwdcommand, cwdresp, ...)
     let jobid = async#job#start(
 	  \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	  \ { "on_stdout": { ch, resp -> s:retryFn(a:input, a:errorm, a:cb, cwd, resp, silent) }
-	  \ , "on_stderr": { ch, err -> silent ? purescript#ide#utils#warn(purescript#ide#utils#toString(err) : v:null) }
+	  \ , "on_stderr": { ch, err -> silent ? purescript#ide#utils#warn(purescript#ide#utils#toString(err)) : v:null) }
 	  \ })
     call async#job#send(jobid, json_encode(a:cwdcommand) . "\n")
   endif
@@ -223,7 +223,7 @@ endfun
 fun! purescript#ide#handlePursError(resp)
   if type(a:resp) == v:t_dict
     call purescript#ide#utils#error(get(a:resp, "result", "error"))
-  else if type(a:resp) == v:t_string
+  elseif type(a:resp) == v:t_string
     call purescript#ide#utils#error(a:resp)
   endif
 endfun
