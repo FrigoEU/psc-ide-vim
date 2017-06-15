@@ -658,10 +658,14 @@ function! PSCIDEtype(ident, filterModules)
 endfunction
 
 function! s:PSCIDEtypeCallback(ident, result, filterModules)
-  if !empty(a:result) && type(a:result) == v:t_list
-    for e in a:result
-      echom s:formattype(e)
-    endfor
+  if type(a:result) == v:t_list && !empty(a:result)
+    if len(a:result) > 1
+      call setloclist(0, map(a:result, { idx, r -> { "text": s:formattype(r) }}))
+      lopen
+      wincmd p
+    else
+      call purescript#ide#utils#log(s:formattype(a:result[0]))
+    endif
   elseif a:filterModules
     call PSCIDEtype(a:ident, v:false)
   else
