@@ -645,6 +645,7 @@ function! s:PSCIDEcaseSplitCallback(lnr, resp)
   endif
   call append(a:lnr, a:resp.result)
   normal dd
+  normal $
 endfunction
 
 " TYPE -----------------------------------------------------------------------
