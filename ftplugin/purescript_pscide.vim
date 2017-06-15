@@ -176,6 +176,7 @@ function! PSCIDEstart(silent)
 	\ ]
 
   exe "lcd" dir
+  call purescript#ide#utils#debug("PSCIDEstart: " . json_encode(command), 3)
   let jobid = async#job#start(
 	\ command,
 	\ { "on_stderr": { ch, msg -> purescript#ide#utils#warn(purescript#ide#utils#toString(msg), v:true) }
@@ -345,7 +346,8 @@ function! s:importIdentifier(ident, module)
 	\ input,
 	\ "Failed to import identifier " . a:ident, 
 	\ 0,
-	\ {resp -> s:PSCIDEimportIdentifierCallback(resp, a:ident, view, lines)}
+	\ {resp -> s:PSCIDEimportIdentifierCallback(resp, a:ident, view, lines)},
+	\ v:true
 	\ )
 endfunction
 
@@ -1156,7 +1158,8 @@ fun! PSCIDEimportModule(module)
 	\ { "command": "import" , "params": params }
 	\ , "failed to add import",
 	\ 0,
-	\ function("s:PSCIDEimportModuleCallback")
+	\ function("s:PSCIDEimportModuleCallback"),
+	\ v:true
 	\ )
 endfun
 
