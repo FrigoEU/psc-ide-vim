@@ -112,12 +112,12 @@ let g:syntastic_purescript_checkers = ['pscide']
 com! -buffer PSCIDEend call PSCIDEend()
 com! -buffer -bang PSCIDEload call PSCIDEload(0, <q-bang>)
 com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEimportIdentifier call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! -buffer -nargs=* PSCIDEgoToDefinition call PSCIDEgoToDefinition(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
+com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdenfifier PSCIDEgoToDefinition call PSCIDEgoToDefinition(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))
 com! -buffer PSCIDEcwd call PSCIDEcwd()
 com! -buffer PSCIDEaddClause call PSCIDEaddClause()
 com! -buffer -nargs=1 PSCIDEcaseSplit call PSCIDEcaseSplit(<q-args>)
-com! -buffer -nargs=* PSCIDEtype call PSCIDEtype(len(<q-args>) ? <q-args> : PSCIDEgetKeyword(), v:true)
+com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEtype call PSCIDEtype(len(<q-args>) ? <q-args> : PSCIDEgetKeyword(), v:true)
 com! PSCIDElistImports call PSCIDElistImports()
 com! -buffer -bang PSCIDEapplySuggestion call PSCIDEapplySuggestion(<q-bang>)
 com! -buffer PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
@@ -125,7 +125,7 @@ com! -buffer -nargs=* PSCIDEpursuit call PSCIDEpursuit(len(<q-args>) ? <q-args> 
 com! -buffer PSCIDEprojectValidate call PSCIDEprojectValidate()
 com! -buffer PSCIDElist call PSCIDElist()
 com! -buffer PSCIDEstart call PSCIDEstart(0)
-com! -buffer -nargs=* PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
+com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 
 " AUTOSTART ------------------------------------------------------------------
