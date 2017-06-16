@@ -733,6 +733,7 @@ function! s:ListImports(module)
     return type(resp.result) == v:t_list ? resp.result : resp.result.imports
   else
     call purescript#ide#handlePursError(resp)
+    return []
   endif
 endfunction
 
