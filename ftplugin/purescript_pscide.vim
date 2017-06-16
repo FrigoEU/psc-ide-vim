@@ -662,6 +662,7 @@ function! s:PSCIDEtypeCallback(ident, result, filterModules)
   if type(a:result) == v:t_list && !empty(a:result)
     if len(a:result) > 1
       call setloclist(0, map(a:result, { idx, r -> { "text": s:formattype(r) }}))
+      call setloclist(0, [], 'a', {'title': 'PureScript Types'})
       lopen
       wincmd p
     else
@@ -889,6 +890,7 @@ function! s:PSCIDEpursuitCallback(resp)
   endif
   if len(a:resp.result) > 1
     call setloclist(0, map(a:resp.result, { idx, r -> { "text": s:formatpursuit(r) }}))
+    call setloclist(0, [], 'a', {'title': 'Puresuit'})
     lopen
     wincmd p
   else
