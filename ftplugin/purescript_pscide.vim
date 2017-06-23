@@ -122,7 +122,7 @@ com! PSCIDElistImports call PSCIDElistImports()
 com! -buffer -bang PSCIDEapplySuggestion call PSCIDEapplySuggestion(<q-bang>)
 com! -buffer PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
 com! -buffer -nargs=* PSCIDEpursuit call PSCIDEpursuit(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! -buffer PSCIDEprojectValidate call PSCIDEprojectValidate()
+com! -buffer PSCIDEprojectValidate call PSCIDEprojectValidate(v:false)
 com! -buffer PSCIDElist call PSCIDElist()
 com! -buffer PSCIDEstart call PSCIDEstart(0)
 com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
@@ -914,15 +914,17 @@ function! s:formatpursuit(record)
 endfunction
 
 " VALIDATE -------------------------------------------------------------------
-function! PSCIDEprojectValidate()
+function! PSCIDEprojectValidate(silent)
   let problems = s:projectProblems()
 
   if len(problems) == 0
     call purescript#ide#setValid(v:true)
-    echom "Your project is setup correctly."
+    if !a:silent
+      call purescript#ide#utils#log("your project is setup correctly")
+    endif
   else
     call purescript#ide#setValid(v:true)
-    echom "Your project is not setup correctly. " . join(problems)
+    call purescript#ide#utils#warn("your project is not setup correctly. " . join(problems))
   endif
 endfunction
 

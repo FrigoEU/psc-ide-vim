@@ -32,7 +32,7 @@ fun! purescript#ide#call(input, errorm, isRetry, cb, ...)
   call purescript#ide#utils#debug("purescript#ide#call: command: " . json_encode(a:input), 3)
 
   if !s:valid
-    call PSCIDEprojectValidate()
+    call PSCIDEprojectValidate(v:true)
   endif
 
   if !s:started
@@ -64,7 +64,7 @@ fun! purescript#ide#callSync(input, errorm, isRetry)
   call purescript#ide#utils#debug("purescript#ide#callSync: command: " . json_encode(a:input), 3)
 
   if !s:valid
-    call PSCIDEprojectValidate()
+    call PSCIDEprojectValidate(v:true)
   endif
 
   if !s:started
