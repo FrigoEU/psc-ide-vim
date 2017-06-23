@@ -722,6 +722,10 @@ function! s:echoImport(import)
 endfunction
 
 function! s:ListImports(module)
+  let ei=&ei
+  set ei=all
+  update
+  let &ei=ei
   let filename = expand("%:p")
   let resp = purescript#ide#callSync(
 	\ {'command': 'list', 'params': {'type': 'import', 'file': filename}},
