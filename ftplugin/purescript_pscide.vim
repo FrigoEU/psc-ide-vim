@@ -429,6 +429,7 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
   let &l:ar = 1
   checktime %
   let &l:ar = ar
+  let a:view.topline = a:view.topline + line("$") - a:lines
   let a:view.lnum = a:view.lnum + line("$") - a:lines
   call winrestview(a:view)
 
