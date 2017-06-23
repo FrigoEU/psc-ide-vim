@@ -337,7 +337,7 @@ function! s:importIdentifier(ident, module)
   let view = winsaveview()
   let lines = line("$")
   " updated the file
-  update
+  call purescript#ide#utils#update()
 
   call purescript#ide#call(
 	\ input,
@@ -722,10 +722,7 @@ function! s:echoImport(import)
 endfunction
 
 function! s:ListImports(module)
-  let ei=&ei
-  set ei=all
-  update
-  let &ei=ei
+  call purescript#ide#utils#update()
   let filename = expand("%:p")
   let resp = purescript#ide#callSync(
 	\ {'command': 'list', 'params': {'type': 'import', 'file': filename}},
@@ -1167,11 +1164,13 @@ fun! PSCIDEimportModule(module)
 	  \ , "module": args[0]
 	  \ }
   endif
+
+  call purescript#ide#utils#update()
+
   let params =
 	\ { "file": expand("%:p")
 	\ , "importCommand": importCommand
 	\ }
-
   call purescript#ide#call(
 	\ { "command": "import" , "params": params }
 	\ , "failed to add import",

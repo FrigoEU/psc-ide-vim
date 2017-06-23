@@ -53,3 +53,10 @@ fun! purescript#ide#utils#debug(str, level)
     echom a:str
   endif
 endfun
+
+fun! purescript#ide#utils#update()
+  let ei=&ei
+  set ei=all
+  update
+  let &ei=ei
+endfun
