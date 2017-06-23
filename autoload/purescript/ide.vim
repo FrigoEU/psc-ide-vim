@@ -154,6 +154,7 @@ fun! s:retryFn(input, errorm, cb, expectedCWD, cwdresp2, ...)
       if type(error) == v:t_list && len(error) && !silent
 	call purescript#ide#utils#warn(join(error, " "), v:true)
       endif
+    endif
     return
   endif
 
