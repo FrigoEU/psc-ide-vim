@@ -1290,13 +1290,19 @@ function! s:qfEntry(e, filename, err)
   let type = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
   let lnum = has_key(a:e, "position") && type(a:e.position) == v:t_dict
 	\ ? a:e.position.startLine : 1
+  let lnumend = has_key(a:e, "position") && type(a:e.position) == v:t_dict
+  \ ? a:e.position.endLine : 1
   let col = has_key(a:e, "position") && type(a:e.position) == v:t_dict
 	\ ? a:e.position.startColumn : 1
+  let colend = has_key(a:e, "position") && type(a:e.position) == v:t_dict
+  \ ? a:e.position.endColumn : 1
   return
 	\ { "filename": a:filename
 	\ , "bufnr": bufnr(a:filename)
 	\ , "lnum": lnum
+	\ , "lnumend": lnumend
 	\ , "col": col
+  \ , "colend": colend
 	\ , "text": a:e.message
 	\ , "type": type
 	\ }
