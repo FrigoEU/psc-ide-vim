@@ -127,11 +127,11 @@ com! -buffer PSCIDElist call PSCIDElist()
 com! -buffer PSCIDEstart call PSCIDEstart(0)
 com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
+com! PSCIDErebuild call PSCIDErebuild(v:true, function("PSCIDEerrors"))
 
 " AUTOSTART ------------------------------------------------------------------
 fun! s:autoStart()
   if g:psc_ide_syntastic_mode == 0
-    com! PSCIDErebuild call PSCIDErebuild(v:true, function("PSCIDEerrors"))
     augroup purescript
       au! BufWritePost *.purs call PSCIDErebuild(v:true, function("PSCIDEerrors"))
       au! BufAdd *.purs call PSCIDErebuild(v:true, function("PSCIDEerrors"))
