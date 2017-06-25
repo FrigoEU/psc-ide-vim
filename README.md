@@ -48,18 +48,20 @@ This plugin provides two kinds of syntax checking with syntastic. Controlling wh
 * :PSCIDEload : Loads all modules into psc-ide-server. This gets called automatically when psc-ide-server gets started. Afterwards it's up to you to refresh it now and then. This used to happen automatically on file save/buffer switch, but this took multiple seconds on bigger projects and ended up being more trouble than it was worth.
 
 ## Mappings
-No custom mappings are provided, but it's easy to map the above commands to any key mapping you want. My personal setup:
+No custom mappings are provided, but it's easy to map the above commands to any key mapping you want. My personal setup (inside `after/ftplugin/purescript.vim`:
 
 ```
-au FileType purescript nmap <buffer> <leader>t :<C-U>PSCIDEtype<CR>
-au FileType purescript nmap <buffer> <leader>s :<C-U>PSCIDEapplySuggestion<CR>
-au FileType purescript nmap <buffer> <leader>a :<C-U>PSCIDEaddTypeAnnotation<CR>
-au FileType purescript nmap <buffer> <leader>i :<C-U>PSCIDEimportIdentifier<CR>
-au FileType purescript nmap <buffer> <leader>r :<C-U>PSCIDEload<CR>
-au FileType purescript nmap <buffer> <leader>p :<C-U>PSCIDEpursuit<CR>
-au FileType purescript nmap <buffer> <leader>c :<C-U>PSCIDEcaseSplit<CR>
-au FileType purescript nmap <buffer> <leader>qd :<C-U>PSCIDEremoveImportQualifications<CR>
-au FileType purescript nmap <buffer> <leader>qa :<C-U>PSCIDEaddImportQualifications<CR>
+nm <buffer> <silent> <leader>t :<C-U>call PSCIDEtype(PSCIDEgetKeyword(), v:true)<CR>
+nm <buffer> <silent> <leader>T :<C-U>call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))<CR>
+nm <buffer> <silent> <leader>s :<C-U>call PSCIDEapplySuggestion()<CR>
+nm <buffer> <silent> <leader>a :<C-U>call PSCIDEaddTypeAnnotation()<CR>
+nm <buffer> <silent> <leader>i :<C-U>call PSCIDEimportIdentifier(PSCIDEgetKeyword())<CR>
+nm <buffer> <silent> <leader>r :<C-U>call PSCIDEload()<CR>
+nm <buffer> <silent> <leader>p :<C-U>call PSCIDEpursuit(PSCIDEgetKeyword())<CR>
+nm <buffer> <silent> <leader>C :<C-U>call PSCIDEcaseSplit()<CR>
+nm <buffer> <silent> <leader>qd :<C-U>call PSCIDEremoveImportQualifications()<CR>
+nm <buffer> <silent> <leader>qa :<C-U>call PSCIDEaddImportQualifications()<CR>
+nm <buffer> <silent> ]d :<C-U>call PSCIDEgoToDefinition(PSCIDEgetKeyword())<CR>
 ```
 
 

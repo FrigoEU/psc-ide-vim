@@ -40,6 +40,16 @@ function! SyntaxCheckers_purescript_pscide_IsAvailable() dict
   endif
 endfunction
 
+function! s:rebuildOutputToSyntastic(qflist)
+  return map(a:qflist, {idx, e -> join([ e.type,
+                                       \ e.filename,
+                                       \ e.lnum,
+                                       \ e.col,
+                                       \ e.lnumend,
+                                       \ e.colend,
+                                       \ e.text], ":")})
+endfunction
+
 function! SyntaxCheckers_purescript_pscide_GetLocList() dict
   if g:psc_ide_syntastic_mode == 1
     " Mode one doesn't use an executable, so we just do something trivial like
@@ -47,7 +57,7 @@ function! SyntaxCheckers_purescript_pscide_GetLocList() dict
     let loclist = SyntasticMake({
         \ 'makeprg': self.makeprgBuild({'exe': 'echo', 'args': 'a'}), 
         \ 'errorformat': '%t:%f:%l:%c:%m',
-        \ 'Preprocess': {args -> PSCIDErebuild(0)}
+        \ 'Preprocess': {args -> s:rebuildOutputToSyntastic(PSCIDErebuild(0))}
 	\ })
   endif
 
