@@ -812,7 +812,17 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
   let endColumn = range.endColumn
   if startLine == endLine
     let line = getline(startLine)
+    " remove trailing news lines
     let replacement = substitute(replacement, '\_s*$', '\n', '')
+    " add identation to each line (except first one)
+    " and remove trailing white space from each line
+    let RSpace = { line -> substitute(line, '\s*$', '', '') }
+    let replacement = join(
+	  \ map(
+	    \ split(replacement, "\n"),
+	    \ { idx, line -> idx == 0 ? RSpace(line) : repeat(" ", startColumn) . RSpace(line)}
+	  \ ),
+	  \ "\n")
     let cursor = getcurpos()
     if startColumn == 1
       let newLines = split(replacement . line[endColumn - 1:], "\n")
@@ -830,7 +840,7 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
     " trigger PSCIDErebuild through autocmd
     update
   else
-    echom "PSCIDEapplySuggestion: multiline suggestions are not yet supported"
+    call purescript#ide#utils#debug("multiline suggestions are not supported in vim - please grab g:psc_ide_suggestions and open an issue")
   endif
 endfunction
 
