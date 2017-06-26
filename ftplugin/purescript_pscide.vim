@@ -433,8 +433,9 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
   let a:view.lnum = a:view.lnum + line("$") - a:lines
   call winrestview(a:view)
 
-  " trigger PSCIDErebuild through autocmd
-  update
+  " trigger PSCIDErebuild
+  call purescript#ide#utils#update()
+  call PSCIDErebuild(v:true, function("PSCIDEerrors"))
 endfunction
 
 function! PSCIDEgoToDefinition(ident)
@@ -837,8 +838,9 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
     call remove(g:psc_ide_suggestions, a:key)
     let g:psc_ide_suggestions = s:updateSuggestions(startLine, len(newLines) - 1)
 
-    " trigger PSCIDErebuild through autocmd
-    update
+    " trigger PSCIDErebuild
+    call purescript#ide#utils#update()
+    call PSCIDErebuild(v:true, function("PSCIDEerrors"))
   else
     call purescript#ide#utils#debug("multiline suggestions are not supported in vim - please grab g:psc_ide_suggestions and open an issue")
   endif
@@ -1205,8 +1207,9 @@ fun! s:PSCIDEimportModuleCallback(resp)
     call purescript#ide#utils#error(get(a:resp, "result", "error"))
   endif
 
-  " trigger PSCIDErebuild through autocmd
-  update
+  " trigger PSCIDErebuild
+  call purescript#ide#utils#update()
+  call PSCIDErebuild(v:true, function("PSCIDEerrors"))
 endfun
 
 fun! PSCIDEimportModuleCompletion(ArgLead, CmdLine, CursorPos)
