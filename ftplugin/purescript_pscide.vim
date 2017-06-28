@@ -108,6 +108,12 @@ endif
 
 let g:syntastic_purescript_checkers = ['pscide']
 
+" Check if vim has support for module names (non standard)
+let loclist = getloclist(0)
+call setloclist(0, [{"module": "X"}])
+let s:vim_module_names = has_key(get(getloclist(0), 0, {}), "module")
+call setloclist(0, loclist)
+
 " COMMANDS -------------------------------------------------------------------
 com! -buffer PSCIDEend call PSCIDEend()
 com! -buffer -bang PSCIDEload call PSCIDEload(0, <q-bang>)
@@ -662,14 +668,12 @@ endfunction
 
 function! s:PSCIDEtypeCallback(ident, result, filterModules)
   if type(a:result) == v:t_list && !empty(a:result)
-    if len(a:result) > 1
-      call setloclist(0, map(a:result, { idx, r -> { "text": s:formattype(r) }}))
+      let filePadding = min([max(map(copy(a:result), { i, r -> len(r.definedAt.name)})) + 1, 30])
+      let modulePadding = min([max(map(copy(a:result), { i, r -> len(r.module)})) + 1, 30])
+      call setloclist(0, map(a:result, { idx, r -> s:formattype(r, filePadding, modulePadding)}))
       call setloclist(0, [], 'a', {'title': 'PureScript Types'})
       lopen
       wincmd p
-    else
-      call purescript#ide#utils#log(s:formattype(a:result[0]))
-    endif
   elseif a:filterModules
     call PSCIDEtype(a:ident, v:false)
   else
@@ -689,7 +693,6 @@ function! PSCIDElistImports()
   if (len(imports) == 0)
     echom "PSC-IDE: No import information found for " . currentModule
   endif
-
 endfunction
 
 function! s:echoImport(import)
@@ -765,8 +768,16 @@ function! s:getType(ident, filterModules, cb)
 	\ )
 endfunction
 
-function! s:formattype(record)
-  return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['identifier']) . ' ∷ ' . s:StripNewlines(a:record['type']))
+function! s:formattype(record, filePadding, modulePadding)
+  let definedAt = a:record.definedAt
+  let entry =
+	\ { "filename": s:vim_module_names ? printf("%-" . a:filePadding . "s", definedAt["name"]) : ""
+	\ , "module": empty(a:record["module"]) ? "" : printf("%-" . a:modulePadding . "s", a:record["module"])
+	\ , "lnum": definedAt["start"][0]
+	\ , "col": definedAt["start"][1]
+	\ , "text": s:CleanEnd(s:StripNewlines(a:record['identifier']) . ' ∷ ' . s:StripNewlines(a:record['type']))
+	\ }
+  return entry
 endfunction
 
 " APPLYSUGGESTION ------------------------------------------------------
