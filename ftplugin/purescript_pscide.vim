@@ -1323,13 +1323,13 @@ function! s:qfEntry(e, filename, err)
 	\ ? a:e.position.startColumn : 1
   let colend = has_key(a:e, "position") && type(a:e.position) == v:t_dict
   \ ? a:e.position.endColumn : 1
-  return
-	\ { "filename": a:filename
+  return  { "filename": a:filename
+	\ , "module": get(a:e, "moduleName", "")
 	\ , "bufnr": bufnr(a:filename)
 	\ , "lnum": lnum
 	\ , "lnumend": lnumend
 	\ , "col": col
-  \ , "colend": colend
+	\ , "colend": colend
 	\ , "text": a:e.message
 	\ , "type": type
 	\ }
