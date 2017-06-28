@@ -1253,6 +1253,9 @@ function! PSCIDEerrors(llist, ...)
     let silent = v:false
   endif
 
+  let filePadding = min([max(map(copy(a:llist), { i, r -> len(r.filename)})) + 1, 30])
+  let modulePadding = min([max(map(copy(a:llist), { i, r -> len(r.module)})) + 1, 30])
+
   let qfList = []
   for e in a:llist
     if e.bufnr != -1
@@ -1260,7 +1263,8 @@ function! PSCIDEerrors(llist, ...)
       call add(
 	    \ qfList
 	    \ , { "bufnr": e.bufnr
-	    \   , "filename": e.filename
+	    \   , "filename": printf("%-" . filePadding . "s", e.filename)
+	    \	, "module": empty(e.module) ? e.module : printf("%-" . modulePadding . "s", e.module)
 	    \   , "lnum": e.lnum
 	    \   , "col": e.col
 	    \   , "text": text[0]
