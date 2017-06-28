@@ -913,14 +913,10 @@ function! s:PSCIDEpursuitCallback(resp)
   if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
     return purescript#ide#handlePursError(a:resp)
   endif
-  if len(a:resp.result) > 1
-    call setloclist(0, map(a:resp.result, { idx, r -> { "text": s:formatpursuit(r) }}))
-    call setloclist(0, [], 'a', {'title': 'Puresuit'})
-    lopen
-    wincmd p
-  else
-    call purescript#ide#utils#log(s:formatpursuit(a:resp.result[0]))
-  endif
+  call setloclist(0, map(a:resp.result, { idx, r -> { "text": s:formatpursuit(r) }}))
+  call setloclist(0, [], 'a', {'title': 'Puresuit'})
+  lopen
+  wincmd p
 endfunction
 
 function! s:formatpursuit(record)
