@@ -1150,14 +1150,17 @@ fun! s:searchFn(resp)
     return purescript#ide#utils#error(get(a:resp, "result", "error"))
   endif
   let llist = []
-  for res in get(a:resp, "result", [])
+  let result = get(a:resp, "result", [])
+  let filePadding = min([max(map(copy(result), { i, r -> len(r.definedAt.name)})) + 1, 30])
+  let modulePadding = min([max(map(copy(result), { i, r -> len(r.module)})) + 1, 30])
+  for res in result
     let llentry = {}
     let bufnr = bufnr(res.definedAt.name)
     if bufnr != -1
       let llentry.bufnr = bufnr
     endif
-    let llentry.filename = res.definedAt.name
-    let llentry.module = res.module
+    let llentry.filename = printf("%-" . filePadding . "s", res.definedAt.name)
+    let llentry.module = printf("%-" . modulePadding . "s", res.module)
     let llentry.lnum = res.definedAt.start[0]
     let llentry.col = res.definedAt.start[1]
     let llentry.text = printf("%s %s", res.identifier, res.type)
