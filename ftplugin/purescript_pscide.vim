@@ -1155,8 +1155,12 @@ fun! s:searchFn(resp)
     if bufnr != -1
       let llentry.bufnr = bufnr
     endif
+    let module = get(res, "module", "")
+    if empty(module)
+      let module = ""
+    endif
     let llentry.filename = printf("%-" . filePadding . "s", res.definedAt.name)
-    let llentry.module = printf("%-" . modulePadding . "s", res.module)
+    let llentry.module = printf("%-" . modulePadding . "s", module)
     let llentry.lnum = res.definedAt.start[0]
     let llentry.col = res.definedAt.start[1]
     let llentry.text = printf("%s %s", res.identifier, res.type)
@@ -1323,8 +1327,12 @@ function! s:qfEntry(e, filename, err)
 	\ ? a:e.position.startColumn : 1
   let colend = has_key(a:e, "position") && type(a:e.position) == v:t_dict
   \ ? a:e.position.endColumn : 1
+  let module = get(a:e, "moduleName", "")
+  if empty(module)
+    let module = ""
+  endif
   return  { "filename": a:filename
-	\ , "module": get(a:e, "moduleName", "")
+	\ , "module": module
 	\ , "bufnr": bufnr(a:filename)
 	\ , "lnum": lnum
 	\ , "lnumend": lnumend
