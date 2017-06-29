@@ -668,8 +668,8 @@ endfunction
 
 function! s:PSCIDEtypeCallback(ident, result, filterModules)
   if type(a:result) == v:t_list && !empty(a:result)
-      let filePadding = min([max(map(copy(a:result), { i, r -> len(r.definedAt.name)})) + 1, 30])
-      let modulePadding = min([max(map(copy(a:result), { i, r -> len(r.module)})) + 1, 30])
+      let filePadding = min([max(map(copy(a:result), { i, r -> type(r.definedAt) == v:t_dict && has_key(r.definedAt, "name") ? len(r.definedAt.name) : 0})) + 1, 30])
+      let modulePadding = min([max(map(copy(a:result), { i, r -> type(r.module) == v:t_string ? len(r.module) : 0})) + 1, 30])
       call setloclist(0, map(a:result, { idx, r -> s:formattype(r, filePadding, modulePadding)}))
       call setloclist(0, [], 'a', {'title': 'PureScript Types'})
       lopen
@@ -1147,8 +1147,8 @@ fun! s:searchFn(resp)
   endif
   let llist = []
   let result = get(a:resp, "result", [])
-  let filePadding = min([max(map(copy(result), { i, r -> len(r.definedAt.name)})) + 1, 30])
-  let modulePadding = min([max(map(copy(result), { i, r -> len(r.module)})) + 1, 30])
+  let filePadding = min([max(map(copy(result), { i, r -> type(r.definedAt) == v:t_dict && has_key(r.definedAt, "name") ? len(r.definedAt.name) : 0})) + 1, 30])
+  let modulePadding = min([max(map(copy(result), { i, r -> type(r.module) == v:t_string ? len(r.module) : 0})) + 1, 30])
   for res in result
     let llentry = {}
     let bufnr = bufnr(res.definedAt.name)
@@ -1253,8 +1253,8 @@ function! PSCIDEerrors(llist, ...)
     let silent = v:false
   endif
 
-  let filePadding = min([max(map(copy(a:llist), { i, r -> len(r.filename)})) + 1, 30])
-  let modulePadding = min([max(map(copy(a:llist), { i, r -> len(r.module)})) + 1, 30])
+  let filePadding = min([max(map(copy(a:llist), { i, r -> type(r.filename) == v:t_string ? len(r.filename) : 0})) + 1, 30])
+  let modulePadding = min([max(map(copy(a:llist), { i, r -> type(r.module) == v:t_string ? len(r.module) : 0})) + 1, 30])
 
   let qfList = []
   for e in a:llist
