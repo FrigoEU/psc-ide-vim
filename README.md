@@ -28,9 +28,9 @@ This plugin provides two kinds of syntax checking with syntastic. Controlling wh
 * :PSCIDEapplySuggestion : Automatically applies suggestions provided by the compiler. This uses the syntastic syntax checker, so syntastic is required for this to work. Errors/warnings with suggestions are marked as "Style" errors, which use the "S>" icon by default, while normal errors/warnings use ">>" by default
 
 ![:PSCIDEapplySuggestion gif](http://frigoeu.github.io/gifs/applysuggestion.gif)
-* :PSCIDEcaseSplit : Splits variables in a function declaration into its different constructors. Will probably get improved soon so you don't have to input the type yourself
+* :PSCIDEcaseSplit <type> : Splits variables in a function declaration into its different constructors.
 
-![:PSCIDEcaseSplit gif](http://frigoeu.github.io/gifs/casesplit.gif)
+![:PSCIDEcaseSplit gif](gif here)
 
 * :PSCIDEaddImportQualifications : Applies all import qualification suggestions in one go. Same as :PSCIDEapplySuggestion, but applies it to every line starting with "import"
 
@@ -57,7 +57,7 @@ au FileType purescript nmap <buffer> <leader>a :<C-U>PSCIDEaddTypeAnnotation<CR>
 au FileType purescript nmap <buffer> <leader>i :<C-U>PSCIDEimportIdentifier<CR>
 au FileType purescript nmap <buffer> <leader>r :<C-U>PSCIDEload<CR>
 au FileType purescript nmap <buffer> <leader>p :<C-U>PSCIDEpursuit<CR>
-au FileType purescript nmap <buffer> <leader>c :<C-U>PSCIDEcaseSplit<CR>
+au FileType purescript nmap <buffer> <leader>c :<C-U>PSCIDEcaseSplit<SPACE>
 au FileType purescript nmap <buffer> <leader>qd :<C-U>PSCIDEremoveImportQualifications<CR>
 au FileType purescript nmap <buffer> <leader>qa :<C-U>PSCIDEaddImportQualifications<CR>
 ```
