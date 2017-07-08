@@ -133,14 +133,14 @@ com! -buffer PSCIDElist call PSCIDElist()
 com! -buffer PSCIDEstart call PSCIDEstart(0)
 com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! PSCIDErebuild call PSCIDErebuild(v:true, function("PSCIDEerrors"))
+com! -bang PSCIDErebuild call PSCIDErebuild(v:true, <q-bang>, function("PSCIDEerrors"))
 
 " AUTOSTART ------------------------------------------------------------------
 fun! s:autoStart()
   if g:psc_ide_syntastic_mode == 0
     augroup purescript
-      au! BufWritePost *.purs call PSCIDErebuild(v:true, function("PSCIDEerrors"))
-      au! BufAdd *.purs call PSCIDErebuild(v:true, function("PSCIDEerrors"))
+      au! BufWritePost *.purs call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
+      au! BufAdd *.purs call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
     augroup END
   endif
 
@@ -266,14 +266,21 @@ endfunction
 
 " LOAD -----------------------------------------------------------------------
 " Load module of current buffer + its dependencies into `purs ide server`
-function! PSCIDEload(logLevel, bang)
+function! PSCIDEload(logLevel, bang, ...)
+  let hasCb = a:0 >= 1 && type(a:1) == v:t_func
+
+  if hasCb
+    let Fn = { resp -> a:1(s:PSCIDEloadCallback(a:logLevel, resp)) }
+  else
+    let Fn = { resp -> s:PSCIDEloadCallback(a:logLevel, resp) }
+  endif
 
   if a:bang == "!"
     return purescript#ide#call(
       \ {"command": "reset"},
       \ "failed to reset",
       \ 0,
-      \ { resp -> resp["resultType"] == "success" ? PSCIDEload(a:logLevel, "") : "" }
+      \ { resp -> resp["resultType"] == "success" ? PSCIDEload(a:logLevel, "", hasCb ? a:1 : v:null) : "" }
       \ )
   endif
 
@@ -283,7 +290,7 @@ function! PSCIDEload(logLevel, bang)
 	\ input,
 	\ "Failed to load",
 	\ 0,
-	\ { resp -> s:PSCIDEloadCallback(a:logLevel, resp)}
+	\ Fn
 	\ )
 endfunction
 
@@ -292,6 +299,7 @@ function! s:PSCIDEloadCallback(logLevel, resp)
     return purescript#ide#handlePursError(a:resp)
   endif
   call purescript#ide#utils#log(tolower(a:resp["result"]))
+  return a:resp
 endfunction
 
 function! s:ExtractModule()
@@ -441,7 +449,7 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
 
   " trigger PSCIDErebuild
   call purescript#ide#utils#update()
-  call PSCIDErebuild(v:true, function("PSCIDEerrors"))
+  call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
 endfunction
 
 function! PSCIDEgoToDefinition(ident)
@@ -504,7 +512,7 @@ function! s:goToDefinition(definedAt)
   endif
 endfunction
 
-function! PSCIDErebuild(async, ...)
+function! PSCIDErebuild(async, bang, ...)
 
   let filename = expand("%:p")
   let input = {'command': 'rebuild', 'params': {'file': filename}}
@@ -522,12 +530,16 @@ function! PSCIDErebuild(async, ...)
   endif
 
   if a:async
-    call purescript#ide#call(
-	  \ input,
-	  \ "failed to rebuild",
-	  \ 0,
-	  \ { msg -> CallBack(s:PSCIDErebuildCallback(filename, msg, silent)) }
-	  \ )
+    if a:bang == "!"
+      call PSCIDEload(0, "!", { resp -> PSCIDErebuild(a:async, "", CallBack )})
+    else
+      call purescript#ide#call(
+	    \ input,
+	    \ "failed to rebuild",
+	    \ 0,
+	    \ { msg -> CallBack(s:PSCIDErebuildCallback(filename, msg, silent)) }
+	    \ )
+    endif
   else
     let resp = s:PSCIDErebuildCallback(
 	      \ filename,
@@ -851,7 +863,7 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
 
     " trigger PSCIDErebuild
     call purescript#ide#utils#update()
-    call PSCIDErebuild(v:true, function("PSCIDEerrors"))
+    call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
   else
     call purescript#ide#utils#debug("multiline suggestions are not supported in vim - please grab g:psc_ide_suggestions and open an issue")
   endif
@@ -1223,7 +1235,7 @@ fun! s:PSCIDEimportModuleCallback(resp)
 
   " trigger PSCIDErebuild
   call purescript#ide#utils#update()
-  call PSCIDErebuild(v:true, function("PSCIDEerrors"))
+  call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
 endfun
 
 fun! PSCIDEimportModuleCompletion(ArgLead, CmdLine, CursorPos)
