@@ -183,7 +183,7 @@ function! PSCIDEstart(silent)
 
   exe "lcd" dir
   call purescript#ide#utils#debug("PSCIDEstart: " . json_encode(command), 3)
-  let jobid = async#job#start(
+  let jobid = purescript#job#start(
 	\ command,
 	\ { "on_stderr": { ch, msg -> purescript#ide#utils#warn(purescript#ide#utils#toString(msg), v:true) }
 	\ , "on_stdout": { ch, msg -> type(msg) == v:t_string ? purescript#ide#utils#log(msg) : v:null }
@@ -235,12 +235,12 @@ function! PSCIDEend()
   if purescript#ide#external()
     return
   endif
-  let jobid = async#job#start(
+  let jobid = purescript#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "on_exit": {job, status, ev -> s:PSCIDEendCallback() }
 	\ , "on_stderr": {err -> purescript#ide#utils#log(string(err), v:true)}
 	\ })
-  call async#job#send(jobid, json_encode({'command': 'quit'}) . "\n")
+  call purescript#job#send(jobid, json_encode({'command': 'quit'}) . "\n")
 endfunction
 
 function! s:PSCIDEendCallback() 

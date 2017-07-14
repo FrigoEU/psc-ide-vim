@@ -41,23 +41,23 @@ fun! purescript#ide#call(input, errorm, isRetry, cb, ...)
     let expectedCWD = fnamemodify(purescript#ide#utils#findRoot(), ":p:h")
     let cwdcommand = {'command': 'cwd'}
 
-    let jobid = async#job#start(
+    let jobid = purescript#job#start(
 	  \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	  \ { "on_stdout": {ch, msg -> s:startFn(a:input, a:errorm, a:cb, cwdcommand, msg, silent)}
 	  \ , "on_stderr": {ch, err -> purescript#ide#utils#debug("purescript#ide#call error: " . string(err), 3)}
 	  \ })
-    call async#job#send(jobid, json_encode(cwdcommand) . "\n")
+    call purescript#job#send(jobid, json_encode(cwdcommand) . "\n")
     return
   endif
 
   let enc = json_encode(a:input)
-  let jobid = async#job#start(
+  let jobid = purescript#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "on_stdout": {ch, msg -> a:cb(s:callFn(a:input, a:errorm, a:isRetry, a:cb, msg))}
 	\ , "on_stderr": {ch, err -> purescript#ide#utils#debug("purescript#ide#call error: " . purescript#ide#utils#toString(err), 0)}
 	\ })
-  call async#job#send(jobid, enc . "\n")
-  " call async#job#stop(jobid) " Not needed I think, \n stops job
+  call purescript#job#send(jobid, enc . "\n")
+  " call purescript#job#stop(jobid) " Not needed I think, \n stops job
 endfun
 
 fun! purescript#ide#callSync(input, errorm, isRetry)
@@ -118,13 +118,13 @@ fun! s:startFn(input, errorm, cb, cwdcommand, cwdresp, ...)
 	  \ )
     call s:retryFn(a:input, a:errorm, 0, cwd, cwdresp)
   else
-    let jobid = async#job#start(
+    let jobid = purescript#job#start(
 	  \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	  \ { "on_stdout": { ch, resp -> s:retryFn(a:input, a:errorm, a:cb, cwd, resp, silent) }
 	  \ , "on_stderr": { ch, err -> silent ? purescript#ide#utils#warn(purescript#ide#utils#toString(err)) : v:null }
 	  \ }
 	  \)
-    call async#job#send(jobid, json_encode(a:cwdcommand) . "\n")
+    call purescript#job#send(jobid, json_encode(a:cwdcommand) . "\n")
   endif
 endfun
 
@@ -175,12 +175,12 @@ fun! s:retryFn(input, errorm, cb, expectedCWD, cwdresp2, ...)
     return s:callFn(a:input, a:errorm, 1, 0, resp)
   endif
   call purescript#ide#utils#debug("callPscIde: command: " . enc, 3)
-  let jobid = async#job#start(
+  let jobid = purescript#job#start(
 	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
 	\ { "on_stdout": {ch, resp -> a:cb(s:callFn(a:input, a:errorm, 1, a:cb, resp, silent))}
 	\ , "on_stderr": {ch, err -> purescript#ide#utils#debug("s:retryFn error: " . err, 3)}
 	\ })
-  call async#job#send(jobid, enc . "\n")
+  call purescript#job#send(jobid, enc . "\n")
 endfun
 
 fun! s:callFn(input, errorm, isRetry, cb, resp, ...)
