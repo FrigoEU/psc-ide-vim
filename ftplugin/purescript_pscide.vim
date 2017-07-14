@@ -108,6 +108,12 @@ endif
 
 let g:syntastic_purescript_checkers = ['pscide']
 
+" Check if vim has support for module names (non standard)
+let loclist = getloclist(0)
+call setloclist(0, [{"module": "X"}])
+let s:vim_module_names = has_key(get(getloclist(0), 0, {}), "module")
+call setloclist(0, loclist)
+
 " COMMANDS -------------------------------------------------------------------
 com! -buffer PSCIDEend call PSCIDEend()
 com! -buffer -bang PSCIDEload call PSCIDEload(0, <q-bang>)
@@ -127,14 +133,14 @@ com! -buffer PSCIDElist call PSCIDElist()
 com! -buffer PSCIDEstart call PSCIDEstart(0)
 com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! PSCIDErebuild call PSCIDErebuild(v:true, function("PSCIDEerrors"))
+com! -bang PSCIDErebuild call PSCIDErebuild(v:true, <q-bang>, function("PSCIDEerrors"))
 
 " AUTOSTART ------------------------------------------------------------------
 fun! s:autoStart()
   if g:psc_ide_syntastic_mode == 0
     augroup purescript
-      au! BufWritePost *.purs call PSCIDErebuild(v:true, function("PSCIDEerrors"))
-      au! BufAdd *.purs call PSCIDErebuild(v:true, function("PSCIDEerrors"))
+      au! BufWritePost *.purs call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
+      au! BufAdd *.purs call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
     augroup END
   endif
 
@@ -260,14 +266,21 @@ endfunction
 
 " LOAD -----------------------------------------------------------------------
 " Load module of current buffer + its dependencies into `purs ide server`
-function! PSCIDEload(logLevel, bang)
+function! PSCIDEload(logLevel, bang, ...)
+  let hasCb = a:0 >= 1 && type(a:1) == v:t_func
+
+  if hasCb
+    let Fn = { resp -> a:1(s:PSCIDEloadCallback(a:logLevel, resp)) }
+  else
+    let Fn = { resp -> s:PSCIDEloadCallback(a:logLevel, resp) }
+  endif
 
   if a:bang == "!"
     return purescript#ide#call(
       \ {"command": "reset"},
       \ "failed to reset",
       \ 0,
-      \ { resp -> resp["resultType"] == "success" ? PSCIDEload(a:logLevel, "") : "" }
+      \ { resp -> resp["resultType"] == "success" ? PSCIDEload(a:logLevel, "", hasCb ? a:1 : v:null) : "" }
       \ )
   endif
 
@@ -277,7 +290,7 @@ function! PSCIDEload(logLevel, bang)
 	\ input,
 	\ "Failed to load",
 	\ 0,
-	\ { resp -> s:PSCIDEloadCallback(a:logLevel, resp)}
+	\ Fn
 	\ )
 endfunction
 
@@ -286,6 +299,7 @@ function! s:PSCIDEloadCallback(logLevel, resp)
     return purescript#ide#handlePursError(a:resp)
   endif
   call purescript#ide#utils#log(tolower(a:resp["result"]))
+  return a:resp
 endfunction
 
 function! s:ExtractModule()
@@ -433,8 +447,9 @@ function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines)
   let a:view.lnum = a:view.lnum + line("$") - a:lines
   call winrestview(a:view)
 
-  " trigger PSCIDErebuild through autocmd
-  update
+  " trigger PSCIDErebuild
+  call purescript#ide#utils#update()
+  call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
 endfunction
 
 function! PSCIDEgoToDefinition(ident)
@@ -497,7 +512,7 @@ function! s:goToDefinition(definedAt)
   endif
 endfunction
 
-function! PSCIDErebuild(async, ...)
+function! PSCIDErebuild(async, bang, ...)
 
   let filename = expand("%:p")
   let input = {'command': 'rebuild', 'params': {'file': filename}}
@@ -515,12 +530,16 @@ function! PSCIDErebuild(async, ...)
   endif
 
   if a:async
-    call purescript#ide#call(
-	  \ input,
-	  \ "failed to rebuild",
-	  \ 0,
-	  \ { msg -> CallBack(s:PSCIDErebuildCallback(filename, msg, silent)) }
-	  \ )
+    if a:bang == "!"
+      call PSCIDEload(0, "!", { resp -> PSCIDErebuild(a:async, "", CallBack )})
+    else
+      call purescript#ide#call(
+	    \ input,
+	    \ "failed to rebuild",
+	    \ 0,
+	    \ { msg -> CallBack(s:PSCIDErebuildCallback(filename, msg, silent)) }
+	    \ )
+    endif
   else
     let resp = s:PSCIDErebuildCallback(
 	      \ filename,
@@ -661,14 +680,12 @@ endfunction
 
 function! s:PSCIDEtypeCallback(ident, result, filterModules)
   if type(a:result) == v:t_list && !empty(a:result)
-    if len(a:result) > 1
-      call setloclist(0, map(a:result, { idx, r -> { "text": s:formattype(r) }}))
+      let filePadding = min([max(map(copy(a:result), { i, r -> type(r.definedAt) == v:t_dict && has_key(r.definedAt, "name") ? len(r.definedAt.name) : 0})) + 1, 30])
+      let modulePadding = min([max(map(copy(a:result), { i, r -> type(r.module) == v:t_string ? len(r.module) : 0})) + 1, 30])
+      call setloclist(0, map(a:result, { idx, r -> s:formattype(r, filePadding, modulePadding)}))
       call setloclist(0, [], 'a', {'title': 'PureScript Types'})
       lopen
       wincmd p
-    else
-      call purescript#ide#utils#log(s:formattype(a:result[0]))
-    endif
   elseif a:filterModules
     call PSCIDEtype(a:ident, v:false)
   else
@@ -688,7 +705,6 @@ function! PSCIDElistImports()
   if (len(imports) == 0)
     echom "PSC-IDE: No import information found for " . currentModule
   endif
-
 endfunction
 
 function! s:echoImport(import)
@@ -764,8 +780,16 @@ function! s:getType(ident, filterModules, cb)
 	\ )
 endfunction
 
-function! s:formattype(record)
-  return s:CleanEnd(s:StripNewlines(a:record['module']) . '.' . s:StripNewlines(a:record['identifier']) . ' ∷ ' . s:StripNewlines(a:record['type']))
+function! s:formattype(record, filePadding, modulePadding)
+  let definedAt = a:record.definedAt
+  let entry =
+	\ { "filename": s:vim_module_names ? printf("%-" . a:filePadding . "s", definedAt["name"]) : ""
+	\ , "module": empty(a:record["module"]) ? "" : printf("%-" . a:modulePadding . "s", a:record["module"])
+	\ , "lnum": definedAt["start"][0]
+	\ , "col": definedAt["start"][1]
+	\ , "text": s:CleanEnd(s:StripNewlines(a:record['identifier']) . ' ∷ ' . s:StripNewlines(a:record['type']))
+	\ }
+  return entry
 endfunction
 
 " APPLYSUGGESTION ------------------------------------------------------
@@ -812,7 +836,17 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
   let endColumn = range.endColumn
   if startLine == endLine
     let line = getline(startLine)
+    " remove trailing news lines
     let replacement = substitute(replacement, '\_s*$', '\n', '')
+    " add identation to each line (except first one)
+    " and remove trailing white space from each line
+    let RSpace = { line -> substitute(line, '\s*$', '', '') }
+    let replacement = join(
+	  \ map(
+	    \ split(replacement, "\n"),
+	    \ { idx, line -> idx == 0 ? RSpace(line) : repeat(" ", startColumn) . RSpace(line)}
+	  \ ),
+	  \ "\n")
     let cursor = getcurpos()
     if startColumn == 1
       let newLines = split(replacement . line[endColumn - 1:], "\n")
@@ -827,10 +861,11 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
     call remove(g:psc_ide_suggestions, a:key)
     let g:psc_ide_suggestions = s:updateSuggestions(startLine, len(newLines) - 1)
 
-    " trigger PSCIDErebuild through autocmd
-    update
+    " trigger PSCIDErebuild
+    call purescript#ide#utils#update()
+    call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
   else
-    echom "PSCIDEapplySuggestion: multiline suggestions are not yet supported"
+    call purescript#ide#utils#debug("multiline suggestions are not supported in vim - please grab g:psc_ide_suggestions and open an issue")
   endif
 endfunction
 
@@ -890,14 +925,10 @@ function! s:PSCIDEpursuitCallback(resp)
   if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
     return purescript#ide#handlePursError(a:resp)
   endif
-  if len(a:resp.result) > 1
-    call setloclist(0, map(a:resp.result, { idx, r -> { "text": s:formatpursuit(r) }}))
-    call setloclist(0, [], 'a', {'title': 'Puresuit'})
-    lopen
-    wincmd p
-  else
-    call purescript#ide#utils#log(s:formatpursuit(a:resp.result[0]))
-  endif
+  call setloclist(0, map(a:resp.result, { idx, r -> { "text": s:formatpursuit(r) }}))
+  call setloclist(0, [], 'a', {'title': 'Puresuit'})
+  lopen
+  wincmd p
 endfunction
 
 function! s:formatpursuit(record)
@@ -1127,14 +1158,21 @@ fun! s:searchFn(resp)
     return purescript#ide#utils#error(get(a:resp, "result", "error"))
   endif
   let llist = []
-  for res in get(a:resp, "result", [])
+  let result = get(a:resp, "result", [])
+  let filePadding = min([max(map(copy(result), { i, r -> type(r.definedAt) == v:t_dict && has_key(r.definedAt, "name") ? len(r.definedAt.name) : 0})) + 1, 30])
+  let modulePadding = min([max(map(copy(result), { i, r -> type(r.module) == v:t_string ? len(r.module) : 0})) + 1, 30])
+  for res in result
     let llentry = {}
     let bufnr = bufnr(res.definedAt.name)
     if bufnr != -1
       let llentry.bufnr = bufnr
     endif
-    let llentry.filename = res.definedAt.name
-    let llentry.module = res.module
+    let module = get(res, "module", "")
+    if empty(module)
+      let module = ""
+    endif
+    let llentry.filename = printf("%-" . filePadding . "s", res.definedAt.name)
+    let llentry.module = printf("%-" . modulePadding . "s", module)
     let llentry.lnum = res.definedAt.start[0]
     let llentry.col = res.definedAt.start[1]
     let llentry.text = printf("%s %s", res.identifier, res.type)
@@ -1195,8 +1233,9 @@ fun! s:PSCIDEimportModuleCallback(resp)
     call purescript#ide#utils#error(get(a:resp, "result", "error"))
   endif
 
-  " trigger PSCIDErebuild through autocmd
-  update
+  " trigger PSCIDErebuild
+  call purescript#ide#utils#update()
+  call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
 endfun
 
 fun! PSCIDEimportModuleCompletion(ArgLead, CmdLine, CursorPos)
@@ -1230,6 +1269,9 @@ function! PSCIDEerrors(llist, ...)
     let silent = v:false
   endif
 
+  let filePadding = min([max(map(copy(a:llist), { i, r -> type(r.filename) == v:t_string ? len(r.filename) : 0})) + 1, 30])
+  let modulePadding = min([max(map(copy(a:llist), { i, r -> type(r.module) == v:t_string ? len(r.module) : 0})) + 1, 30])
+
   let qfList = []
   for e in a:llist
     if e.bufnr != -1
@@ -1237,7 +1279,8 @@ function! PSCIDEerrors(llist, ...)
       call add(
 	    \ qfList
 	    \ , { "bufnr": e.bufnr
-	    \   , "filename": e.filename
+	    \   , "filename": printf("%-" . filePadding . "s", e.filename)
+	    \	, "module": empty(e.module) ? e.module : printf("%-" . modulePadding . "s", e.module)
 	    \   , "lnum": e.lnum
 	    \   , "col": e.col
 	    \   , "text": text[0]
@@ -1296,13 +1339,17 @@ function! s:qfEntry(e, filename, err)
 	\ ? a:e.position.startColumn : 1
   let colend = has_key(a:e, "position") && type(a:e.position) == v:t_dict
   \ ? a:e.position.endColumn : 1
-  return
-	\ { "filename": a:filename
+  let module = get(a:e, "moduleName", "")
+  if empty(module)
+    let module = ""
+  endif
+  return  { "filename": a:filename
+	\ , "module": module
 	\ , "bufnr": bufnr(a:filename)
 	\ , "lnum": lnum
 	\ , "lnumend": lnumend
 	\ , "col": col
-  \ , "colend": colend
+	\ , "colend": colend
 	\ , "text": a:e.message
 	\ , "type": type
 	\ }
