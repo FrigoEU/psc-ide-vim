@@ -57,7 +57,7 @@ function! SyntaxCheckers_purescript_pscide_GetLocList() dict
     let loclist = SyntasticMake({
         \ 'makeprg': self.makeprgBuild({'exe': 'echo', 'args': 'a'}), 
         \ 'errorformat': '%t:%f:%l:%c:%m',
-        \ 'Preprocess': {args -> s:rebuildOutputToSyntastic(PSCIDErebuild(0))}
+        \ 'Preprocess': {args -> s:rebuildOutputToSyntastic(PSCIDErebuild(v:false, ""))}
 	\ })
   endif
 
