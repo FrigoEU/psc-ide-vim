@@ -1163,18 +1163,20 @@ fun! s:searchFn(resp)
   let modulePadding = min([max(map(copy(result), { i, r -> type(r.module) == v:t_string ? len(r.module) : 0})) + 1, 30])
   for res in result
     let llentry = {}
-    let bufnr = bufnr(res.definedAt.name)
-    if bufnr != -1
-      let llentry.bufnr = bufnr
+    if (has_key(res, "definedAt") && type(res.definedAt) == v:t_dict)
+      let llentry.lnum = res.definedAt.start[0]
+      let llentry.col = res.definedAt.start[1]
+      let bufnr = bufnr(res.definedAt.name)
+      if bufnr != -1
+	let llentry.bufnr = bufnr
+      endif
+      let llentry.filename = printf("%-" . filePadding . "s", res.definedAt.name)
     endif
     let module = get(res, "module", "")
     if empty(module)
       let module = ""
     endif
-    let llentry.filename = printf("%-" . filePadding . "s", res.definedAt.name)
     let llentry.module = printf("%-" . modulePadding . "s", module)
-    let llentry.lnum = res.definedAt.start[0]
-    let llentry.col = res.definedAt.start[1]
     let llentry.text = printf("%s %s", res.identifier, res.type)
     call add(llist, llentry)
   endfor
