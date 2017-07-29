@@ -621,7 +621,7 @@ function! s:ListImports(module, ...)
   if a:0 >= 1
     let qualifier = a:1
   else
-    let quaifier = ""
+    let qualifier = ""
   endif
 
   call purescript#ide#utils#update()
