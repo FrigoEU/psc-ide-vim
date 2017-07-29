@@ -782,6 +782,10 @@ endfunction
 
 function! s:formattype(record, filePadding, modulePadding)
   let definedAt = a:record.definedAt
+  if type(definedAt) != v:t_dict
+    " v:null's are ignored by vim's setqflist()
+    let definedAt = {"name": "", "start": [v:null, v:null]}
+  endif
   let entry =
 	\ { "filename": s:vim_module_names ? printf("%-" . a:filePadding . "s", definedAt["name"]) : ""
 	\ , "module": empty(a:record["module"]) ? "" : printf("%-" . a:modulePadding . "s", a:record["module"])
