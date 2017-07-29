@@ -617,7 +617,13 @@ function! s:echoImport(import)
   echon "\n"
 endfunction
 
-function! s:ListImports(module)
+function! s:ListImports(module, ...)
+  if a:0 >= 1
+    let qualifier = a:1
+  else
+    let quaifier = ""
+  endif
+
   call purescript#ide#utils#update()
   let filename = expand("%:p")
   let resp = purescript#ide#callSync(
@@ -626,10 +632,20 @@ function! s:ListImports(module)
 	\ 0
 	\ )
   call purescript#ide#utils#debug("PSCIDE s:ListImports result: " . string(resp), 3)
+
   " Only need module names right now, so pluck just those.
   if type(resp) == v:t_dict && resp['resultType'] ==# 'success'
     " psc-ide >=0.11 returns imports on 'imports' property.
-    return type(resp.result) == v:t_list ? resp.result : resp.result.imports
+    if type(resp.result) == v:t_list
+      let results = resp.result
+    else
+      let results = resp.result.imports
+    endif
+    let g:results = results
+    if !empty(qualifier)
+      let results = filter(results, { idx, val -> get(val, "qualifier", "") == qualifier })
+    end
+    return results
   else
     call purescript#ide#handlePursError(resp)
     return []
@@ -885,17 +901,15 @@ fun! s:completeFn(findstart, base, commandFn)
     return s:findStart()
   else
 
-    if match(a:base, '\.') != -1
-      let str_ = split(a:base, '\.')
-      let qualifier = join(str_[0:len(str_)-2], ".")
-      let ident= str_[len(str_) - 1]
-    else
-      let ident = a:base
-      let qualifier = ""
+    let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:base)
+
+    let command = a:commandFn(ident, qualifier)
+    if empty(command)
+      return
     endif
 
     let resp = purescript#ide#callSync(
-	  \ a:commandFn(ident, qualifier),
+	  \ command,
 	  \ 'Failed to get completions for: '. a:base,
 	  \ 0)
 
@@ -938,23 +952,26 @@ fun! s:omniCommand(ident, qualifier)
   endif
 
   if !empty(a:qualifier)
-    let imports = s:ListImports(currentModule)
-    let modules = ["Prim"]
-    for mod in imports
-      if get(mod, "qualifier", "") == a:qualifier || get(mod, "module", "") == a:qualifier
-	call add(modules, mod.module)
-      endif
-    endfor
+    let imports = map(s:ListImports(currentModule, a:qualifier), { idx, val -> val["module"] })
 
-    if len(modules)
-      call add(filters, purescript#ide#utils#modulesFilter(modules))
+    if len(imports)
+      call add(filters, purescript#ide#utils#modulesFilter(imports))
+    else
+      call purescript#ide#utils#log("None of imported modules is qualified with: \"" . a:qualifier . "\"")
+      return v:null
     endif
     let matcher = s:flexMatcher(a:ident)
   else
     if g:psc_ide_omnicompletion_filter_modules
-      call add(filters, purescript#ide#utils#modulesFilter(map(s:ListImports(currentModule), { n, m -> m.module })))
+      let imports = map(s:ListImports(currentModule), { n, m -> m.module })
+      call add(imports, "Prim")
+      call add(filters, purescript#ide#utils#modulesFilter(modules))
     endif
     let matcher = s:flexMatcher(a:ident)
+  endif
+
+  if empty(a:ident)
+    let matcher = {}
   endif
 
   return {'command': 'complete'
@@ -1010,7 +1027,7 @@ fun! PSCIDEcomplete(findstart, base)
   return s:completeFn(a:findstart, a:base, { ident, qualifier ->
 	\ {'command': 'complete'
 	\ , 'params':
-	\   { 'matcher': s:flexMatcher(a:base)
+	\   { 'matcher': empty(ident) ? {} : s:flexMatcher(a:base)
 	\   , 'options': { 'groupReexports': v:true }
 	\   }
 	\ }
