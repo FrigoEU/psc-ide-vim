@@ -47,6 +47,10 @@ if !exists('g:psc_ide_omnicompletion_sort_by')
   let g:psc_ide_omnicompletion_sort_by = "flex"
 endif
 
+if !exists('g:psc_ide_import_on_completion')
+  let g:psc_ide_import_on_completion = v:true
+endif
+
 if !exists("g:psc_ide_omnicompletion_prefix_filter")
   " with this option will let purs ide filter by prefix (this disables flex
   " matching) (tip: use i^xu when searching for a command)
@@ -156,6 +160,11 @@ if g:loaded_psc_ide_vim
 endif
 let g:loaded_psc_ide_vim = v:true
 
+augroup purescript_CompleteDone
+  au!
+  au CompleteDone * :call purescript#ide#import#completeDone()
+augroup END
+
 " START ----------------------------------------------------------------------
 let s:psc_ide_server = v:null
 "Looks for bower.json, assumes that's the root directory, starts
@@ -215,19 +224,6 @@ else
   endfunction
 endif
 
-
-" Display choices from a list of dicts for the user to select from with
-" alphanumerals as shortcuts
-function! s:pickOption(message, options, labelKey)
-  let displayOptions = copy(a:options)
-  call map(displayOptions, '(v:key > 9 ? nr2char(v:key + 55) : v:key) . " " . v:val[a:labelKey]')
-  let choice = confirm(a:message, join(displayOptions, "\n"))
-  if choice
-    return {'picked': v:true, 'option': a:options[choice - 1]}
-  else
-    return {'picked': v:false, 'option': v:null}
-  endif
-endfunction
 
 " END ------------------------------------------------------------------------
 " Tell the `purs ide server` to quit
@@ -321,45 +317,7 @@ endfunction
 
 " Import given identifier
 function! PSCIDEimportIdentifier(ident)
-  call s:importIdentifier(a:ident, "")
-endfunction
-function! s:importIdentifier(ident, module)
-
-  call purescript#ide#utils#debug('PSCIDEimportIdentifier', 3)
-  call purescript#ide#utils#debug('ident: ' . a:ident, 3)
-
-  if (a:ident == "")
-    return
-  endif
-
-  let file = fnamemodify(bufname(""), ":p")
-
-  let input = { 
-        \ 'command': 'import' ,
-        \ 'params': {
-        \   'file': file, 
-	\   'outfile': file,
-        \   'importCommand': {
-        \     'importCommand': 'addImport',
-        \     'identifier': a:ident
-        \   } } }
-
-  if a:module != ""
-    let input.params.filters = [s:modulesFilter([a:module])]
-  endif
-
-  let view = winsaveview()
-  let lines = line("$")
-  " updated the file
-  call purescript#ide#utils#update()
-
-  call purescript#ide#call(
-	\ input,
-	\ "Failed to import identifier " . a:ident, 
-	\ 0,
-	\ {resp -> s:PSCIDEimportIdentifierCallback(resp, a:ident, view, lines)},
-	\ v:true
-	\ )
+  call purescript#ide#import#identifier(a:ident, "")
 endfunction
 
 fun! PSCIDEcompleteIdentifier(argLead, cmdLead, cursorPos)
@@ -373,84 +331,6 @@ fun! PSCIDEcompleteIdentifier(argLead, cmdLead, cursorPos)
 	\ })
   return join(uniq(sort(map(res, {idx, r -> r.word}))), "\n")
 endfun
-
-fun! s:FilterTopFn(module, modules)
-  " module :: Array String
-  " modules :: Array (Array String)
-  let mods = map(copy(g:psc_ide_filter_submodules_do_not_hide), { idx, m -> split(m, '\.') })
-  return empty(filter(copy(a:modules), { idx, m -> s:IsSubmodule(a:module, m, mods) }))
-endfun
-
-fun! s:IsSubmodule(m1, m2, mods)
-  " is m1 a submodule of m2
-  " m1 :: Array String
-  " m2 :: Array String
-  if index(a:mods, a:m1) != -1
-    let res = v:false
-  else
-    if len(a:m1) > len(a:m2)
-      let res = a:m1[0:len(a:m2)-1] == a:m2 ? v:true : v:false
-    else
-      let res = v:false
-    endif
-  endif
-  return res
-endfun
-
-fun! s:FilterTop(respResults)
-  let modules = map(copy(a:respResults), { idx, r -> split(r.module, '\.') })
-  call filter(a:respResults, { idx, r -> s:FilterTopFn(split(r.module, '\.'), modules) })
-endfun
-
-fun! s:FilterPrelude(respResults)
-  call filter(a:respResults, { idx, r -> index(g:psc_ide_prelude, r.module) == -1 })
-endfun
-
-function! s:PSCIDEimportIdentifierCallback(resp, ident, view, lines) 
-  if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
-    return purescript#ide#handlePursError(a:resp)
-  endif
-
-  if type(a:resp.result) == v:t_list
-    " multiple possibilities
-    let respResults = a:resp.result
-    if g:psc_ide_filter_prelude_modules && len(filter(copy(respResults), { idx, r -> r.module ==# "Prelude" }))
-      " filter prelude modules (hopefully there are no identifires in prelude
-      " that clash
-      call s:FilterPrelude(respResults)
-    endif
-    if g:psc_ide_filter_submodules
-      call s:FilterTop(respResults)
-    endif
-    let results = []
-    for res in respResults
-      if empty(filter(copy(results), { idx, val -> val.module == res.module }))
-	call add(results, res)
-      endif
-    endfor
-    if (len(results) == 1)
-      let choice = { "option": results[0], "picked": v:true }
-    else
-      let choice = s:pickOption("Multiple possibilities to import " . a:ident, results, "module")
-    endif
-    if choice.picked == v:true
-      call s:importIdentifier(a:ident, choice.option.module)
-    endif
-    return
-  endif
-
-  let ar = &l:autoread
-  let &l:ar = 1
-  checktime %
-  let &l:ar = ar
-  let a:view.topline = a:view.topline + line("$") - a:lines
-  let a:view.lnum = a:view.lnum + line("$") - a:lines
-  call winrestview(a:view)
-
-  " trigger PSCIDErebuild
-  call purescript#ide#utils#update()
-  call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
-endfunction
 
 function! PSCIDEgoToDefinition(ident)
   let currentModule = s:ExtractModule()
@@ -478,7 +358,7 @@ function! s:PSCIDEgoToDefinitionCallback(ident, resp)
     endif
   endfor
   if len(results) > 1
-    let choice = s:pickOption("Multiple possibilities for " . a:ident, results, "module")
+    let choice = purescript#ide#utils#pickOption("Multiple possibilities for " . a:ident, results, "module")
   elseif len(results) == 1
     let choice = {"picked": v:true, "option": results[0]}
   else
@@ -760,7 +640,7 @@ function! s:getType(ident, filterModules, cb)
   let currentModule = s:ExtractModule()
   if a:filterModules
     let modules = add(add(map(s:ListImports(currentModule), {key, val -> val["module"]}), currentModule), "Prim")
-    let filters = [s:modulesFilter(modules)]
+    let filters = [purescript#ide#utils#modulesFilter(modules)]
   else
     let filters = []
   endif
@@ -1067,12 +947,12 @@ fun! s:omniCommand(ident, qualifier)
     endfor
 
     if len(modules)
-      call add(filters, s:modulesFilter(modules))
+      call add(filters, purescript#ide#utils#modulesFilter(modules))
     endif
     let matcher = s:flexMatcher(a:ident)
   else
     if g:psc_ide_omnicompletion_filter_modules
-      call add(filters, s:modulesFilter(map(s:ListImports(currentModule), { n, m -> m.module })))
+      call add(filters, purescript#ide#utils#modulesFilter(map(s:ListImports(currentModule), { n, m -> m.module })))
     endif
     let matcher = s:flexMatcher(a:ident)
   endif
@@ -1111,10 +991,6 @@ endfunction
 function! s:flexMatcher(s)
   return { "matcher": "flex", "params": { "search": a:s } }
 endfunction
-
-fun! s:modulesFilter(modules)
-  return { "filter": "modules", "params": { "modules": a:modules } }
-endfun
 
 " SET UP OMNICOMPLETION ------------------------------------------------------
 fun! PSCIDEomni(findstart, base)
