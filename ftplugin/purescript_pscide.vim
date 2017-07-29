@@ -759,7 +759,7 @@ endfunction
 function! s:getType(ident, filterModules, cb)
   let currentModule = s:ExtractModule()
   if a:filterModules
-    let modules = add(map(s:ListImports(currentModule), {key, val -> val["module"]}), currentModule)
+    let modules = add(add(map(s:ListImports(currentModule), {key, val -> val["module"]}), currentModule), "Prim")
     let filters = [s:modulesFilter(modules)]
   else
     let filters = []
@@ -782,6 +782,10 @@ endfunction
 
 function! s:formattype(record, filePadding, modulePadding)
   let definedAt = a:record.definedAt
+  if type(definedAt) != v:t_dict
+    " v:null's are ignored by vim's setqflist()
+    let definedAt = {"name": "", "start": [v:null, v:null]}
+  endif
   let entry =
 	\ { "filename": s:vim_module_names ? printf("%-" . a:filePadding . "s", definedAt["name"]) : ""
 	\ , "module": empty(a:record["module"]) ? "" : printf("%-" . a:modulePadding . "s", a:record["module"])
@@ -1055,7 +1059,7 @@ fun! s:omniCommand(ident, qualifier)
 
   if !empty(a:qualifier)
     let imports = s:ListImports(currentModule)
-    let modules = []
+    let modules = ["Prim"]
     for mod in imports
       if get(mod, "qualifier", "") == a:qualifier || get(mod, "module", "") == a:qualifier
 	call add(modules, mod.module)
