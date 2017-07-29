@@ -60,3 +60,21 @@ fun! purescript#ide#utils#update()
   update
   let &ei=ei
 endfun
+
+fun! purescript#ide#utils#modulesFilter(modules)
+  return { "filter": "modules", "params": { "modules": a:modules } }
+endfun
+
+" Display choices from a list of dicts for the user to select from with
+" alphanumerals as shortcuts
+function! purescript#ide#utils#pickOption(message, options, labelKey)
+  let displayOptions = copy(a:options)
+  call map(displayOptions, '(v:key > 9 ? nr2char(v:key + 55) : v:key) . " " . v:val[a:labelKey]')
+  let choice = confirm(a:message, join(displayOptions, "\n"))
+  if choice
+    return {'picked': v:true, 'option': a:options[choice - 1]}
+  else
+    return {'picked': v:false, 'option': v:null}
+  endif
+endfunction
+
