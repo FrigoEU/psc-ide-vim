@@ -78,3 +78,14 @@ function! purescript#ide#utils#pickOption(message, options, labelKey)
   endif
 endfunction
 
+fun! purescript#ide#utils#splitQualifier(ident)
+    if match(a:ident, '\.') != -1
+      let str_ = split(a:ident, '\.', v:true)
+      let qualifier = join(str_[0:len(str_)-2], ".")
+      let ident= str_[len(str_) - 1]
+    else
+      let ident = a:ident
+      let qualifier = ""
+    endif
+    return [ident, qualifier]
+endfun
