@@ -141,7 +141,7 @@ com! -bang PSCIDErebuild call PSCIDErebuild(v:true, <q-bang>, function("PSCIDEer
 
 " AUTOSTART ------------------------------------------------------------------
 fun! s:autoStart()
-  if g:psc_ide_syntastic_mode == 0
+  if exists("g:psc_ide_syntastic_mode") && g:psc_ide_syntastic_mode == 0
     augroup purescript
       au! BufWritePost *.purs call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
       au! BufAdd *.purs call PSCIDErebuild(v:true, "", function("PSCIDEerrors"))
