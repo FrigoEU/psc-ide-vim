@@ -826,7 +826,7 @@ function! s:PSCIDEpursuitCallback(resp)
     return purescript#ide#handlePursError(a:resp)
   endif
   call setloclist(0, map(a:resp.result, { idx, r -> { "text": s:formatpursuit(r) }}))
-  call setloclist(0, [], 'a', {'title': 'Puresuit'})
+  call setloclist(0, [], 'a', {'title': 'Pursuit'})
   lopen
   wincmd p
 endfunction
