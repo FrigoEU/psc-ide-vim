@@ -683,18 +683,17 @@ endfunction
 
 function! s:getType(ident, filterModules, cb)
   let currentModule = s:ExtractModule()
-  if a:filterModules
-    let modules = add(add(map(s:ListImports(currentModule), {key, val -> val["module"]}), currentModule), "Prim")
-    let filters = [purescript#ide#utils#modulesFilter(modules)]
-  else
-    let filters = []
-  endif
+  let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
+  let imports = s:ListImports(currentModule, qualifier, a:filterModules ? ident : "")
+  let modules = map(copy(imports), {key, val -> val["module"]})
+  call extend(modules, [currentModule, "Prim"])
+  let filters = [purescript#ide#utils#modulesFilter(modules)]
   call purescript#ide#utils#debug('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
   call purescript#ide#call(
 	\ { 'command': 'type'
 	\ , 'params':
-	\     { 'search': a:ident
+	\     { 'search': ident
 	\     , 'filters': filters
 	\     , 'currentModule': currentModule
 	\     }
