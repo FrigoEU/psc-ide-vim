@@ -1041,14 +1041,7 @@ endfun
 
 " SET UP USERCOMPLETION ------------------------------------------------------
 fun! PSCIDEcomplete(findstart, base)
-  return s:completeFn(a:findstart, a:base, { ident, qualifier ->
-	\ {'command': 'complete'
-	\ , 'params':
-	\   { 'matcher': empty(ident) ? {} : s:flexMatcher(a:base)
-	\   , 'options': { 'groupReexports': v:true }
-	\   }
-	\ }
-	\ })
+  return s:completeFn(a:findstart, a:base, function("s:completeCommand"))
 endfun
 
 " SEARCH ---------------------------------------------------------------------
