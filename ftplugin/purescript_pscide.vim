@@ -122,7 +122,7 @@ call setloclist(0, loclist)
 com! -buffer PSCIDEend call PSCIDEend()
 com! -buffer -bang PSCIDEload call PSCIDEload(0, <q-bang>)
 com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEimportIdentifier call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdenfifier PSCIDEgoToDefinition call PSCIDEgoToDefinition(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
+com! -buffer -nargs=* -bang -complete=custom,PSCIDEcompleteIdenfifier PSCIDEgoToDefinition call PSCIDEgoToDefinition(<q-bang>, len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))
 com! -buffer PSCIDEcwd call PSCIDEcwd()
 com! -buffer PSCIDEaddClause call PSCIDEaddClause()
@@ -332,17 +332,33 @@ fun! PSCIDEcompleteIdentifier(argLead, cmdLead, cursorPos)
   return join(uniq(sort(map(res, {idx, r -> r.word}))), "\n")
 endfun
 
-function! PSCIDEgoToDefinition(ident)
+function! PSCIDEgoToDefinition(bang, ident)
   let currentModule = s:ExtractModule()
+  let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
+  let imports = s:ListImports(currentModule, qualifier, a:bang != "!" ? ident : "")
+  if a:bang == "!"
+    if empty(qualifier)
+      let filters = []
+    else
+      let modules = map(copy(imports), {key, val -> val["module"]})
+      call extend(modules, [currentModule, "Prim"])
+      let filters = [purescript#ide#utils#modulesFilter(modules)]
+    endif
+  else
+    let modules = map(copy(imports), {key, val -> val["module"]})
+    call add(modules, currentModule)
+    call add(modules, "Prim")
+    let filters = [purescript#ide#utils#modulesFilter(modules)]
+  endif
   call purescript#ide#call(
-	\ {'command': 'type', 'params': {'search': a:ident, 'filters': []}, 'currentModule': currentModule},
+	\ {'command': 'type', 'params': {'search': ident, 'filters': filters}, 'currentModule': currentModule},
 	\ 'Failed to get location info for: ' . a:ident,
 	\ 0,
-	\ { resp -> s:PSCIDEgoToDefinitionCallback(a:ident, resp) }
+	\ { resp -> s:PSCIDEgoToDefinitionCallback(a:bang, a:ident, resp) }
 	\ )
 endfunction
 
-function! s:PSCIDEgoToDefinitionCallback(ident, resp)
+function! s:PSCIDEgoToDefinitionCallback(bang, ident, resp)
   if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
     return purescript#ide#handlePursError(a:resp)
   endif
@@ -357,6 +373,10 @@ function! s:PSCIDEgoToDefinitionCallback(ident, resp)
       call add(results, res)
     endif
   endfor
+  if a:bang != "!" && empty(results)
+    " try again without a bang
+    return PSCIDEgoToDefinition("!", a:ident)
+  endif
   if len(results) > 1
     let choice = purescript#ide#utils#pickOption("Multiple possibilities for " . a:ident, results, "module")
   elseif len(results) == 1
@@ -624,6 +644,12 @@ function! s:ListImports(module, ...)
     let qualifier = ""
   endif
 
+  if a:0 >= 2
+    let ident = a:2
+  else
+    let ident = ""
+  endif
+
   call purescript#ide#utils#update()
   let filename = expand("%:p")
   let resp = purescript#ide#callSync(
@@ -635,16 +661,19 @@ function! s:ListImports(module, ...)
 
   " Only need module names right now, so pluck just those.
   if type(resp) == v:t_dict && resp['resultType'] ==# 'success'
+
     " psc-ide >=0.11 returns imports on 'imports' property.
     if type(resp.result) == v:t_list
       let results = resp.result
     else
       let results = resp.result.imports
     endif
-    let g:results = results
     if !empty(qualifier)
-      let results = filter(results, { idx, val -> get(val, "qualifier", "") == qualifier })
+      call filter(results, { idx, val -> get(val, "qualifier", "") == qualifier })
     end
+    if !empty(ident)
+      call filter(results, {idx, val ->  get(val, "importType", "") == "explicit" && has_key(val, "identifiers") ? index(val.identifiers, ident) != -1 : v:true})
+    endif
     return results
   else
     call purescript#ide#handlePursError(resp)
