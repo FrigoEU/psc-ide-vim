@@ -347,7 +347,6 @@ fun! s:completeCommand(ident, qualifier)
   let filters = []
   if !empty(a:qualifier)
     let modules = map(purescript#ide#import#listImports(currentModule, a:qualifier), { idx, val -> val["module"] })
-    call extend(modules, [currentModule, "Prim"])
     let filters = [purescript#ide#utils#modulesFilter(modules)]
   endif
   return
@@ -374,7 +373,6 @@ function! PSCIDEgoToDefinition(bang, ident)
       let filters = []
     else
       let modules = map(copy(imports), {key, val -> val["module"]})
-      call extend(modules, [currentModule, "Prim"])
       let filters = [purescript#ide#utils#modulesFilter(modules)]
     endif
   else
@@ -675,7 +673,6 @@ function! s:getType(ident, filterModules, cb)
   let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
   let imports = purescript#ide#import#listImports(currentModule, qualifier, a:filterModules ? ident : "")
   let modules = map(copy(imports), {key, val -> val["module"]})
-  call extend(modules, [currentModule, "Prim"])
   let filters = [purescript#ide#utils#modulesFilter(modules)]
   call purescript#ide#utils#debug('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
@@ -981,7 +978,7 @@ fun! s:omniCommand(ident, qualifier)
   else
     if g:psc_ide_omnicompletion_filter_modules
       let imports = map(purescript#ide#import#listImports(currentModule), { n, m -> m.module })
-      call add(imports, "Prim")
+      call extend(imports, [currentModule, "Prim"])
       call add(filters, purescript#ide#utils#modulesFilter(modules))
     endif
     let matcher = s:flexMatcher(a:ident)
