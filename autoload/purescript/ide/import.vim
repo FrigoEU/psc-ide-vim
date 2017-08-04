@@ -215,14 +215,25 @@ function! purescript#ide#import#identifier(ident, module, ...)
   endif
 
   let file = fnamemodify(bufname(""), ":p")
+  let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
+  let currentModule = purescript#ide#utils#currentModule()
+  let imports = purescript#ide#import#listImports(currentModule, qualifier)
+  if empty(qualifier)
+    let filters = []
+  else
+    let modules = map(copy(imports), {key, val -> val["module"]})
+    call extend(modules, [currentModule, "Prim"])
+    let filters = [purescript#ide#utils#modulesFilter(modules)]
+  endif
 
   let input = { 
         \ 'command': 'import' ,
         \ 'params': {
         \   'file': file, 
+	\   'filters': filters,
         \   'importCommand': {
         \     'importCommand': 'addImport',
-        \     'identifier': a:ident
+        \     'identifier': ident
         \   } } }
 
   if a:module != ""
