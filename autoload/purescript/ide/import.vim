@@ -30,6 +30,51 @@ fun! s:FilterTop(respResults)
   call filter(a:respResults, { idx, r -> s:FilterTopFn(split(r.module, '\.'), modules) })
 endfun
 
+function! purescript#ide#import#listImports(module, ...)
+  if a:0 >= 1
+    let qualifier = a:1
+  else
+    let qualifier = ""
+  endif
+
+  if a:0 >= 2
+    let ident = a:2
+  else
+    let ident = ""
+  endif
+
+  call purescript#ide#utils#update()
+  let filename = expand("%:p")
+  let resp = purescript#ide#callSync(
+	\ {'command': 'list', 'params': {'type': 'import', 'file': filename}},
+	\ 'Failed to get imports for: ' . a:module,
+	\ 0
+	\ )
+  call purescript#ide#utils#debug("PSCIDE purescript#ide#import#listImports result: " . string(resp), 3)
+
+  " Only need module names right now, so pluck just those.
+  if type(resp) == v:t_dict && resp['resultType'] ==# 'success'
+
+    " psc-ide >=0.11 returns imports on 'imports' property.
+    if type(resp.result) == v:t_list
+      let results = resp.result
+    else
+      let results = resp.result.imports
+    endif
+    if !empty(qualifier)
+      call filter(results, { idx, val -> get(val, "qualifier", "") == qualifier })
+    end
+    if !empty(ident)
+      call filter(results, {idx, val ->  get(val, "importType", "") == "explicit" && has_key(val, "identifiers") ? index(val.identifiers, ident) != -1 : v:true})
+    endif
+    return results
+  else
+    call purescript#ide#handlePursError(resp)
+    return []
+  endif
+endfunction
+
+
 " Return line number of last import line (including blank lines).
 "
 " It will fail to find the proper line on
@@ -170,14 +215,25 @@ function! purescript#ide#import#identifier(ident, module, ...)
   endif
 
   let file = fnamemodify(bufname(""), ":p")
+  let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
+  let currentModule = purescript#ide#utils#currentModule()
+  let imports = purescript#ide#import#listImports(currentModule, qualifier)
+  if empty(qualifier)
+    let filters = []
+  else
+    let modules = map(copy(imports), {key, val -> val["module"]})
+    call extend(modules, [currentModule, "Prim"])
+    let filters = [purescript#ide#utils#modulesFilter(modules)]
+  endif
 
   let input = { 
         \ 'command': 'import' ,
         \ 'params': {
         \   'file': file, 
+	\   'filters': filters,
         \   'importCommand': {
         \     'importCommand': 'addImport',
-        \     'identifier': a:ident
+        \     'identifier': ident
         \   } } }
 
   if a:module != ""

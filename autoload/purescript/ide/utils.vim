@@ -89,3 +89,20 @@ fun! purescript#ide#utils#splitQualifier(ident)
     endif
     return [ident, qualifier]
 endfun
+
+function! purescript#ide#utils#currentModule()
+  " Find the module we're currently in. Don't know how to get the length of
+  " the current buffer so just looking at the first 20 lines, should be enough
+  let module = ''
+  let iteration = 0
+  while module == '' && iteration < 20
+    let iteration += 1
+    let line = getline(iteration)
+    let matches = matchlist(line, 'module\s\(\S*\)')
+    if len(matches) > 0
+      let module = matches[1]
+    endif
+  endwhile
+
+  return module
+endfunction
