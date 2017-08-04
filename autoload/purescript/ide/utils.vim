@@ -2,11 +2,11 @@
 function! purescript#ide#utils#findRoot()
   let pscPackage = findfile("psc-package.json", fnameescape(expand("%:p:h")).";")
   if !empty(pscPackage)
-    return fnamemodify(pscPackage, ":h:p")
+    return fnamemodify(pscPackage, ":p:h")
   else
     let bower = findfile("bower.json", fnameescape(expand("%:p:h")).";")
     if !empty(bower)
-      return fnamemodify(bower, ":h:p")
+      return fnamemodify(bower, ":p:h")
     else
       return ""
     endif
