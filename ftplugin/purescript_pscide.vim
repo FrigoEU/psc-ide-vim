@@ -119,25 +119,63 @@ let s:vim_module_names = has_key(get(getloclist(0), 0, {}), "module")
 call setloclist(0, loclist)
 
 " COMMANDS -------------------------------------------------------------------
-com! -buffer PSCIDEend call PSCIDEend()
-com! -buffer -bang PSCIDEload call PSCIDEload(0, <q-bang>)
-com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEimportIdentifier call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! -buffer -nargs=* -bang -complete=custom,PSCIDEcompleteIdenfifier PSCIDEgoToDefinition call PSCIDEgoToDefinition(<q-bang>, len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! -buffer PSCIDEaddTypeAnnotation call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))
-com! -buffer PSCIDEcwd call PSCIDEcwd()
-com! -buffer PSCIDEaddClause call PSCIDEaddClause()
-com! -buffer -nargs=1 PSCIDEcaseSplit call PSCIDEcaseSplit(<q-args>)
-com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEtype call PSCIDEtype(len(<q-args>) ? <q-args> : PSCIDEgetKeyword(), v:true)
-com! PSCIDElistImports call PSCIDElistImports()
-com! -buffer -bang PSCIDEapplySuggestion call PSCIDEapplySuggestion(<q-bang>)
-com! -buffer PSCIDEaddImportQualifications call PSCIDEaddImportQualifications()
-com! -buffer -nargs=* PSCIDEpursuit call PSCIDEpursuit(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! -buffer PSCIDEprojectValidate call PSCIDEprojectValidate(v:false)
-com! -buffer PSCIDElist call PSCIDElist()
-com! -buffer PSCIDEstart call PSCIDEstart(0)
-com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier PSCIDEsearch call PSCIDEsearch(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion PSCIDEimportModule call PSCIDEimportModule(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! -bang PSCIDErebuild call PSCIDErebuild(v:true, <q-bang>, function("PSCIDEerrors"))
+com! -buffer
+      \ PaddClause
+      \ call PSCIDEaddClause()
+com! -buffer
+      \ PaddImportQualifications
+      \ call PSCIDEaddImportQualifications()
+com! -buffer
+      \ PaddType
+      \ call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))
+com! -buffer -bang
+      \ Papply
+      \ call PSCIDEapplySuggestion(<q-bang>)
+com! -buffer -nargs=1
+      \ Pcase
+      \ call PSCIDEcaseSplit(<q-args>)
+com! -buffer
+      \ Pcwd
+      \ call PSCIDEcwd()
+com! -buffer
+      \ Pend
+      \ call PSCIDEend()
+com! -buffer -nargs=* -bang -complete=custom,PSCIDEcompleteIdentifier 
+      \ Pgoto
+      \ call PSCIDEgoToDefinition(<q-bang>, len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
+com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier Pimport
+      \ call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
+com! -buffer
+      \ Plist
+      \ call PSCIDElist()
+com! -buffer
+      \ Pimports
+      \ call PSCIDElistImports()
+com! -buffer -bang
+      \ Pload
+      \ call PSCIDEload(0, <q-bang>)
+com! -buffer Pvalidate
+      \ call PSCIDEprojectValidate(v:false)
+com! -buffer -nargs=*
+      \ Pursuit
+      \ call PSCIDEpursuit(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
+com! -buffer -bang
+      \ Prebuild
+      \ call PSCIDErebuild(v:true, <q-bang>, function("PSCIDEerrors"))
+com! -buffer PremoveImportQualifications
+      \ call PSCIDEremoveImportQualifications()
+com! -buffer
+      \ Pstart
+      \ call PSCIDEstart(0)
+com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier
+      \ Ptype
+      \ call PSCIDEtype(len(<q-args>) ? <q-args> : PSCIDEgetKeyword(), v:true)
+com! -buffer -nargs=1 -complete=custom,PSCIDEcompleteIdentifier
+      \ Psearch
+      \ call PSCIDEsearch(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
+com! -buffer -nargs=* -complete=custom,PSCIDEimportModuleCompletion
+      \ PimportModule
+      \ call PSCIDEimportModule(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 
 " AUTOSTART ------------------------------------------------------------------
 fun! s:autoStart()
