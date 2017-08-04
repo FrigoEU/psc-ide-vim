@@ -298,33 +298,16 @@ function! s:PSCIDEloadCallback(logLevel, resp)
   return a:resp
 endfunction
 
-function! s:ExtractModule()
-  " Find the module we're currently in. Don't know how to get the length of
-  " the current buffer so just looking at the first 20 lines, should be enough
-  let module = ''
-  let iteration = 0
-  while module == '' && iteration < 20
-    let iteration += 1
-    let line = getline(iteration)
-    let matches = matchlist(line, 'module\s\(\S*\)')
-    if len(matches) > 0
-      let module = matches[1]
-    endif
-  endwhile
-
-  return module
-endfunction
-
 " Import given identifier
 function! PSCIDEimportIdentifier(ident)
   call purescript#ide#import#identifier(a:ident, "")
 endfunction
 
 fun! s:completeCommand(ident, qualifier)
-  let currentModule = s:ExtractModule()
+  let currentModule = purescript#ide#utils#currentModule()
   let filters = []
   if !empty(a:qualifier)
-    let modules = map(s:ListImports(currentModule, a:qualifier), { idx, val -> val["module"] })
+    let modules = map(purescript#ide#import#listImports(currentModule, a:qualifier), { idx, val -> val["module"] })
     call extend(modules, [currentModule, "Prim"])
     let filters = [purescript#ide#utils#modulesFilter(modules)]
   endif
@@ -344,9 +327,9 @@ fun! PSCIDEcompleteIdentifier(argLead, cmdLead, cursorPos)
 endfun
 
 function! PSCIDEgoToDefinition(bang, ident)
-  let currentModule = s:ExtractModule()
+  let currentModule = purescript#ide#utils#currentModule()
   let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
-  let imports = s:ListImports(currentModule, qualifier, a:bang != "!" ? ident : "")
+  let imports = purescript#ide#import#listImports(currentModule, qualifier, a:bang != "!" ? ident : "")
   if a:bang == "!"
     if empty(qualifier)
       let filters = []
@@ -607,9 +590,9 @@ endfunction
 " LISTIMPORTS -----------------------------------------------------------------------
 " List the modules imported by the current module
 function! PSCIDElistImports()
-  let currentModule = s:ExtractModule()
+  let currentModule = purescript#ide#utils#currentModule()
   call purescript#ide#utils#debug('PSCIDElistImports ' . currentModule, 3)
-  let imports =  s:ListImports(currentModule)
+  let imports =  purescript#ide#import#listImports(currentModule)
   for import in imports
     call s:echoImport(import)
   endfor
@@ -648,54 +631,10 @@ function! s:echoImport(import)
   echon "\n"
 endfunction
 
-function! s:ListImports(module, ...)
-  if a:0 >= 1
-    let qualifier = a:1
-  else
-    let qualifier = ""
-  endif
-
-  if a:0 >= 2
-    let ident = a:2
-  else
-    let ident = ""
-  endif
-
-  call purescript#ide#utils#update()
-  let filename = expand("%:p")
-  let resp = purescript#ide#callSync(
-	\ {'command': 'list', 'params': {'type': 'import', 'file': filename}},
-	\ 'Failed to get imports for: ' . a:module,
-	\ 0
-	\ )
-  call purescript#ide#utils#debug("PSCIDE s:ListImports result: " . string(resp), 3)
-
-  " Only need module names right now, so pluck just those.
-  if type(resp) == v:t_dict && resp['resultType'] ==# 'success'
-
-    " psc-ide >=0.11 returns imports on 'imports' property.
-    if type(resp.result) == v:t_list
-      let results = resp.result
-    else
-      let results = resp.result.imports
-    endif
-    if !empty(qualifier)
-      call filter(results, { idx, val -> get(val, "qualifier", "") == qualifier })
-    end
-    if !empty(ident)
-      call filter(results, {idx, val ->  get(val, "importType", "") == "explicit" && has_key(val, "identifiers") ? index(val.identifiers, ident) != -1 : v:true})
-    endif
-    return results
-  else
-    call purescript#ide#handlePursError(resp)
-    return []
-  endif
-endfunction
-
 function! s:getType(ident, filterModules, cb)
-  let currentModule = s:ExtractModule()
+  let currentModule = purescript#ide#utils#currentModule()
   let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
-  let imports = s:ListImports(currentModule, qualifier, a:filterModules ? ident : "")
+  let imports = purescript#ide#import#listImports(currentModule, qualifier, a:filterModules ? ident : "")
   let modules = map(copy(imports), {key, val -> val["module"]})
   call extend(modules, [currentModule, "Prim"])
   let filters = [purescript#ide#utils#modulesFilter(modules)]
@@ -983,7 +922,7 @@ fun! s:completeFn(findstart, base, commandFn)
 endfun
 
 fun! s:omniCommand(ident, qualifier)
-  let currentModule = s:ExtractModule()
+  let currentModule = purescript#ide#utils#currentModule()
 
   let filters = []
   if g:psc_ide_omnicompletion_prefix_filter
@@ -991,7 +930,7 @@ fun! s:omniCommand(ident, qualifier)
   endif
 
   if !empty(a:qualifier)
-    let imports = map(s:ListImports(currentModule, a:qualifier), { idx, val -> val["module"] })
+    let imports = map(purescript#ide#import#listImports(currentModule, a:qualifier), { idx, val -> val["module"] })
 
     if len(imports)
       call add(filters, purescript#ide#utils#modulesFilter(imports))
@@ -1002,7 +941,7 @@ fun! s:omniCommand(ident, qualifier)
     let matcher = s:flexMatcher(a:ident)
   else
     if g:psc_ide_omnicompletion_filter_modules
-      let imports = map(s:ListImports(currentModule), { n, m -> m.module })
+      let imports = map(purescript#ide#import#listImports(currentModule), { n, m -> m.module })
       call add(imports, "Prim")
       call add(filters, purescript#ide#utils#modulesFilter(modules))
     endif
