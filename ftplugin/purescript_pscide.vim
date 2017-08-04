@@ -320,15 +320,26 @@ function! PSCIDEimportIdentifier(ident)
   call purescript#ide#import#identifier(a:ident, "")
 endfunction
 
-fun! PSCIDEcompleteIdentifier(argLead, cmdLead, cursorPos)
-  let res = s:completeFn(v:false, a:argLead, { ident, qualifer ->
+fun! s:completeCommand(ident, qualifier)
+  let currentModule = s:ExtractModule()
+  let filters = []
+  if !empty(a:qualifier)
+    let modules = map(s:ListImports(currentModule, a:qualifier), { idx, val -> val["module"] })
+    call extend(modules, [currentModule, "Prim"])
+    let filters = [purescript#ide#utils#modulesFilter(modules)]
+  endif
+  return
 	\ {'command': 'complete'
 	\ , 'params':
-	\   { 'matcher': s:flexMatcher(a:argLead)
+	\   { 'matcher': empty(a:ident) ? {} : s:flexMatcher(a:ident)
 	\   , 'options': { 'groupReexports': v:true }
+	\   , 'filters': filters
 	\   }
 	\ }
-	\ })
+endfun
+
+fun! PSCIDEcompleteIdentifier(argLead, cmdLead, cursorPos)
+  let res = s:completeFn(v:false, a:argLead, function("s:completeCommand"))
   return join(uniq(sort(map(res, {idx, r -> r.word}))), "\n")
 endfun
 
