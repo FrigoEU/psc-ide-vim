@@ -163,8 +163,6 @@ com! -buffer -nargs=*
 com! -buffer -bang
       \ Prebuild
       \ call PSCIDErebuild(v:true, <q-bang>, function("PSCIDEerrors"))
-com! -buffer PremoveImportQualifications
-      \ call PSCIDEremoveImportQualifications()
 com! -buffer
       \ Pstart
       \ call PSCIDEstart(0)
