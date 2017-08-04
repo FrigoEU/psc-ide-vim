@@ -1,0 +1,126 @@
+PureScript psc ide integration			      *psc-ide-vim* *purs*
+
+COMPLETION					      *purs-completion*
+The plugin provides omni completion |i_CTRL-X_CTRL-O| for your PureScript
+coding and user completion so you can complete with |i_CTRL-X_CTRL-U| too.
+The 'omnifunc' is though to provide as thigh list of results as possible,
+while the user completion is though to find as many results as possible.
+
+Both completion function will work with qualified and unqualified
+indentifiers.
+
+Also many of the commands can be completed.
+
+PURS SERVER COMMANDS				      *purs-server-commands*
+
+						      *:Plist*
+>
+ :Plist
+<List loaded modules.
+						      *:Pload*
+>
+ :Pload[!]
+<Load externs, with optional |<bang>|, first reset loaded modules.
+
+						      *:Pcwd*
+>
+ :Pcwd
+<Show current working directory.
+						      *:Pend*
+>
+ :Pend
+<Shut down the server.
+						      *:Prebuild*
+>
+ :Prebuild[!]
+<Rebuild current buffer, with optional |<bang>| first reload the modules.
+
+EDITING COMMANDS				      *purs-editing-commands*
+
+						      *:PaddClause*
+>
+ :PaddClause
+<Generate function template from a function signature on the current line.
+
+						      *:PaddType*
+>
+ :PaddType
+<Add type annotation to a function on the current line, e.g. if you use this
+command over the line
+>
+    concat :: forall a b. Show a => Show b => a -> b -> String
+<
+It will produce:
+>
+    concat :: forall a b. Show a => Show b => a -> b -> String
+    concat _ _ = ?concat
+<
+
+						      *:Papply*
+>
+ :Papply[!]
+<Apply current line suggestion if there is any.  With |<bang>| applies all
+suggestions.  Warning that have suggestion are indicated with 'V' in the quick
+fix list.
+
+						      *:Pcase*
+>
+ :Pcase type
+<Add case expression for give type, e.g. if you start with
+>
+    myCase :: Either String Int -> String
+    myCase e = case e of<
+
+and you type `:Pcase Either String Int` you will get
+>
+  myCase :: Either String Int -> String
+    myCase e = case e of
+      (Left _)
+      (Right _)
+<
+IMPORT COMMANDS					      *purs-import-commands*
+
+						      *:Pimport*
+>
+ :Pimport [ident]
+<Import identifier. It might be qualified if you have qualified imports.  If
+identifier is not given as an argument the word under the cursro is taken.
+
+						      *:PimportModule*
+>
+ :PimportModule ident [qualificier]
+<Import module (possibly as qualificied module).
+						      *:Pimports*
+>
+ :Pimports
+<List imports.
+
+						      *:PaddImportQualifications*
+>
+ :PaddImportQualifications
+<
+
+SEARCH COMMANDS					      *purs-search-commands*
+
+						      *:Pgoto*
+>
+ :Pgoto [ident]
+<Goto identifier.  You can use qualified identifiers if you have qualified
+imports. If identifier is not given the word under the cursor is taken.
+
+						      *:Pursuit*
+>
+ :Pursuit [ident]
+<Search pursuit for ident.  If not present the word under the cursor is taken.
+
+						      *:Ptype*
+>
+ :Ptype[!] [ident]
+<Find type of ident.  If ident is not given the wrod under the cursor is
+taken.
+
+						      *:Psearch*
+>
+ :Psearch ident
+<Search for identifier.  This works like the provided 'omnifunc', but with
+less filtering.

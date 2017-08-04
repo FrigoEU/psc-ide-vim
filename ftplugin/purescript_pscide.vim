@@ -143,7 +143,8 @@ com! -buffer
 com! -buffer -nargs=* -bang -complete=custom,PSCIDEcompleteIdentifier 
       \ Pgoto
       \ call PSCIDEgoToDefinition(<q-bang>, len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
-com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier Pimport
+com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier
+      \ Pimport
       \ call PSCIDEimportIdentifier(len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer
       \ Plist

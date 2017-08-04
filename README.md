@@ -6,6 +6,8 @@ Installing the plugin via Vundle/NeoBundle/etc:
 
 `NeoBundle "frigoeu/psc-ide-vim"`
 
+If you manually install the plugin don't forget to generate help tags with `:helptags` vim commands.
+
 ## Syntax checking
 This plugin provides two kinds of syntax checking with syntastic. Controlling which one you use happens via the global variable g:psc_ide_syntastic_mode.
 
@@ -16,36 +18,8 @@ This plugin provides two kinds of syntax checking with syntastic. Controlling wh
 ![:PSCIDE syntastic gif](http://frigoeu.github.io/gifs/syntastic.gif)
 
 ## Commands 
-* :PSCIDEtype : Returns the type of the expression under the cursor (Doesn't support fully qualified names).
 
-![:PSCIDEtype gif](http://frigoeu.github.io/gifs/type.gif)
-* :PSCIDEaddTypeAnnotation : Add type annotation.
-
-![:PSCIDEaddtype gif](http://frigoeu.github.io/gifs/addtype.gif)
-* :PSCIDEimportIdentifier: Add import statement for identifier under cursor. If there are multiple options, you can select the module you want to import from with the number keys. Needs Purescript 0.8.4.0 or higher
-
-![:PSCIDEimportIdentifier](http://frigoeu.github.io/gifs/importidentifier.gif)
-* :PSCIDEapplySuggestion : Automatically applies suggestions provided by the compiler. This uses the syntastic syntax checker, so syntastic is required for this to work. Errors/warnings with suggestions are marked as "Style" errors, which use the "S>" icon by default, while normal errors/warnings use ">>" by default
-
-![:PSCIDEapplySuggestion gif](http://frigoeu.github.io/gifs/applysuggestion.gif)
-* :PSCIDEcaseSplit <type> : Splits variables in a function declaration into its different constructors.
-
-![:PSCIDEcaseSplit gif](gif here)
-
-* :PSCIDEaddImportQualifications : Applies all import qualification suggestions in one go. Same as :PSCIDEapplySuggestion, but applies it to every line starting with "import"
-
-![:PSCIDEaddimport gif](http://frigoeu.github.io/gifs/addimport.gif)
-
-* :PSCIDEgoToDefinition : Go to definition of word under cursor (sorry no gif yet!)
-
-* :PSCIDEaddClause : Add function template based on type signature
-* :PSCIDEpursuit : Prints the info found on pursuit for the identifier under the cursor. Doesn't support fully qualified names.
-* :PSCIDEcwd : Prints the current working directory of psc-ide-server.
-* :PSCIDElist : Prints the loaded modules.
-
-* :PSCIDEstart : Starts psc-ide-server on port 4242 (configurable via `g:psc_ide_server_port`) and your project root directory (found by recursively walking up the tree until we find bower.json). Gets called automatically when trying to interact with the server, so you shouldn't need to call this yourself. If you have a psc-ide-server running already, this plugin will use that server for it's commands.
-* :PSCIDEend : Stops psc-ide-server. Gets called automatically when exiting VIM.
-* :PSCIDEload : Loads all modules into psc-ide-server. This gets called automatically when psc-ide-server gets started. Afterwards it's up to you to refresh it now and then. This used to happen automatically on file save/buffer switch, but this took multiple seconds on bigger projects and ended up being more trouble than it was worth.
+For documentation on commands check `:help psc-ide-vim`.
 
 ## Mappings
 No custom mappings are provided, but it's easy to map the above commands to any key mapping you want. My personal setup (inside `after/ftplugin/purescript.vim`:
@@ -63,7 +37,6 @@ nm <buffer> <silent> <leader>qd :<C-U>call PSCIDEremoveImportQualifications()<CR
 nm <buffer> <silent> <leader>qa :<C-U>call PSCIDEaddImportQualifications()<CR>
 nm <buffer> <silent> ]d :<C-U>call PSCIDEgoToDefinition(PSCIDEgetKeyword())<CR>
 ```
-
 
 ## Omnicompletion
 * Omnicompletion gets possibilities based on the word under your cursor, and shows the types.
