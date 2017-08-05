@@ -119,9 +119,9 @@ let s:vim_module_names = has_key(get(getloclist(0), 0, {}), "module")
 call setloclist(0, loclist)
 
 " COMMANDS -------------------------------------------------------------------
-com! -buffer
+com! -buffer -bang
       \ PaddClause
-      \ call PSCIDEaddClause()
+      \ call PSCIDEaddClause(<q-bang>)
 com! -buffer
       \ PaddImportQualifications
       \ call PSCIDEaddImportQualifications()
@@ -131,9 +131,9 @@ com! -buffer
 com! -buffer -bang
       \ Papply
       \ call PSCIDEapplySuggestion(<q-bang>)
-com! -buffer -nargs=1
+com! -buffer -bang -nargs=1
       \ Pcase
-      \ call PSCIDEcaseSplit(<q-args>)
+      \ call PSCIDEcaseSplit(<q-bang>, <q-args>)
 com! -buffer
       \ Pcwd
       \ call PSCIDEcwd()
@@ -538,11 +538,17 @@ endfunction
 
 " ADDCLAUSE
 " Makes template function implementation from signature
-function! PSCIDEaddClause()
+function! PSCIDEaddClause(bang)
   let lnr = line(".")
   let line = getline(lnr)
 
-  let command = {'command': 'addClause', 'params': {'line': line, 'annotations': v:false}}
+  let command = {
+	\ 'command': 'addClause',
+	\ 'params':
+	\   { 'line': line
+	\   , 'annotations': a:bang == "!" ? v:true : v:false
+	\   }
+	\ }
 
   call purescript#ide#call(
 	\ command,
@@ -565,7 +571,13 @@ endfunction
 " CASESPLIT
 " Hover cursor over variable in function declaration -> pattern match on all
 " different cases of the variable
-function! PSCIDEcaseSplit(type)
+function! PSCIDEcaseSplit(bang, ...)
+  if (a:0 >= 1)
+    let type = a:1
+  else
+    let type = input("Please provide a type: ")
+  endif
+
   let winview = winsaveview()
   let lnr = line(".")
   let begin = s:findStart()
@@ -577,20 +589,31 @@ function! PSCIDEcaseSplit(type)
 
   let command = {
 	\ 'command': 'caseSplit',
-	\ 'params': { 'line': line, 'begin': begin, 'end': begin + len, 'annotations': v:false, 'type': a:type}
+	\ 'params':
+	\   { 'line': line
+	\   , 'begin': begin
+	\   , 'end': begin + len
+	\   , 'annotations': a:bang == "!" ? v:true : v:false
+	\   , 'type': type
+	\   }
 	\ }
 
   call purescript#ide#call(
 	\ command,
 	\ 'Failed to split case for: ' . word,
 	\ 0,
-	\ { resp -> s:PSCIDEcaseSplitCallback(lnr, resp) }
+	\ { resp -> s:PSCIDEcaseSplitCallback(lnr, type, resp) }
 	\ )
 endfunction
 
-function! s:PSCIDEcaseSplitCallback(lnr, resp)
+function! s:PSCIDEcaseSplitCallback(lnr, type, resp)
   if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
-    return purescript#ide#handlePursError(a:resp)
+    if get(a:resp, "result", "") == "Not Found"
+      call purescript#ide#utils#error("type `" . a:type . "` not found", v:true)
+    else
+      call purescript#ide#handlePursError(a:resp)
+    endif
+    return
   endif
   call append(a:lnr, a:resp.result)
   normal dd

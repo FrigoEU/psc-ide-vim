@@ -65,18 +65,29 @@ fix list.
 
 						      *:Pcase*
 >
- :Pcase type
-<Add case expression for give type, e.g. if you start with
+ :Pcase[!] type
+<Add case expression for give type, with optional |<bang>| it will also
+include type annotations, e.g. starting with
 >
     myCase :: Either String Int -> String
-    myCase e = case e of<
+    myCase _ = ?s<  -- cursor over `_`
 
-and you type `:Pcase Either String Int` you will get
+then using `:Pcase Either String Int` and will put
 >
   myCase :: Either String Int -> String
-    myCase e = case e of
-      (Left _)
-      (Right _)
+  myCase (Left _) = ?s
+  myCase (Right _) = ?s
+<It also works over case expressions:
+>
+  myCase :: Either String Int -> String
+  myCase a = case a of
+    _ -> ?s -- cursor over `_`
+<will result with
+>
+  myCase :: Either String Int -> String
+  myCase a = case a of
+    (Left _) -> ?s
+    (Right _) -> ?s
 <
 IMPORT COMMANDS					      *purs-import-commands*
 
