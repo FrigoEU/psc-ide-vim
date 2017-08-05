@@ -52,17 +52,15 @@ nm <buffer> <silent> ]d :<C-U>call PSCIDEgoToDefinition("", PSCIDEgetKeyword())<
 ```
 
 ## Omnicompletion and user completion
-* Omnicompletion gets possibilities based on the word under your cursor, and shows the types.
+Omnicompletion gets possibilities based on the word under your cursor, and
+shows the types.
 
 ![:PSCIDE omnicompletion gif](http://frigoeu.github.io/gifs/omnicompletion.gif)
 
 ## Prerequisites
-* Have purs installed and available on your path.
-* Have [purescript-vim](https://github.com/raichoo/purescript-vim) installed.
-* Have chosen server port (by default 4242) free. You can change port value
-  using `g:psc_ide_server_port` option.
-* Have a `bower.json` or `package.json`  file in the root path of your project.
-  The plugin will climb upward on the file tree until it finds bower.json.
+* purs installed and available on your path
+* [purescript-vim](https://github.com/raichoo/purescript-vim)
+* `bower.json` or `package.json` file in the root path of your project
 
 ## Debugging
 Add the following to have psc-ide-vim spit out all logs:
