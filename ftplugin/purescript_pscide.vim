@@ -571,7 +571,13 @@ endfunction
 " CASESPLIT
 " Hover cursor over variable in function declaration -> pattern match on all
 " different cases of the variable
-function! PSCIDEcaseSplit(bang, type)
+function! PSCIDEcaseSplit(bang, ...)
+  if (a:0 >= 1)
+    let type = a:1
+  else
+    let type = input("Please provide a type: ")
+  endif
+
   let winview = winsaveview()
   let lnr = line(".")
   let begin = s:findStart()
@@ -588,7 +594,7 @@ function! PSCIDEcaseSplit(bang, type)
 	\   , 'begin': begin
 	\   , 'end': begin + len
 	\   , 'annotations': a:bang == "!" ? v:true : v:false
-	\   , 'type': a:type
+	\   , 'type': type
 	\   }
 	\ }
 
@@ -596,13 +602,18 @@ function! PSCIDEcaseSplit(bang, type)
 	\ command,
 	\ 'Failed to split case for: ' . word,
 	\ 0,
-	\ { resp -> s:PSCIDEcaseSplitCallback(lnr, resp) }
+	\ { resp -> s:PSCIDEcaseSplitCallback(lnr, type, resp) }
 	\ )
 endfunction
 
-function! s:PSCIDEcaseSplitCallback(lnr, resp)
+function! s:PSCIDEcaseSplitCallback(lnr, type, resp)
   if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
-    return purescript#ide#handlePursError(a:resp)
+    if get(a:resp, "result", "") == "Not Found"
+      call purescript#ide#utils#error("type `" . a:type . "` not found", v:true)
+    else
+      call purescript#ide#handlePursError(a:resp)
+    endif
+    return
   endif
   call append(a:lnr, a:resp.result)
   normal dd
