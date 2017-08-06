@@ -96,6 +96,9 @@ IMPORT COMMANDS					      *purs-import-commands*
  :Pimport [ident]
 <Import identifier. It might be qualified if you have qualified imports.  If
 identifier is not given as an argument the word under the cursro is taken.
+The identifier can be qualified, i.e. `List.length` then the qualifier will be
+preserved.  If there is already a module imported with the same qualified the
+new import will be added to that import declaration.
 
 						      *:PimportModule*
 >
