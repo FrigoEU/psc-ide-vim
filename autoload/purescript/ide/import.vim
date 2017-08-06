@@ -179,8 +179,12 @@ endfunction
 
 
 " import identifier
-" ident	    - the identifier
-" module    - empty string or name of the module to search in
+" a:ident	    - the identifier (might be qualified)
+" a:module    - empty string or name of the module to search in
+"
+" Explicit a:module is used when there were multiple choices, to limit the
+" choice, where it must be respected and also in
+" `purescript#ide#imports#completeDone` where it might be modified.
 function! purescript#ide#import#identifier(ident, module, ...)
 
   call purescript#ide#utils#debug('PSCIDEimportIdentifier', 3)
@@ -210,20 +214,38 @@ function! purescript#ide#import#identifier(ident, module, ...)
     let fixCol = v:false
   endif
 
+  if a:0 >= 5
+    " v:true if we can ignore `a:module`
+    let canIgnoreModuleParam = a:5
+  else
+    let canIgnoreModuleParam = v:false
+  endif
+
   if (a:ident == "")
     return
   endif
 
   let file = fnamemodify(bufname(""), ":p")
   let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
-  let currentModule = purescript#ide#utils#currentModule()
-  let imports = purescript#ide#import#listImports(currentModule, qualifier)
-  if empty(qualifier)
+  if !empty(a:module) && !canIgnoreModuleParam
+    let filters = [purescript#ide#utils#modulesFilter([a:module])]
+  elseif empty(qualifier)
     let filters = []
   else
+    let currentModule = purescript#ide#utils#currentModule()
+    let imports = purescript#ide#import#listImports(currentModule, qualifier)
     let modules = map(copy(imports), {key, val -> val["module"]})
-    call extend(modules, [currentModule, "Prim"])
-    let filters = [purescript#ide#utils#modulesFilter(modules)]
+    if index(modules, a:module) != -1
+      let modules = [ a:module ]
+    else
+      " ignore a:module
+    endif
+
+    if len(modules) > 0
+      let filters = [purescript#ide#utils#modulesFilter(modules)]
+    else
+      let filters = []
+    endif
   endif
 
   let input = { 
@@ -236,8 +258,8 @@ function! purescript#ide#import#identifier(ident, module, ...)
         \     'identifier': ident
         \   } } }
 
-  if a:module != ""
-    let input.params.filters = [purescript#ide#utils#modulesFilter([a:module])]
+  if !empty(qualifier)
+    let input.params.importCommand.qualifier = qualifier
   endif
 
   let view = winsaveview()
@@ -271,5 +293,5 @@ fun! purescript#ide#import#completeDone()
 
   let ident = v:completed_item["word"]
   let module = get(split(v:completed_item["info"]), 0, "")
-  call purescript#ide#import#identifier(ident, module, v:true, v:false, v:true, v:true)
+  call purescript#ide#import#identifier(ident, module, v:true, v:false, v:true, v:true, v:true)
 endfun
