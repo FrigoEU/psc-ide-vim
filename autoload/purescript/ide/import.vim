@@ -220,32 +220,25 @@ function! purescript#ide#import#identifier(ident, module, ...)
     let fixCol = v:false
   endif
 
-  if a:0 >= 5
-    " v:true if we can ignore `a:module`
-    let canIgnoreModuleParam = a:5
-  else
-    let canIgnoreModuleParam = v:false
-  endif
-
   if (a:ident == "")
     return
   endif
 
   let file = fnamemodify(bufname(""), ":p")
   let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
-  if !empty(a:module) && !canIgnoreModuleParam
+  if !empty(a:module)
+    " When running through CompleteDone we need to preserve a:module.  But
+    " also the module might not be imported yet with qualificaton or the
+    " qualified module was already imported in which case we'd limit the list
+    " of modules to `a:module` anyway.
     let filters = [purescript#ide#utils#modulesFilter([a:module])]
   elseif empty(qualifier)
     let filters = []
   else
+    " Otherwise filter imported modules by qualification
     let currentModule = purescript#ide#utils#currentModule()
     let imports = purescript#ide#import#listImports(currentModule, qualifier)
     let modules = map(copy(imports), {key, val -> val["module"]})
-    if index(modules, a:module) != -1
-      let modules = [ a:module ]
-    else
-      " ignore a:module
-    endif
 
     if len(modules) > 0
       let filters = [purescript#ide#utils#modulesFilter(modules)]
@@ -299,5 +292,5 @@ fun! purescript#ide#import#completeDone()
 
   let ident = v:completed_item["word"]
   let module = get(split(v:completed_item["info"]), 0, "")
-  call purescript#ide#import#identifier(ident, module, v:true, v:false, v:true, v:true, v:true)
+  call purescript#ide#import#identifier(ident, module, v:true, v:false, v:true, v:true)
 endfun

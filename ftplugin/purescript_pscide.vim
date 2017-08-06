@@ -992,8 +992,7 @@ fun! s:omniCommand(ident, qualifier)
     if len(imports)
       call add(filters, purescript#ide#utils#modulesFilter(imports))
     else
-      call purescript#ide#utils#log("None of imported modules is qualified with: \"" . a:qualifier . "\"")
-      return v:null
+      " none of imported modules is qualified with a:qualifier
     endif
     let matcher = s:flexMatcher(a:ident)
   else
