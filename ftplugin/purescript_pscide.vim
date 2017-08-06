@@ -922,7 +922,7 @@ fun! s:findStart()
 
   " search backwards for start of identifier (iskeyword pattern)
   let start = col
-  while start > 0 && (line[start - 2] =~ '\k' || line[start - 2] =~ '\.')
+  while start > 0 && (line[start - 2] =~ '[\k<>$#+*/%''&=!:~?^-]' || line[start - 2] =~ '\.')
     let start -= 1
   endwhile
 
