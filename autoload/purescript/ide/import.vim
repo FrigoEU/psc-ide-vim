@@ -163,12 +163,18 @@ function! s:callback(resp, ident, view, lines, silent, rebuild, ignoreMultiple, 
   exe "1," . bLast . "d_"
   call append(0, a:resp.result[0:nLast - 1])
 
+  if mode() == 'i'
+    call feedkeys("\<C-g>u", "n")
+  endif
   let a:view.topline = a:view.topline + line("$") - a:lines
   let a:view.lnum = a:view.lnum + line("$") - a:lines
   if a:fixCol
     let a:view.col = a:view.col + 1
   endif
   call winrestview(a:view)
+  if mode() == 'i'
+    call feedkeys("\<C-g>u", "n")
+  endif
 
   " trigger PSCIDErebuild
   if a:rebuild
