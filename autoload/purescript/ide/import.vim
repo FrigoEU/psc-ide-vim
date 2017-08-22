@@ -118,8 +118,8 @@ endfun
 "	    the other way around).
 function! s:callback(resp, ident, view, lines, silent, rebuild, ignoreMultiple, fixCol) 
   if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
-    if !a:silent
-      return purescript#ide#utils#log(a:resp["result"])
+    if !a:silent && type(a:resp) == v:t_dict
+	return purescript#ide#utils#log(a:resp["result"])
     else
       return
     endif
