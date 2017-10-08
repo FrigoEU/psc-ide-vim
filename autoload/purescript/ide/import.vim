@@ -224,6 +224,10 @@ function! purescript#ide#import#identifier(ident, module, ...)
     return
   endif
 
+  if getline(".") =~ '^\s*import\>'
+    return
+  endif
+
   let file = fnamemodify(bufname(""), ":p")
   let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
   if !empty(a:module)

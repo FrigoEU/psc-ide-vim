@@ -340,12 +340,16 @@ function! PSCIDEimportIdentifier(ident)
   call purescript#ide#import#identifier(a:ident, "")
 endfunction
 
-fun! s:completeCommand(ident, qualifier)
+fun! s:completeCommand(ident, qualifier, ...)
   let currentModule = purescript#ide#utils#currentModule()
-  let filters = []
-  if !empty(a:qualifier)
+  let modules = a:0 >= 1 ? a:1 : v:null
+  if type(modules) == v:t_list
+    let filters = [purescript#ide#utils#modulesFilter(modules)]
+  elseif !empty(a:qualifier)
     let modules = map(purescript#ide#import#listImports(currentModule, a:qualifier), { idx, val -> val["module"] })
     let filters = [purescript#ide#utils#modulesFilter(modules)]
+  else
+    let filters = []
   endif
   return
 	\ {'command': 'complete'
@@ -931,14 +935,42 @@ fun! s:findStart()
 endfun
 
 " COMPLETION FUNCTION --------------------------------------------------------
-fun! s:completeFn(findstart, base, commandFn)
+fun! s:completeFn(findstart, base, commandFn,...)
+  let completeImportLine = a:0 >= 1 ? a:1 : v:false
+
   if a:findstart 
     return s:findStart()
   else
 
     let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:base)
+    let command = v:null
 
-    let command = a:commandFn(ident, qualifier)
+    if completeImportLine
+      let line = getline(".")
+      let sline = line[0:col(".")-1]
+      if sline =~ '^\s*import\s\+[a-zA-Z.]*$'
+	let resp = purescript#ide#callSync(
+	  \ {"command": "list", "params": {"type": "loadedModules"}},
+	  \ "Failed to get loaded modules",
+	  \ 0
+	  \ )
+	let res = get(resp, "result", [])
+	if (type(res) != v:t_list)
+	  let res = []
+	endif
+	let len = len(a:base)
+	let mlen = len(split(a:base, '\.', v:true))
+	return filter(res, { idx, val -> val[0:len-1] == a:base })
+      elseif line =~ '^\s*import\s*[a-zA-Z.]\+\s*('
+	let moduleName = matchstr(line, '^\s*import\>\s*\<\zs[a-zA-Z.]\+\>\ze')
+	let command = a:commandFn(ident, "", [moduleName])
+      endif
+    endif
+
+    if type(command) != v:t_dict
+      let command = a:commandFn(ident, qualifier)
+    endif
+
     if empty(command)
       return
     endif
@@ -978,10 +1010,11 @@ fun! s:completeFn(findstart, base, commandFn)
   endif
 endfun
 
-fun! s:omniCommand(ident, qualifier)
+fun! s:omniCommand(ident, qualifier, ...)
+  let modules = a:0 >= 1 ? a:1 : v:null
   let currentModule = purescript#ide#utils#currentModule()
-
   let filters = []
+
   if g:psc_ide_omnicompletion_prefix_filter
     call add(filters, s:prefixFilter(a:ident))
   endif
@@ -1002,6 +1035,10 @@ fun! s:omniCommand(ident, qualifier)
       call add(filters, purescript#ide#utils#modulesFilter(modules))
     endif
     let matcher = s:flexMatcher(a:ident)
+  endif
+
+  if type(modules) == v:t_list
+    let filters = [purescript#ide#utils#modulesFilter(modules)]
   endif
 
   if empty(a:ident)
@@ -1046,11 +1083,11 @@ endfunction
 " SET UP OMNICOMPLETION ------------------------------------------------------
 fun! PSCIDEomni(findstart, base)
   if a:findstart
-    return s:completeFn(a:findstart, a:base, function("s:omniCommand"))
+    return s:completeFn(a:findstart, a:base, function("s:omniCommand"), v:true)
   else
-    let results = s:completeFn(a:findstart, a:base, function("s:omniCommand"))
+    let results = s:completeFn(a:findstart, a:base, function("s:omniCommand"), v:true)
     if empty(results)
-      let results = PSCIDEcomplete(a:findstart, a:base)
+      let results = PSCIDEcomplete(a:findstart, a:base, v:true)
     endif
     return results
   endif
@@ -1058,7 +1095,7 @@ endfun
 
 " SET UP USERCOMPLETION ------------------------------------------------------
 fun! PSCIDEcomplete(findstart, base)
-  return s:completeFn(a:findstart, a:base, function("s:completeCommand"))
+  return s:completeFn(a:findstart, a:base, function("s:completeCommand"), v:true)
 endfun
 
 " SEARCH ---------------------------------------------------------------------
