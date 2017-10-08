@@ -1087,7 +1087,7 @@ fun! PSCIDEomni(findstart, base)
   else
     let results = s:completeFn(a:findstart, a:base, function("s:omniCommand"), v:true)
     if empty(results)
-      let results = PSCIDEcomplete(a:findstart, a:base, v:true)
+      let results = PSCIDEcomplete(a:findstart, a:base)
     endif
     return results
   endif
