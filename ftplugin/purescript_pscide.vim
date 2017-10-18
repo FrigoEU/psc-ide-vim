@@ -140,7 +140,7 @@ com! -buffer
 com! -buffer
       \ Pend
       \ call PSCIDEend()
-com! -buffer -nargs=* -bang -complete=custom,PSCIDEcompleteIdentifier 
+com! -buffer -nargs=* -bang -complete=custom,PSCIDEcompleteIdentifier
       \ Pgoto
       \ call PSCIDEgoToDefinition(<q-bang>, len(<q-args>) ? <q-args> : PSCIDEgetKeyword())
 com! -buffer -nargs=* -complete=custom,PSCIDEcompleteIdentifier
@@ -219,23 +219,23 @@ function! PSCIDEstart(silent)
     return
   endif
 
-  let command = [ 
-	\ "purs", "ide", "server",
-	\ "-p", g:psc_ide_server_port,
-	\ "-d", dir,
-	\ "src/**/*.purs",
-	\ "bower_components/**/*.purs",
-	\ ]
+  let command = [
+    \ "purs", "ide", "server",
+    \ "-p", g:psc_ide_server_port,
+    \ "-d", dir,
+    \ "src/**/*.purs",
+    \ "bower_components/**/*.purs",
+    \ ]
 
   exe "lcd" dir
   call purescript#ide#utils#debug("PSCIDEstart: " . json_encode(command), 3)
   let jobid = purescript#job#start(
-	\ command,
-	\ { "on_stderr": { ch, msg -> purescript#ide#utils#warn(purescript#ide#utils#toString(msg), v:true) }
-	\ , "on_stdout": { ch, msg -> type(msg) == v:t_string ? purescript#ide#utils#log(msg) : v:null }
-	\ , "on_exit": function("s:onServerExit")
-	\ }
-	\ )
+    \ command,
+    \ { "on_stderr": { ch, msg -> purescript#ide#utils#warn(purescript#ide#utils#toString(msg), v:true) }
+    \ , "on_stdout": { ch, msg -> type(msg) == v:t_string ? purescript#ide#utils#log(msg) : v:null }
+    \ , "on_exit": function("s:onServerExit")
+    \ }
+    \ )
   lcd -
 
   sleep 100m
@@ -269,14 +269,14 @@ function! PSCIDEend()
     return
   endif
   let jobid = purescript#job#start(
-	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	\ { "on_exit": {job, status, ev -> s:PSCIDEendCallback() }
-	\ , "on_stderr": {err -> purescript#ide#utils#log(string(err), v:true)}
-	\ })
+    \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
+    \ { "on_exit": {job, status, ev -> s:PSCIDEendCallback() }
+    \ , "on_stderr": {err -> purescript#ide#utils#log(string(err), v:true)}
+    \ })
   call purescript#job#send(jobid, json_encode({'command': 'quit'}) . "\n")
 endfunction
 
-function! s:PSCIDEendCallback() 
+function! s:PSCIDEendCallback()
   call purescript#ide#setStarted(v:false)
   call purescript#ide#setValid(v:false)
 endfunction
@@ -320,11 +320,11 @@ function! PSCIDEload(logLevel, bang, ...)
   let input = {'command': 'load'}
 
   call purescript#ide#call(
-	\ input,
-	\ "Failed to load",
-	\ 0,
-	\ Fn
-	\ )
+    \ input,
+    \ "Failed to load",
+    \ 0,
+    \ Fn
+    \ )
 endfunction
 
 function! s:PSCIDEloadCallback(logLevel, resp)
@@ -352,13 +352,13 @@ fun! s:completeCommand(ident, qualifier, ...)
     let filters = []
   endif
   return
-	\ {'command': 'complete'
-	\ , 'params':
-	\   { 'matcher': empty(a:ident) ? {} : s:flexMatcher(a:ident)
-	\   , 'options': { 'groupReexports': v:true }
-	\   , 'filters': filters
-	\   }
-	\ }
+    \ {'command': 'complete'
+    \ , 'params':
+    \   { 'matcher': empty(a:ident) ? {} : s:flexMatcher(a:ident)
+    \   , 'options': { 'groupReexports': v:true }
+    \   , 'filters': filters
+    \   }
+    \ }
 endfun
 
 fun! PSCIDEcompleteIdentifier(argLead, cmdLead, cursorPos)
@@ -384,11 +384,11 @@ function! PSCIDEgoToDefinition(bang, ident)
     let filters = [purescript#ide#utils#modulesFilter(modules)]
   endif
   call purescript#ide#call(
-	\ {'command': 'type', 'params': {'search': ident, 'filters': filters}, 'currentModule': currentModule},
-	\ 'Failed to get location info for: ' . a:ident,
-	\ 0,
-	\ { resp -> s:PSCIDEgoToDefinitionCallback(a:bang, a:ident, resp) }
-	\ )
+    \ {'command': 'type', 'params': {'search': ident, 'filters': filters}, 'currentModule': currentModule},
+    \ 'Failed to get location info for: ' . a:ident,
+    \ 0,
+    \ { resp -> s:PSCIDEgoToDefinitionCallback(a:bang, a:ident, resp) }
+    \ )
 endfunction
 
 function! s:PSCIDEgoToDefinitionCallback(bang, ident, resp)
@@ -397,16 +397,16 @@ function! s:PSCIDEgoToDefinitionCallback(bang, ident, resp)
   endif
   let results = []
   for res in a:resp.result
-    if empty(filter(copy(results), { idx, val -> 
-	  \    type(val.definedAt) == v:t_dict
-	  \ && type(res.definedAt) != v:t_dict
-	  \ && val.definedAt.name == res.definedAt.name
-	  \ && val.definedAt.start[0] == res.definedAt.start[0]}))
+    if empty(filter(copy(results), { idx, val ->
+      \    type(val.definedAt) == v:t_dict
+      \ && type(res.definedAt) != v:t_dict
+      \ && val.definedAt.name == res.definedAt.name
+      \ && val.definedAt.start[0] == res.definedAt.start[0]}))
       call add(results, res)
     endif
   endfor
   if a:bang != "!" && empty(results)
-    " try again with a bang
+    " try again without a bang
     return PSCIDEgoToDefinition("!", a:ident)
   endif
   if len(results) > 1
@@ -466,25 +466,25 @@ function! PSCIDErebuild(async, bang, ...)
       call PSCIDEload(0, "!", { resp -> PSCIDErebuild(a:async, "", CallBack )})
     else
       call purescript#ide#call(
-	    \ input,
-	    \ "failed to rebuild",
-	    \ 0,
-	    \ { msg -> CallBack(s:PSCIDErebuildCallback(filename, msg, silent)) }
-	    \ )
+        \ input,
+        \ "failed to rebuild",
+        \ 0,
+        \ { msg -> CallBack(s:PSCIDErebuildCallback(filename, msg, silent)) }
+        \ )
     endif
   else
     let resp = s:PSCIDErebuildCallback(
-	      \ filename,
-	      \ purescript#ide#callSync(input, 0, 0),
-	      \ silent
-	      \ )
+          \ filename,
+          \ purescript#ide#callSync(input, 0, 0),
+          \ silent
+          \ )
     return CallBack(resp)
   endif
 endfunction
 
-function! s:PSCIDErebuildCallback(filename, resp, silent) 
+function! s:PSCIDErebuildCallback(filename, resp, silent)
   let g:psc_ide_suggestions = {}
-  if type(a:resp) == v:t_dict && has_key(a:resp, "resultType") 
+  if type(a:resp) == v:t_dict && has_key(a:resp, "resultType")
      \ && has_key (a:resp, "result") && type(a:resp.result) == v:t_list
     let out = s:qfList(a:filename, a:resp.result, a:resp.resultType)
 
@@ -501,10 +501,10 @@ endfunction
 " Add type annotation
 function! PSCIDEaddTypeAnnotation(ident)
   call s:getType(
-	\ a:ident,
-	\ v:true,
-	\ { resp -> s:PSCIDEaddTypeAnnotationCallback(a:ident, resp) }
-	\ )
+    \ a:ident,
+    \ v:true,
+    \ { resp -> s:PSCIDEaddTypeAnnotationCallback(a:ident, resp) }
+    \ )
 endfunction
 
 function! s:PSCIDEaddTypeAnnotationCallback(ident, resp)
@@ -525,11 +525,11 @@ endfunction
 " Get current working directory of `pure ide server`
 function! PSCIDEcwd()
   call purescript#ide#call(
-	\ {'command': 'cwd'},
-	\ "Failed to get current working directory", 
-	\ 0,
-	\ function("s:PSCIDEcwdCallback")
-	\ )
+    \ {'command': 'cwd'},
+    \ "Failed to get current working directory",
+    \ 0,
+    \ function("s:PSCIDEcwdCallback")
+    \ )
 endfunction
 
 function! s:PSCIDEcwdCallback(resp)
@@ -546,19 +546,19 @@ function! PSCIDEaddClause(bang)
   let line = getline(lnr)
 
   let command = {
-	\ 'command': 'addClause',
-	\ 'params':
-	\   { 'line': line
-	\   , 'annotations': a:bang == "!" ? v:true : v:false
-	\   }
-	\ }
+    \ 'command': 'addClause',
+    \ 'params':
+    \   { 'line': line
+    \   , 'annotations': a:bang == "!" ? v:true : v:false
+    \   }
+    \ }
 
   call purescript#ide#call(
-	\ command,
-	\ "Failed to add clause",
-	\ 0,
-	\ { resp -> s:PSCIDEaddClauseCallback(lnr, resp) }
-	\ )
+    \ command,
+    \ "Failed to add clause",
+    \ 0,
+    \ { resp -> s:PSCIDEaddClauseCallback(lnr, resp) }
+    \ )
 endfunction
 
 function! s:PSCIDEaddClauseCallback(lnr, resp)
@@ -591,22 +591,22 @@ function! PSCIDEcaseSplit(bang, ...)
   call winrestview(winview)
 
   let command = {
-	\ 'command': 'caseSplit',
-	\ 'params':
-	\   { 'line': line
-	\   , 'begin': begin
-	\   , 'end': begin + len
-	\   , 'annotations': a:bang == "!" ? v:true : v:false
-	\   , 'type': type
-	\   }
-	\ }
+    \ 'command': 'caseSplit',
+    \ 'params':
+    \   { 'line': line
+    \   , 'begin': begin
+    \   , 'end': begin + len
+    \   , 'annotations': a:bang == "!" ? v:true : v:false
+    \   , 'type': type
+    \   }
+    \ }
 
   call purescript#ide#call(
-	\ command,
-	\ 'Failed to split case for: ' . word,
-	\ 0,
-	\ { resp -> s:PSCIDEcaseSplitCallback(lnr, type, resp) }
-	\ )
+    \ command,
+    \ 'Failed to split case for: ' . word,
+    \ 0,
+    \ { resp -> s:PSCIDEcaseSplitCallback(lnr, type, resp) }
+    \ )
 endfunction
 
 function! s:PSCIDEcaseSplitCallback(lnr, type, resp)
@@ -627,10 +627,10 @@ endfunction
 " Get type of word under cursor
 function! PSCIDEtype(ident, filterModules)
   call s:getType(
-	\ a:ident,
-	\ a:filterModules,
-	\ { resp -> s:PSCIDEtypeCallback(a:ident, resp.result, a:filterModules) }
-	\ )
+    \ a:ident,
+    \ a:filterModules,
+    \ { resp -> s:PSCIDEtypeCallback(a:ident, resp.result, a:filterModules) }
+    \ )
 endfunction
 
 function! s:PSCIDEtypeCallback(ident, result, filterModules)
@@ -672,12 +672,12 @@ function! s:echoImport(import)
     let idx = 0
     for ident in a:import["identifiers"]
       echohl Identifier
-      echon ident 
+      echon ident
       echohl Normal
       if (idx < len - 1)
-	echon ", "
+    echon ", "
       else
-	echon ")"
+    echon ")"
       endif
       let idx += 1
     endfor
@@ -701,17 +701,17 @@ function! s:getType(ident, filterModules, cb)
   call purescript#ide#utils#debug('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
   call purescript#ide#call(
-	\ { 'command': 'type'
-	\ , 'params':
-	\     { 'search': ident
-	\     , 'filters': filters
-	\     , 'currentModule': currentModule
-	\     }
-	\ },
-	\  'Failed to get type info for: ' . a:ident,
-	\ 0,
-	\ {resp -> a:cb(resp)}
-	\ )
+    \ { 'command': 'type'
+    \ , 'params':
+    \     { 'search': ident
+    \     , 'filters': filters
+    \     , 'currentModule': currentModule
+    \     }
+    \ },
+    \  'Failed to get type info for: ' . a:ident,
+    \ 0,
+    \ {resp -> a:cb(resp)}
+    \ )
 endfunction
 
 function! s:formattype(record, filePadding, modulePadding)
@@ -721,12 +721,12 @@ function! s:formattype(record, filePadding, modulePadding)
     let definedAt = {"name": "", "start": [v:null, v:null]}
   endif
   let entry =
-	\ { "filename": s:vim_module_names ? printf("%-" . a:filePadding . "s", definedAt["name"]) : ""
-	\ , "module": empty(a:record["module"]) ? "" : printf("%-" . a:modulePadding . "s", a:record["module"])
-	\ , "lnum": definedAt["start"][0]
-	\ , "col": definedAt["start"][1]
-	\ , "text": s:CleanEnd(s:StripNewlines(a:record['identifier']) . ' ∷ ' . s:StripNewlines(a:record['type']))
-	\ }
+    \ { "filename": s:vim_module_names ? printf("%-" . a:filePadding . "s", definedAt["name"]) : ""
+    \ , "module": empty(a:record["module"]) ? "" : printf("%-" . a:modulePadding . "s", a:record["module"])
+    \ , "lnum": definedAt["start"][0]
+    \ , "col": definedAt["start"][1]
+    \ , "text": s:CleanEnd(s:StripNewlines(a:record['identifier']) . ' ∷ ' . s:StripNewlines(a:record['type']))
+    \ }
   return entry
 endfunction
 
@@ -743,10 +743,10 @@ function! PSCIDEapplySuggestion(bang)
       " the fly
       let keys = keys(g:psc_ide_suggestions)
       if len(keys) > 0
-	let key = keys[0]
-	call PSCIDEapplySuggestionPrime(key, v:true, 0)
+    let key = keys[0]
+    call PSCIDEapplySuggestionPrime(key, v:true, 0)
       else
-	break
+    break
       endif
     endwhile
   endif
@@ -780,11 +780,11 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
     " and remove trailing white space from each line
     let RSpace = { line -> substitute(line, '\s*$', '', '') }
     let replacement = join(
-	  \ map(
-	    \ split(replacement, "\n"),
-	    \ { idx, line -> idx == 0 ? RSpace(line) : repeat(" ", startColumn) . RSpace(line)}
-	  \ ),
-	  \ "\n")
+      \ map(
+        \ split(replacement, "\n"),
+        \ { idx, line -> idx == 0 ? RSpace(line) : repeat(" ", startColumn) . RSpace(line)}
+      \ ),
+      \ "\n")
     let cursor = getcurpos()
     if startColumn == 1
       let newLines = split(replacement . line[endColumn - 1:], "\n")
@@ -852,11 +852,11 @@ endfunction
 function! PSCIDEpursuit(ident)
 
   call purescript#ide#call(
-	\ {'command': 'pursuit', 'params': {'query': a:ident, 'type': "completion"}},
-	\ 'Failed to get pursuit info for: ' . a:ident,
-	\ 0,
-	\ { resp -> s:PSCIDEpursuitCallback(resp) }
-	\ )
+    \ {'command': 'pursuit', 'params': {'query': a:ident, 'type': "completion"}},
+    \ 'Failed to get pursuit info for: ' . a:ident,
+    \ 0,
+    \ { resp -> s:PSCIDEpursuitCallback(resp) }
+    \ )
 endfunction
 
 function! s:PSCIDEpursuitCallback(resp)
@@ -900,10 +900,10 @@ endfunction
 " LIST -----------------------------------------------------------------------
 function! PSCIDElist()
   let resp = purescript#ide#callSync(
-	\ {'command': 'list', 'params': {'type': 'loadedModules'}},
-	\ 'Failed to get loaded modules',
-	\ 0
-	\ )
+    \ {'command': 'list', 'params': {'type': 'loadedModules'}},
+    \ 'Failed to get loaded modules',
+    \ 0
+    \ )
   call s:PSCIDElistCallback(resp)
 endfunction
 
@@ -937,7 +937,7 @@ endfun
 fun! s:completeFn(findstart, base, commandFn,...)
   let completeImportLine = a:0 >= 1 ? a:1 : v:false
 
-  if a:findstart 
+  if a:findstart
     return s:findStart()
   else
 
@@ -948,21 +948,21 @@ fun! s:completeFn(findstart, base, commandFn,...)
       let line = getline(".")
       let sline = line[0:col(".")-1]
       if sline =~ '^\s*import\s\+[a-zA-Z.]*$'
-	let resp = purescript#ide#callSync(
-	  \ {"command": "list", "params": {"type": "loadedModules"}},
-	  \ "Failed to get loaded modules",
-	  \ 0
-	  \ )
-	let res = get(resp, "result", [])
-	if (type(res) != v:t_list)
-	  let res = []
-	endif
-	let len = len(a:base)
-	let mlen = len(split(a:base, '\.', v:true))
-	return filter(res, { idx, val -> val[0:len-1] == a:base })
+    let resp = purescript#ide#callSync(
+      \ {"command": "list", "params": {"type": "loadedModules"}},
+      \ "Failed to get loaded modules",
+      \ 0
+      \ )
+    let res = get(resp, "result", [])
+    if (type(res) != v:t_list)
+      let res = []
+    endif
+    let len = len(a:base)
+    let mlen = len(split(a:base, '\.', v:true))
+    return filter(res, { idx, val -> val[0:len-1] == a:base })
       elseif line =~ '^\s*import\s*[a-zA-Z.]\+\s*('
-	let moduleName = matchstr(line, '^\s*import\>\s*\<\zs[a-zA-Z.]\+\>\ze')
-	let command = a:commandFn(ident, "", [moduleName])
+    let moduleName = matchstr(line, '^\s*import\>\s*\<\zs[a-zA-Z.]\+\>\ze')
+    let command = a:commandFn(ident, "", [moduleName])
       endif
     endif
 
@@ -975,9 +975,9 @@ fun! s:completeFn(findstart, base, commandFn,...)
     endif
 
     let resp = purescript#ide#callSync(
-	  \ command,
-	  \ 'Failed to get completions for: '. a:base,
-	  \ 0)
+      \ command,
+      \ 'Failed to get completions for: '. a:base,
+      \ 0)
 
     let entries = get(resp, "result", [])
     "Popuplating the omnicompletion list
@@ -988,21 +988,21 @@ fun! s:completeFn(findstart, base, commandFn,...)
     " sort.
     if g:psc_ide_omnicompletion_sort_by != "flex"
       call uniq(
-	    \ sort(entries, { e1, e2 -> 
-		  \ g:psc_ide_omnicompletion_sort_by == "module" 
-		    \ ? e1.module == e2.module
-		    \ : sort([e1.identifier, e2.identifier]) == [e2.identifier, e1.identifier]}),
-	    \ { e1, e2 -> !s:compareByDefinedAt(e1, e2) }
-	    \ )
+        \ sort(entries, { e1, e2 ->
+          \ g:psc_ide_omnicompletion_sort_by == "module"
+            \ ? e1.module == e2.module
+            \ : sort([e1.identifier, e2.identifier]) == [e2.identifier, e1.identifier]}),
+        \ { e1, e2 -> !s:compareByDefinedAt(e1, e2) }
+        \ )
     endif
 
     for entry in entries
       let detail = printf("\t%-25S\t\t%s", entry['module'], entry["type"])
       let e = { 'word': (empty(qualifier) ? "" : qualifier . ".") . entry['identifier']
-	    \ , 'menu': hasPreview ? entry["type"] : detail
-	    \ , 'info': detail
-	    \ , 'dup': 1
-	    \ }
+        \ , 'menu': hasPreview ? entry["type"] : detail
+        \ , 'info': detail
+        \ , 'dup': 1
+        \ }
       call add(result, e)
     endfor
     return result
@@ -1045,13 +1045,13 @@ fun! s:omniCommand(ident, qualifier, ...)
   endif
 
   return {'command': 'complete'
-	 \ , 'params':
-	 \   { 'filters': filters
-	 \   , 'matcher': matcher
-	 \   , 'currentModule': currentModule
-	 \   , 'options': { 'groupReexports': v:true }
-	 \   }
-	 \ }
+     \ , 'params':
+     \   { 'filters': filters
+     \   , 'matcher': matcher
+     \   , 'currentModule': currentModule
+     \   , 'options': { 'groupReexports': v:true }
+     \   }
+     \ }
 endfun
 
 fun! s:compareByDefinedAt(e1, e2)
@@ -1061,17 +1061,17 @@ fun! s:compareByDefinedAt(e1, e2)
     return v:false
   endif
   if d1["name"] != d2["name"]
-	\ || d1["start"][0] != d2["start"][0]
-	\ || d1["start"][1] != d2["start"][1]
-	\ || d1["end"][0] != d2["end"][0]
-	\ || d1["end"][1] != d2["end"][1]
+    \ || d1["start"][0] != d2["start"][0]
+    \ || d1["start"][1] != d2["start"][1]
+    \ || d1["end"][0] != d2["end"][0]
+    \ || d1["end"][1] != d2["end"][1]
     return v:false
   else
     return v:true
   endif
 endfun
 
-function! s:prefixFilter(s) 
+function! s:prefixFilter(s)
   return { "filter": "prefix", "params": { "search": a:s } }
 endfunction
 
@@ -1101,16 +1101,16 @@ endfun
 fun! PSCIDEsearch(ident)
   let matcher = s:flexMatcher(a:ident)
   call purescript#ide#call(
-	\ {'command': 'complete'
-	\ , 'params':
-	\   { 'matcher': matcher
-	\   , 'options': { 'groupReexports': v:true }
-	\   }
-	\ },
-	\ 'Failed to get completions for: '. a:ident,
-	\ 0,
-	\ { resp -> s:searchFn(resp) }
-	\ )
+    \ {'command': 'complete'
+    \ , 'params':
+    \   { 'matcher': matcher
+    \   , 'options': { 'groupReexports': v:true }
+    \   }
+    \ },
+    \ 'Failed to get completions for: '. a:ident,
+    \ 0,
+    \ { resp -> s:searchFn(resp) }
+    \ )
 endfun
 
 fun! s:searchFn(resp)
@@ -1128,7 +1128,7 @@ fun! s:searchFn(resp)
       let llentry.col = res.definedAt.start[1]
       let bufnr = bufnr(res.definedAt.name)
       if bufnr != -1
-	let llentry.bufnr = bufnr
+    let llentry.bufnr = bufnr
       endif
       let llentry.filename = printf("%-" . filePadding . "s", res.definedAt.name)
     endif
@@ -1156,30 +1156,30 @@ fun! PSCIDEimportModule(module)
   let args = filter(split(a:module, ' '), { idx, p -> p != ' ' })
   if len(args) >= 2
     let importCommand =
-	  \ { "importCommand": "addQualifiedImport"
-	  \ , "module": args[0]
-	  \ , "qualifier": args[1]
-	  \ }
+      \ { "importCommand": "addQualifiedImport"
+      \ , "module": args[0]
+      \ , "qualifier": args[1]
+      \ }
   else
     let importCommand =
-	  \ { "importCommand": "addImplicitImport"
-	  \ , "module": args[0]
-	  \ }
+      \ { "importCommand": "addImplicitImport"
+      \ , "module": args[0]
+      \ }
   endif
 
   call purescript#ide#utils#update()
 
   let params =
-	\ { "file": expand("%:p")
-	\ , "importCommand": importCommand
-	\ }
+    \ { "file": expand("%:p")
+    \ , "importCommand": importCommand
+    \ }
   call purescript#ide#call(
-	\ { "command": "import" , "params": params }
-	\ , "failed to add import",
-	\ 0,
-	\ function("s:PSCIDEimportModuleCallback"),
-	\ v:true
-	\ )
+    \ { "command": "import" , "params": params }
+    \ , "failed to add import",
+    \ 0,
+    \ function("s:PSCIDEimportModuleCallback"),
+    \ v:true
+    \ )
 endfun
 
 fun! s:PSCIDEimportModuleCallback(resp)
@@ -1202,10 +1202,10 @@ endfun
 
 fun! PSCIDEimportModuleCompletion(ArgLead, CmdLine, CursorPos)
   let resp = purescript#ide#callSync(
-	\ {'command': 'list', 'params': {'type': 'loadedModules'}},
-	\ 'Failed to get loaded modules',
-	\ 0
-	\ )
+    \ {'command': 'list', 'params': {'type': 'loadedModules'}},
+    \ 'Failed to get loaded modules',
+    \ 0
+    \ )
   if type(resp) == v:t_dict && resp.resultType == "success"
     return join(resp.result, "\n")
   else
@@ -1239,18 +1239,18 @@ function! PSCIDEerrors(llist, ...)
     if e.bufnr != -1
       let text = split(e.text, '\n')
       call add(
-	    \ qfList
-	    \ , { "bufnr": e.bufnr
-	    \   , "filename": printf("%-" . filePadding . "s", e.filename)
-	    \	, "module": empty(e.module) ? e.module : printf("%-" . modulePadding . "s", e.module)
-	    \   , "lnum": e.lnum
-	    \   , "col": e.col
-	    \   , "text": text[0]
-	    \   , "type": e.type
-	    \   }
-	    \ )
+        \ qfList
+        \ , { "bufnr": e.bufnr
+        \   , "filename": printf("%-" . filePadding . "s", e.filename)
+        \    , "module": empty(e.module) ? e.module : printf("%-" . modulePadding . "s", e.module)
+        \   , "lnum": e.lnum
+        \   , "col": e.col
+        \   , "text": text[0]
+        \   , "type": e.type
+        \   }
+        \ )
       for line in text[1:]
-	call add(qfList, {"text": line})
+    call add(qfList, {"text": line})
       endfor
     endif
   endfor
@@ -1294,27 +1294,27 @@ function! s:qfEntry(e, filename, err)
   let hasSuggestion = type(get(a:e, "suggestion", v:null)) == v:t_dict
   let type = isError ? (hasSuggestion ? 'F' : 'E') : (hasSuggestion ? 'V' : 'W')
   let lnum = has_key(a:e, "position") && type(a:e.position) == v:t_dict
-	\ ? a:e.position.startLine : 1
+    \ ? a:e.position.startLine : 1
   let lnumend = has_key(a:e, "position") && type(a:e.position) == v:t_dict
-  \ ? a:e.position.endLine : 1
+    \ ? a:e.position.endLine : 1
   let col = has_key(a:e, "position") && type(a:e.position) == v:t_dict
-	\ ? a:e.position.startColumn : 1
+    \ ? a:e.position.startColumn : 1
   let colend = has_key(a:e, "position") && type(a:e.position) == v:t_dict
-  \ ? a:e.position.endColumn : 1
+    \ ? a:e.position.endColumn : 1
   let module = get(a:e, "moduleName", "")
   if empty(module)
     let module = ""
   endif
   return  { "filename": a:filename
-	\ , "module": module
-	\ , "bufnr": bufnr(a:filename)
-	\ , "lnum": lnum
-	\ , "lnumend": lnumend
-	\ , "col": col
-	\ , "colend": colend
-	\ , "text": a:e.message
-	\ , "type": type
-	\ }
+    \ , "module": module
+    \ , "bufnr": bufnr(a:filename)
+    \ , "lnum": lnum
+    \ , "lnumend": lnumend
+    \ , "col": col
+    \ , "colend": colend
+    \ , "text": a:e.message
+    \ , "type": type
+    \ }
 endfunction
 
 function! s:addSuggestion(suggestions, e)

@@ -1,6 +1,6 @@
-PureScript psc ide integration			      *psc-ide-vim* *purs*
+PureScript psc ide integration                  *psc-ide-vim* *purs*
 
-COMPLETION					      *purs-completion*
+COMPLETION                                      *purs-completion*
 The plugin provides omni completion |i_CTRL-X_CTRL-O| for your PureScript
 coding and user completion so you can complete with |i_CTRL-X_CTRL-U| too.
 The 'omnifunc' is though to provide as thigh list of results as possible,
@@ -11,38 +11,38 @@ indentifiers.
 
 Also many of the commands can be completed.
 
-PURS SERVER COMMANDS				      *purs-server-commands*
+PURS SERVER COMMANDS                      *purs-server-commands*
 
-						      *:Plist*
+                                          *:Plist*
 >
  :Plist
 <List loaded modules.
-						      *:Pload*
+                                          *:Pload*
 >
  :Pload[!]
 <Load externs, with optional |<bang>|, first reset loaded modules.
 
-						      *:Pcwd*
+                                          *:Pcwd*
 >
  :Pcwd
 <Show current working directory.
-						      *:Pend*
+                                          *:Pend*
 >
  :Pend
 <Shut down the server.
-						      *:Prebuild*
+                                          *:Prebuild*
 >
  :Prebuild[!]
 <Rebuild current buffer, with optional |<bang>| first reload the modules.
 
-EDITING COMMANDS				      *purs-editing-commands*
+EDITING COMMANDS                          *purs-editing-commands*
 
-						      *:PaddClause*
+                                          *:PaddClause*
 >
  :PaddClause
 <Generate function template from a function signature on the current line.
 
-						      *:PaddType*
+                                          *:PaddType*
 >
  :PaddType
 <Add type annotation to a function on the current line, e.g. if you use this
@@ -56,14 +56,14 @@ It will produce:
     concat _ _ = ?concat
 <
 
-						      *:Papply*
+                                          *:Papply*
 >
  :Papply[!]
 <Apply current line suggestion if there is any.  With |<bang>| applies all
 suggestions.  Warning that have suggestion are indicated with 'V' in the quick
 fix list.
 
-						      *:Pcase*
+                                          *:Pcase*
 >
  :Pcase[!] type
 <Add case expression for give type, with optional |<bang>| it will also
@@ -89,9 +89,9 @@ then using `:Pcase Either String Int` and will put
     (Left _) -> ?s
     (Right _) -> ?s
 <
-IMPORT COMMANDS					      *purs-import-commands*
+IMPORT COMMANDS                          *purs-import-commands*
 
-						      *:Pimport*
+                                          *:Pimport*
 >
  :Pimport [ident]
 <Import identifier. It might be qualified if you have qualified imports.  If
@@ -100,40 +100,40 @@ The identifier can be qualified, i.e. `List.length` then the qualifier will be
 preserved.  If there is already a module imported with the same qualified the
 new import will be added to that import declaration.
 
-						      *:PimportModule*
+                                          *:PimportModule*
 >
  :PimportModule ident [qualificier]
 <Import module (possibly as qualificied module).
-						      *:Pimports*
+                                          *:Pimports*
 >
  :Pimports
 <List imports.
 
-						      *:PaddImportQualifications*
+                                          *:PaddImportQualifications*
 >
  :PaddImportQualifications
 <
 
-SEARCH COMMANDS					      *purs-search-commands*
+SEARCH COMMANDS                          *purs-search-commands*
 
-						      *:Pgoto*
+                                          *:Pgoto*
 >
  :Pgoto [ident]
 <Goto identifier.  You can use qualified identifiers if you have qualified
 imports. If identifier is not given the word under the cursor is taken.
 
-						      *:Pursuit*
+                                          *:Pursuit*
 >
  :Pursuit [ident]
 <Search pursuit for ident.  If not present the word under the cursor is taken.
 
-						      *:Ptype*
+                                          *:Ptype*
 >
  :Ptype[!] [ident]
 <Find type of ident.  If ident is not given the wrod under the cursor is
 taken.
 
-						      *:Psearch*
+                                          *:Psearch*
 >
  :Psearch ident
 <Search for identifier.  This works like the provided 'omnifunc', but with
