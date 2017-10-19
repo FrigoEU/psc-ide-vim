@@ -500,10 +500,21 @@ endfunction
 
 " Add type annotation
 function! PSCIDEaddTypeAnnotation(ident)
-  call s:getType(
-    \ a:ident,
-    \ v:true,
-    \ { resp -> s:PSCIDEaddTypeAnnotationCallback(a:ident, resp) }
+  let currentModule = purescript#ide#utils#currentModule()
+  let filters = [purescript#ide#utils#modulesFilter([currentModule])]
+  call purescript#ide#utils#debug('PSCIDE addTypeAnnotation currentModule: ' . currentModule, 3)
+
+  call purescript#ide#call(
+    \ { 'command': 'type'
+    \ , 'params':
+    \     { 'search': a:ident
+    \     , 'filters': filters
+    \     , 'currentModule': currentModule
+    \     }
+    \ },
+    \  'Failed to add type info for: ' . a:ident,
+    \ 0,
+    \ {resp -> s:PSCIDEaddTypeAnnotationCallback(a:ident, resp)}
     \ )
 endfunction
 
