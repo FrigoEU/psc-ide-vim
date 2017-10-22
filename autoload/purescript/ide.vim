@@ -42,20 +42,20 @@ fun! purescript#ide#call(input, errorm, isRetry, cb, ...)
     let cwdcommand = {'command': 'cwd'}
 
     let jobid = purescript#job#start(
-	  \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	  \ { "on_stdout": {ch, msg -> s:startFn(a:input, a:errorm, a:cb, cwdcommand, msg, silent)}
-	  \ , "on_stderr": {ch, err -> purescript#ide#utils#debug("purescript#ide#call error: " . string(err), 3)}
-	  \ })
+          \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
+          \ { "on_stdout": {ch, msg -> s:startFn(a:input, a:errorm, a:cb, cwdcommand, msg, silent)}
+          \ , "on_stderr": {ch, err -> purescript#ide#utils#debug("purescript#ide#call error: " . string(err), 3)}
+          \ })
     call purescript#job#send(jobid, json_encode(cwdcommand) . "\n")
     return
   endif
 
   let enc = json_encode(a:input)
   let jobid = purescript#job#start(
-	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	\ { "on_stdout": {ch, msg -> a:cb(s:callFn(a:input, a:errorm, a:isRetry, a:cb, msg))}
-	\ , "on_stderr": {ch, err -> purescript#ide#utils#debug("purescript#ide#call error: " . purescript#ide#utils#toString(err), 0)}
-	\ })
+        \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
+        \ { "on_stdout": {ch, msg -> a:cb(s:callFn(a:input, a:errorm, a:isRetry, a:cb, msg))}
+        \ , "on_stderr": {ch, err -> purescript#ide#utils#debug("purescript#ide#call error: " . purescript#ide#utils#toString(err), 0)}
+        \ })
   call purescript#job#send(jobid, enc . "\n")
   " call purescript#job#stop(jobid) " Not needed I think, \n stops job
 endfun
@@ -101,7 +101,7 @@ fun! s:startFn(input, errorm, cb, cwdcommand, cwdresp, ...)
       call PSCIDEstart(1)
     else
       if !silent
-	call purescript#ide#utils#log("started", v:true)
+    call purescript#ide#utils#log("started", v:true)
       endif
       let s:started = v:true
       let s:external = v:true
@@ -113,17 +113,17 @@ fun! s:startFn(input, errorm, cb, cwdcommand, cwdresp, ...)
   call purescript#ide#utils#debug("s:startFn: resending", 1)
   if (type(a:cb) == type(0) && !a:cb)
     let cwdresp = system(
-	  \ "purs ide client -p" . g:psc_ide_server_port,
-	  \ json_encode(a:cwdcommand)
-	  \ )
+          \ "purs ide client -p" . g:psc_ide_server_port,
+          \ json_encode(a:cwdcommand)
+          \ )
     call s:retryFn(a:input, a:errorm, 0, cwd, cwdresp)
   else
     let jobid = purescript#job#start(
-	  \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	  \ { "on_stdout": { ch, resp -> s:retryFn(a:input, a:errorm, a:cb, cwd, resp, silent) }
-	  \ , "on_stderr": { ch, err -> silent ? purescript#ide#utils#warn(purescript#ide#utils#toString(err)) : v:null }
-	  \ }
-	  \)
+          \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
+          \ { "on_stdout": { ch, resp -> s:retryFn(a:input, a:errorm, a:cb, cwd, resp, silent) }
+          \ , "on_stderr": { ch, err -> silent ? purescript#ide#utils#warn(purescript#ide#utils#toString(err)) : v:null }
+          \ }
+          \)
     call purescript#job#send(jobid, json_encode(a:cwdcommand) . "\n")
   endif
 endfun
@@ -144,15 +144,15 @@ fun! s:retryFn(input, errorm, cb, expectedCWD, cwdresp2, ...)
     let cwdresp2Decoded = {"resultType": "failed", "error": a:cwdresp2}
   endtry
 
-  if type(cwdresp2Decoded) == v:t_dict && cwdresp2Decoded.resultType ==# 'success' 
-     \ && cwdresp2Decoded.result == a:expectedCWD
+  if type(cwdresp2Decoded) == v:t_dict && cwdresp2Decoded.resultType ==# 'success'
+         \ && cwdresp2Decoded.result == a:expectedCWD
     call purescript#ide#utils#debug("s:retryFn: success", 1)
     call PSCIDEload(1, "")
   else
     if type(cwdresp2Decoded) == v:t_dict
       let error = get(cwdresp2Decoded, "error", [])
       if type(error) == v:t_list && len(error) && !silent
-	call purescript#ide#utils#warn(join(error, " "), v:true)
+        call purescript#ide#utils#warn(join(error, " "), v:true)
       endif
     endif
     return
@@ -161,25 +161,25 @@ fun! s:retryFn(input, errorm, cb, expectedCWD, cwdresp2, ...)
   let enc = json_encode(a:input)
   if (type(a:cb) == type(0))
     let resp = system(
-	  \ "purs ide client -p" . g:psc_ide_server_port,
-	  \ enc
-	  \ )
+          \ "purs ide client -p" . g:psc_ide_server_port,
+          \ enc
+          \ )
     return s:callFn(a:input, a:errorm, 1, 0, resp)
   endif
 
   if (type(a:cb) == type(0) && !a:cb)
     let resp = system(
-	  \ "purs ide client -p" . g:psc_ide_server_port
-	  \ enc
-	  \ )
+          \ "purs ide client -p" . g:psc_ide_server_port
+          \ enc
+          \ )
     return s:callFn(a:input, a:errorm, 1, 0, resp)
   endif
   call purescript#ide#utils#debug("callPscIde: command: " . enc, 3)
   let jobid = purescript#job#start(
-	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
-	\ { "on_stdout": {ch, resp -> a:cb(s:callFn(a:input, a:errorm, 1, a:cb, resp, silent))}
-	\ , "on_stderr": {ch, err -> purescript#ide#utils#debug("s:retryFn error: " . err, 3)}
-	\ })
+        \ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
+        \ { "on_stdout": {ch, resp -> a:cb(s:callFn(a:input, a:errorm, 1, a:cb, resp, silent))}
+        \ , "on_stderr": {ch, err -> purescript#ide#utils#debug("s:retryFn error: " . err, 3)}
+        \ })
   call purescript#job#send(jobid, enc . "\n")
 endfun
 
@@ -199,13 +199,13 @@ fun! s:callFn(input, errorm, isRetry, cb, resp, ...)
     let s:started = v:false
     let s:external = v:false
     let decoded =
-	  \ { "resultType": "error"
-	  \ , "result": "failed to decode response"
-	  \ }
+          \ { "resultType": "error"
+          \ , "result": "failed to decode response"
+          \ }
 
     if a:isRetry
       if !silent
-	call purescript#ide#utils#log("failed to contact server", v:true)
+        call purescript#ide#utils#log("failed to contact server", v:true)
       endif
     else
       " Seems saving often causes `purs ide server` to crash. Haven't been able
@@ -215,8 +215,8 @@ fun! s:callFn(input, errorm, isRetry, cb, resp, ...)
     endif
   endtry
 
-  if (type(decoded) != type({}) || decoded['resultType'] !=# 'success') 
-      \ && type(a:errorm) == v:t_string
+  if (type(decoded) != type({}) || decoded['resultType'] !=# 'success')
+          \ && type(a:errorm) == v:t_string
     call purescript#ide#utils#log(a:errorm)
   endif
   return decoded

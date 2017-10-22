@@ -55,10 +55,10 @@ function! SyntaxCheckers_purescript_pscide_GetLocList() dict
     " Mode one doesn't use an executable, so we just do something trivial like
     " echo in makeprg and do the real work in Preprocess
     let loclist = SyntasticMake({
-        \ 'makeprg': self.makeprgBuild({'exe': 'echo', 'args': 'a'}), 
+        \ 'makeprg': self.makeprgBuild({'exe': 'echo', 'args': 'a'}),
         \ 'errorformat': '%t:%f:%l:%c:%m',
         \ 'Preprocess': {args -> s:rebuildOutputToSyntastic(PSCIDErebuild(v:false, ""))}
-	\ })
+    \ })
   endif
 
   if g:psc_ide_syntastic_mode == 2

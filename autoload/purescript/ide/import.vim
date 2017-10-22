@@ -46,10 +46,10 @@ function! purescript#ide#import#listImports(module, ...)
   call purescript#ide#utils#update()
   let filename = expand("%:p")
   let resp = purescript#ide#callSync(
-	\ {'command': 'list', 'params': {'type': 'import', 'file': filename}},
-	\ 'Failed to get imports for: ' . a:module,
-	\ 0
-	\ )
+        \ {'command': 'list', 'params': {'type': 'import', 'file': filename}},
+        \ 'Failed to get imports for: ' . a:module,
+        \ 0
+        \ )
   call purescript#ide#utils#debug("PSCIDE purescript#ide#import#listImports result: " . string(resp), 3)
 
   " Only need module names right now, so pluck just those.
@@ -104,22 +104,22 @@ fun! purescript#ide#import#lastImportLine(lines)
 endfun
 
 " Import identifier callback
-" resp	  - server response
-" ident	  - identifier 
-" view	  - win view (as returned by `winsaveview()`)
-" lines	  - number of lines in the buffer
+" resp      - server response
+" ident      - identifier
+" view      - win view (as returned by `winsaveview()`)
+" lines      - number of lines in the buffer
 " silent  - do not output any messages
 " rebuild - rebuild flag
 " ignoreMultiple
-"	  - ignore when received multiple results from the server
+"      - ignore when received multiple results from the server
 " fixCol  - when invoked from `CompleteDone` autocommand, we need to add one
-"	    to column.  This works when one hits space to chose a completion
-"	    result, while it moves the cursor when <C-E> is used (better than
-"	    the other way around).
-function! s:callback(resp, ident, view, lines, silent, rebuild, ignoreMultiple, fixCol) 
+"        to column.  This works when one hits space to chose a completion
+"        result, while it moves the cursor when <C-E> is used (better than
+"        the other way around).
+function! s:callback(resp, ident, view, lines, silent, rebuild, ignoreMultiple, fixCol)
   if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
     if !a:silent && type(a:resp) == v:t_dict
-	return purescript#ide#utils#log(a:resp["result"])
+      return purescript#ide#utils#log(a:resp["result"])
     else
       return
     endif
@@ -140,16 +140,16 @@ function! s:callback(resp, ident, view, lines, silent, rebuild, ignoreMultiple, 
     let results = []
     for res in respResults
       if empty(filter(copy(results), { idx, val -> val.module == res.module }))
-	call add(results, res)
+        call add(results, res)
       endif
     endfor
     if (len(results) == 1)
       let choice = { "option": results[0], "picked": v:true }
     else
       if !a:ignoreMultiple
-	let choice = purescript#ide#utils#pickOption("Multiple possibilities to import " . a:ident, results, "module")
+        let choice = purescript#ide#utils#pickOption("Multiple possibilities to import " . a:ident, results, "module")
       else
-	return
+        return
       endif
     endif
     if choice.picked == v:true
@@ -185,7 +185,7 @@ endfunction
 
 
 " import identifier
-" a:ident	    - the identifier (might be qualified)
+" a:ident        - the identifier (might be qualified)
 " a:module    - empty string or name of the module to search in
 "
 " Explicit a:module is used when there were multiple choices, to limit the
@@ -251,15 +251,15 @@ function! purescript#ide#import#identifier(ident, module, ...)
     endif
   endif
 
-  let input = { 
+  let input = {
         \ 'command': 'import' ,
         \ 'params': {
-        \   'file': file, 
-	\   'filters': filters,
+        \   'file': file,
+        \   'filters': filters,
         \   'importCommand': {
         \     'importCommand': 'addImport',
         \     'identifier': ident
-        \   } } }
+        \ } } }
 
   if !empty(qualifier)
     let input.params.importCommand.qualifier = qualifier
@@ -271,12 +271,12 @@ function! purescript#ide#import#identifier(ident, module, ...)
   call purescript#ide#utils#update()
 
   call purescript#ide#call(
-	\ input,
-	\ silent ? v:null : "Failed to import identifier " . a:ident, 
-	\ 0,
-	\ {resp -> s:callback(resp, a:ident, view, lines, silent, rebuild, ignoreMultiple, fixCol)},
-	\ v:true
-	\ )
+        \ input,
+        \ silent ? v:null : "Failed to import identifier " . a:ident,
+        \ 0,
+        \ {resp -> s:callback(resp, a:ident, view, lines, silent, rebuild, ignoreMultiple, fixCol)},
+        \ v:true
+        \ )
 endfunction
 
 " Import identifiers on completion.  This differs from the import command in
