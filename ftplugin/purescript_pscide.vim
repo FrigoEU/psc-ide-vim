@@ -1329,7 +1329,7 @@ function! s:qfEntry(e, filename, err)
 endfunction
 
 function! s:addSuggestion(suggestions, e)
-   let a:suggestions[a:e.filename . "|" . string(a:e.position.startLine)] = a:e.suggestion
+  let a:suggestions[a:e.filename . "|" . string(a:e.position.startLine)] = a:e.suggestion
 endfunction
 
 fun! PSCIDEgetKeyword()
