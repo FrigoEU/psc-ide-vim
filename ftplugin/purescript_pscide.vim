@@ -401,13 +401,12 @@ function! s:PSCIDEgoToDefinitionCallback(bang, ident, resp)
 	  \    type(val.definedAt) == v:t_dict
 	  \ && type(res.definedAt) != v:t_dict
 	  \ && val.definedAt.name == res.definedAt.name
-	  \ && val.definedAt.start[0] == res.definedAt.start[0]
-	  \ && val.definedAt.start[1] == res.definedAt.start[1]}))
+	  \ && val.definedAt.start[0] == res.definedAt.start[0]}))
       call add(results, res)
     endif
   endfor
   if a:bang != "!" && empty(results)
-    " try again without a bang
+    " try again with a bang
     return PSCIDEgoToDefinition("!", a:ident)
   endif
   if len(results) > 1
