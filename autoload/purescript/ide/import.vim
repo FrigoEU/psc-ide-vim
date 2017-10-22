@@ -119,7 +119,7 @@ endfun
 function! s:callback(resp, ident, view, lines, silent, rebuild, ignoreMultiple, fixCol)
   if type(a:resp) != v:t_dict || get(a:resp, "resultType", "error") !=# "success"
     if !a:silent && type(a:resp) == v:t_dict
-    return purescript#ide#utils#log(a:resp["result"])
+      return purescript#ide#utils#log(a:resp["result"])
     else
       return
     endif
@@ -140,16 +140,16 @@ function! s:callback(resp, ident, view, lines, silent, rebuild, ignoreMultiple, 
     let results = []
     for res in respResults
       if empty(filter(copy(results), { idx, val -> val.module == res.module }))
-    call add(results, res)
+        call add(results, res)
       endif
     endfor
     if (len(results) == 1)
       let choice = { "option": results[0], "picked": v:true }
     else
       if !a:ignoreMultiple
-    let choice = purescript#ide#utils#pickOption("Multiple possibilities to import " . a:ident, results, "module")
+        let choice = purescript#ide#utils#pickOption("Multiple possibilities to import " . a:ident, results, "module")
       else
-    return
+        return
       endif
     endif
     if choice.picked == v:true

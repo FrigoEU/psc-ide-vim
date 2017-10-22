@@ -152,7 +152,7 @@ fun! s:retryFn(input, errorm, cb, expectedCWD, cwdresp2, ...)
     if type(cwdresp2Decoded) == v:t_dict
       let error = get(cwdresp2Decoded, "error", [])
       if type(error) == v:t_list && len(error) && !silent
-    call purescript#ide#utils#warn(join(error, " "), v:true)
+        call purescript#ide#utils#warn(join(error, " "), v:true)
       endif
     endif
     return
@@ -205,7 +205,7 @@ fun! s:callFn(input, errorm, isRetry, cb, resp, ...)
 
     if a:isRetry
       if !silent
-    call purescript#ide#utils#log("failed to contact server", v:true)
+        call purescript#ide#utils#log("failed to contact server", v:true)
       endif
     else
       " Seems saving often causes `purs ide server` to crash. Haven't been able
