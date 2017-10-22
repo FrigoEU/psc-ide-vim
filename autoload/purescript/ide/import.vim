@@ -46,10 +46,10 @@ function! purescript#ide#import#listImports(module, ...)
   call purescript#ide#utils#update()
   let filename = expand("%:p")
   let resp = purescript#ide#callSync(
-    \ {'command': 'list', 'params': {'type': 'import', 'file': filename}},
-    \ 'Failed to get imports for: ' . a:module,
-    \ 0
-    \ )
+        \ {'command': 'list', 'params': {'type': 'import', 'file': filename}},
+        \ 'Failed to get imports for: ' . a:module,
+        \ 0
+        \ )
   call purescript#ide#utils#debug("PSCIDE purescript#ide#import#listImports result: " . string(resp), 3)
 
   " Only need module names right now, so pluck just those.
@@ -252,14 +252,14 @@ function! purescript#ide#import#identifier(ident, module, ...)
   endif
 
   let input = {
-    \ 'command': 'import' ,
-    \ 'params': {
-    \   'file': file,
-    \   'filters': filters,
-    \   'importCommand': {
-    \     'importCommand': 'addImport',
-    \     'identifier': ident
-    \ } } }
+        \ 'command': 'import' ,
+        \ 'params': {
+        \   'file': file,
+        \   'filters': filters,
+        \   'importCommand': {
+        \     'importCommand': 'addImport',
+        \     'identifier': ident
+        \ } } }
 
   if !empty(qualifier)
     let input.params.importCommand.qualifier = qualifier
@@ -271,12 +271,12 @@ function! purescript#ide#import#identifier(ident, module, ...)
   call purescript#ide#utils#update()
 
   call purescript#ide#call(
-    \ input,
-    \ silent ? v:null : "Failed to import identifier " . a:ident,
-    \ 0,
-    \ {resp -> s:callback(resp, a:ident, view, lines, silent, rebuild, ignoreMultiple, fixCol)},
-    \ v:true
-    \ )
+        \ input,
+        \ silent ? v:null : "Failed to import identifier " . a:ident,
+        \ 0,
+        \ {resp -> s:callback(resp, a:ident, view, lines, silent, rebuild, ignoreMultiple, fixCol)},
+        \ v:true
+        \ )
 endfunction
 
 " Import identifiers on completion.  This differs from the import command in
