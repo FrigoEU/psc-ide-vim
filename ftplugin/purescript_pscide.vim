@@ -399,7 +399,7 @@ function! s:PSCIDEgoToDefinitionCallback(bang, ident, resp)
   for res in a:resp.result
     if empty(filter(copy(results), { idx, val -> 
 	  \    type(val.definedAt) == v:t_dict
-	  \ && type(res.definedAt) != v:t_dict
+	  \ && type(res.definedAt) == v:t_dict
 	  \ && val.definedAt.name == res.definedAt.name
 	  \ && val.definedAt.start[0] == res.definedAt.start[0]}))
       call add(results, res)
