@@ -1146,11 +1146,6 @@ fun! s:searchFn(resp)
   lopen
 endfun
 
-" PSCIDE HELPER FUNCTION -----------------------------------------------------
-" Issues the commands to the server
-" Is responsible for keeping track of whether or not we have a running server
-" and (re)starting it if not
-" Also serializes and deserializes from/to JSON
 " ADD IMPORTS  --------------------------------------------------------------
 fun! PSCIDEimportModule(module)
   let args = filter(split(a:module, ' '), { idx, p -> p != ' ' })
