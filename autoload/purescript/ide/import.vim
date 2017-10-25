@@ -229,6 +229,7 @@ function! purescript#ide#import#identifier(ident, module, ...)
   endif
 
   let file = fnamemodify(bufname(""), ":p")
+  let g:ident = a:ident
   let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
   if !empty(a:module)
     " When running through CompleteDone we need to preserve a:module.  But
@@ -236,19 +237,31 @@ function! purescript#ide#import#identifier(ident, module, ...)
     " qualified module was already imported in which case we'd limit the list
     " of modules to `a:module` anyway.
     let filters = [purescript#ide#utils#modulesFilter([a:module])]
+    let importCommand = {
+	  \ "importCommand": "addImport",
+	  \ "identifier": ident
+	  \ }
   elseif empty(qualifier)
     let filters = []
+    let importCommand = {
+	  \ "importCommand": "addImport",
+	  \ "identifier": ident
+	  \ }
   else
     " Otherwise filter imported modules by qualification
     let currentModule = purescript#ide#utils#currentModule()
     let imports = purescript#ide#import#listImports(currentModule, qualifier)
     let modules = map(copy(imports), {key, val -> val["module"]})
-
     if len(modules) > 0
       let filters = [purescript#ide#utils#modulesFilter(modules)]
     else
       let filters = []
     endif
+    let importCommand = {
+	  \ "importCommand": "addImport",
+	  \ "qualifier": qualifier,
+	  \ "identifier": ident
+	  \ }
   endif
 
   let input = { 
@@ -256,10 +269,8 @@ function! purescript#ide#import#identifier(ident, module, ...)
         \ 'params': {
         \   'file': file, 
 	\   'filters': filters,
-        \   'importCommand': {
-        \     'importCommand': 'addImport',
-        \     'identifier': ident
-        \   } } }
+        \   'importCommand': importCommand
+        \ } }
 
   if !empty(qualifier)
     let input.params.importCommand.qualifier = qualifier
