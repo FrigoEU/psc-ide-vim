@@ -1148,7 +1148,7 @@ endfun
 
 " ADD IMPORTS  --------------------------------------------------------------
 fun! PSCIDEimportModule(module)
-  let args = filter(split(a:module, ' '), { idx, p -> p != ' ' })
+  let args = filter(split(a:module, '\s\+'), { idx, p -> p != ' ' && p != 'as' })
   if len(args) >= 2
     let importCommand =
 	  \ { "importCommand": "addQualifiedImport"
