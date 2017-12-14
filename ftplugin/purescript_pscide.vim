@@ -697,6 +697,7 @@ function! s:getType(ident, filterModules, cb)
   let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
   let imports = purescript#ide#import#listImports(currentModule, qualifier, a:filterModules ? ident : "")
   let modules = map(copy(imports), {key, val -> val["module"]})
+  call add(modules, currentModule)
   let filters = [purescript#ide#utils#modulesFilter(modules)]
   call purescript#ide#utils#debug('PSCIDE s:getType currentModule: ' . currentModule, 3)
 
