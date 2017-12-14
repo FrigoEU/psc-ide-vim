@@ -229,7 +229,6 @@ function! purescript#ide#import#identifier(ident, module, ...)
   endif
 
   let file = fnamemodify(bufname(""), ":p")
-  let g:ident = a:ident
   let [ident, qualifier] = purescript#ide#utils#splitQualifier(a:ident)
   if !empty(a:module)
     " When running through CompleteDone we need to preserve a:module.  But
