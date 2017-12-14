@@ -1147,14 +1147,9 @@ fun! s:searchFn(resp)
   lopen
 endfun
 
-" PSCIDE HELPER FUNCTION -----------------------------------------------------
-" Issues the commands to the server
-" Is responsible for keeping track of whether or not we have a running server
-" and (re)starting it if not
-" Also serializes and deserializes from/to JSON
 " ADD IMPORTS  --------------------------------------------------------------
 fun! PSCIDEimportModule(module)
-  let args = filter(split(a:module, ' '), { idx, p -> p != ' ' })
+  let args = filter(split(a:module, '\s\+'), { idx, p -> p != ' ' && p != 'as' })
   if len(args) >= 2
     let importCommand =
 	  \ { "importCommand": "addQualifiedImport"
@@ -1324,7 +1319,7 @@ endfunction
 
 fun! PSCIDEgetKeyword()
   let isk = &l:isk
-  setl isk+=<,>,$,#,+,-,*,/,%,',&,=,!,:,124,~,?,^
+  setl isk+=.,<,>,$,#,+,-,*,/,%,',&,=,!,:,124,~,?,^
   let keyword = expand("<cword>")
   let &l:isk = isk
   return keyword
