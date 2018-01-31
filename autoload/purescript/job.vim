@@ -51,7 +51,9 @@ function! s:on_stdout(jobid, data, event) abort
     if has_key(s:jobs, a:jobid)
         let l:jobinfo = s:jobs[a:jobid]
         if has_key(l:jobinfo.opts, 'on_stdout')
-            call l:jobinfo.opts.on_stdout(a:jobid, a:data, a:event)
+            let l:stdout_chunks = s:jobs[a:jobid].stdout_chunks
+            let l:stdout_chunks[-1] .= a:data[0]
+            call extend(l:stdout_chunks, a:data[1:])
         else
             echom "No on_stdout"
         endif
@@ -70,6 +72,10 @@ endfunction
 function! s:on_exit(jobid, status, event) abort
     if has_key(s:jobs, a:jobid)
         let l:jobinfo = s:jobs[a:jobid]
+        if has_key(l:jobinfo.opts, 'on_stdout')
+            let l:stdout_chunks = s:jobs[a:jobid].stdout_chunks
+            call l:jobinfo.opts.on_stdout(a:jobid, l:stdout_chunks, a:event)
+        endif
         if has_key(l:jobinfo.opts, 'on_exit')
             call l:jobinfo.opts.on_exit(a:jobid, a:status, a:event)
         endif
@@ -117,6 +123,7 @@ function! s:job_start(cmd, opts) abort
         let s:jobs[l:jobid] = {
             \ 'type': s:job_type_nvimjob,
             \ 'opts': a:opts,
+            \ 'stdout_chunks': [''],
         \ }
         let s:jobs[l:jobid].job = l:job
     elseif l:jobtype == s:job_type_vimjob
