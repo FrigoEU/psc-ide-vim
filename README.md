@@ -35,21 +35,23 @@ Check `:help psc-ide-vim` or
 
 ## Mappings
 No custom mappings are provided, but it's easy to map the above commands to any
-key mapping you want. My personal setup (inside
-`after/ftplugin/purescript.vim`:
+key mapping you want.  You can add these mappings to
+`after/ftplugin/purescript.vim`: 
 
 ```
-nm <buffer> <silent> <leader>t :<C-U>call PSCIDEtype(PSCIDEgetKeyword(), v:true)<CR>
-nm <buffer> <silent> <leader>T :<C-U>call PSCIDEaddTypeAnnotation(matchstr(getline(line(".")), '^\s*\zs\k\+\ze'))<CR>
-nm <buffer> <silent> <leader>s :<C-U>call PSCIDEapplySuggestion()<CR>
-nm <buffer> <silent> <leader>a :<C-U>call PSCIDEaddTypeAnnotation()<CR>
-nm <buffer> <silent> <leader>i :<C-U>call PSCIDEimportIdentifier(PSCIDEgetKeyword())<CR>
-nm <buffer> <silent> <leader>r :<C-U>call PSCIDEload()<CR>
-nm <buffer> <silent> <leader>p :<C-U>call PSCIDEpursuit(PSCIDEgetKeyword())<CR>
-nm <buffer> <silent> <leader>C :<C-U>call PSCIDEcaseSplit("!")<CR>
-nm <buffer> <silent> <leader>f :<C-U>call PSCIDEaddClause("")<CR>
-nm <buffer> <silent> <leader>qa :<C-U>call PSCIDEaddImportQualifications()<CR>
-nm <buffer> <silent> ]d :<C-U>call PSCIDEgoToDefinition("", PSCIDEgetKeyword())<CR>
+nm <buffer> <silent> <leader>L :Plist<CR>
+nm <buffer> <silent> <leader>l :Pload!<CR>
+nm <buffer> <silent> <leader>r :Prebuild!<CR>
+nm <buffer> <silent> <leader>f :PaddClause<CR>
+nm <buffer> <silent> <leader>t :PaddType<CR>
+nm <buffer> <silent> <leader>a :Papply<CR>
+nm <buffer> <silent> <leader>A :Papply!<CR>
+nm <buffer> <silent> <leader>C :Pcase!<CR>
+nm <buffer> <silent> <leader>i :Pimport<CR>
+nm <buffer> <silent> <leader>qa :PaddImportQualifications<CR>
+nm <buffer> <silent> <leader>g :Pgoto<CR>
+nm <buffer> <silent> <leader>p :Pursuit<CR>
+nm <buffer> <silent> <leader>T :Ptype<CR>
 ```
 
 ## Omnicompletion and user completion
