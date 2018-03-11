@@ -775,8 +775,8 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
   let endColumn = range.endColumn
   if startLine == endLine
     let line = getline(startLine)
-    " remove trailing news lines
-    let replacement = substitute(replacement, '\_s*$', '\n', '')
+    " remove trailing new lines
+    let replacement = substitute(replacement, '\_s*$', "\n", '')
     " add identation to each line (except first one)
     " and remove trailing white space from each line
     let RSpace = { line -> substitute(line, '\s*$', '', '') }
@@ -788,9 +788,9 @@ function! PSCIDEapplySuggestionPrime(key, cursor, silent)
 	  \ "\n")
     let cursor = getcurpos()
     if startColumn == 1
-      let newLines = split(replacement . line[endColumn - 1:], "\n")
+      let newLines = split(replacement . "\n" . line[endColumn - 1:], "\n")
     else
-      let newLines = split(line[0:startColumn - 2] . replacement . line[endColumn - 1:], "\n")
+      let newLines = split(line[0:startColumn - 2] . replacement . "\n" . line[endColumn - 1:], "\n")
     endif
     exe startLine . "d _"
     call append(startLine - 1, newLines)
