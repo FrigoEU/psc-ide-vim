@@ -3,7 +3,7 @@ PureScript psc ide integration			      *psc-ide-vim* *purs*
 COMPLETION					      *purs-completion*
 The plugin provides omni completion |i_CTRL-X_CTRL-O| for your PureScript
 coding and user completion so you can complete with |i_CTRL-X_CTRL-U| too.
-The 'omnifunc' is though to provide as thigh list of results as possible,
+The 'omnifunc' is though to provide as tight list of results as possible,
 while the user completion is though to find as many results as possible.
 
 Both completion function will work with qualified and unqualified
@@ -138,3 +138,68 @@ taken.
  :Psearch ident
 <Search for identifier.  This works like the provided 'omnifunc', but with
 less filtering.
+<
+
+SETTINGS                                *purs-settings*
+
+>
+ g:psc_ide_log_level [ident]
+<Controls the verbosity of debug output.
+  0 =       no output
+  1 =       less output
+  2 =       more output
+  3 =       debug outupt
+
+  default is 0
+>
+ g:psc_ide_server_port [ident]
+<Use an alternative port for 'purs ide server'. The default is 4242
+>
+ g:psc_ide_check_output_dir [ident]
+<Used for project validation, this checks whether the project has been built yet. The
+default is 1 (True)
+>
+
+ g:psc_ide_notify [ident]
+<Prints additional logging information about calls to 'purs ide server'. Default is true
+>
+
+g:psc_ide_filter_prelude_modules [ident]
+<Filters out
+>
+
+g:psc_ide_omnicompletion_filter_modules [ident]
+<Performs the 'omnicomplete' search only against the currently imported set of modules.
+Default is false
+>
+
+g:psc_ide_omnicompletion_sort_by [ident]
+<Determins the sort order of the 'omnicomplete' results. Must be one of the following:
+  flex          default sort
+  module        compares on module name
+  identifier    compares on the identifier name
+
+  default is flex
+>
+
+g:psc_ide_import_on_completion [ident]
+<Import identifiers on completion callback. Default is true
+>
+
+g:psc_ide_omnicompletion_prefix_filter [ident]
+<Allows purs ide to filter by prefix, disabling flex matching. Default is true.
+>
+
+g:psc_ide_server_runner [ident]
+<Allows using project-local or sandboxed versions of 'purs ide server' by appending a prefix. For
+example, 'yarn --silent' if using a project-dependent version + yarn. Default is []
+>
+
+g:psc_ide_filter_submodules [ident]
+<Hides submodules. Default is false
+>
+
+g:psc_ide_filter_submodules_do_not_hide [ident]
+<A list of submodules that should not be hidden by 'g:psc_ide_filter_submodules'
+>
+

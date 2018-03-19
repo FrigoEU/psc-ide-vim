@@ -18,10 +18,6 @@ if !exists('g:psc_ide_log_level')
   let g:psc_ide_log_level = 0
 endif
 
-if !exists('g:psc_ide_auto_imports')
-  let g:psc_ide_auto_imports = 0
-endif
-
 if !exists('g:psc_ide_server_port')
   let g:psc_ide_server_port = 4242
 endif
