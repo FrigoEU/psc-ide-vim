@@ -65,6 +65,7 @@ shows the types.
 * purs installed and available on your path
 * [purescript-vim](https://github.com/raichoo/purescript-vim)
 * `bower.json` or `package.json` file in the root path of your project
+* `syntastic` for syntax checking
 
 ## Debugging
 Add the following to have psc-ide-vim spit out all logs:
