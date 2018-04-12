@@ -54,7 +54,7 @@ if !exists("g:psc_ide_omnicompletion_prefix_filter")
 endif
 
 if !exists("g:psc_ide_server_runner")
-    let g:psc_ide_server_runner = []
+    let g:psc_ide_server_runner = ["purs"]
 endif
 
 if !exists("g:psc_ide_prelude")
@@ -221,7 +221,7 @@ function! PSCIDEstart(silent)
   endif
 
   let command = g:psc_ide_server_runner+ [
-	\ "purs", "ide", "server",
+	\ "ide", "server",
 	\ "-p", g:psc_ide_server_port,
 	\ "-d", dir,
 	\ "src/**/*.purs",
@@ -273,7 +273,7 @@ function! PSCIDEend()
   let runnerCmd = g:psc_ide_server_runner
   let jobid = purescript#job#start(
     \ runnerCmd +
-	\ ["purs", "ide", "client", "-p", g:psc_ide_server_port],
+	\ ["ide", "client", "-p", g:psc_ide_server_port],
 	\ { "on_exit": {job, status, ev -> s:PSCIDEendCallback() }
 	\ , "on_stderr": {err -> purescript#ide#utils#log(string(err), v:true)}
 	\ })

@@ -174,7 +174,7 @@ Default is false
 >
 
 g:psc_ide_omnicompletion_sort_by [ident]
-<Determins the sort order of the 'omnicomplete' results. Must be one of the following:
+<Determines the sort order of the 'omnicomplete' results. Must be one of the following:
   flex          default sort
   module        compares on module name
   identifier    compares on the identifier name
@@ -191,8 +191,8 @@ g:psc_ide_omnicompletion_prefix_filter [ident]
 >
 
 g:psc_ide_server_runner [ident]
-<Allows using project-local or sandboxed versions of 'purs ide server' by appending a prefix. For
-example, 'yarn --silent' if using a project-dependent version + yarn. Default is []
+<Allows using project-local or sandboxed versions of 'purs ide server' by supplying an alternative command for 'purs'. For
+example, 'yarn --silent purs' if using a project-dependent version + yarn. Default is ["purs"]
 >
 
 g:psc_ide_filter_submodules [ident]
