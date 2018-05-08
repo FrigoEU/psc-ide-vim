@@ -57,6 +57,9 @@ if !exists("g:psc_ide_server_runner")
     let g:psc_ide_server_runner = ["purs"]
 endif
 
+let b:psc_ide_server_runner = g:psc_ide_server_runner
+let b:psc_ide_server_port = g:psc_ide_server_port
+
 if !exists("g:psc_ide_prelude")
   let g:psc_ide_prelude = [
     \ "Control.Applicative",
@@ -220,9 +223,9 @@ function! PSCIDEstart(silent)
     return
   endif
 
-  let command = g:psc_ide_server_runner+ [
+  let command = b:psc_ide_server_runner+ [
 	\ "ide", "server",
-	\ "-p", g:psc_ide_server_port,
+	\ "-p", b:psc_ide_server_port,
 	\ "-d", dir,
 	\ "src/**/*.purs",
 	\ "bower_components/**/*.purs",
@@ -270,10 +273,10 @@ function! PSCIDEend()
     return
   endif
 
-  let runnerCmd = g:psc_ide_server_runner
+  let runnerCmd = b:psc_ide_server_runner
   let jobid = purescript#job#start(
     \ runnerCmd +
-	\ ["ide", "client", "-p", g:psc_ide_server_port],
+	\ ["ide", "client", "-p", b:psc_ide_server_port],
 	\ { "on_exit": {job, status, ev -> s:PSCIDEendCallback() }
 	\ , "on_stderr": {err -> purescript#ide#utils#log(string(err), v:true)}
 	\ })

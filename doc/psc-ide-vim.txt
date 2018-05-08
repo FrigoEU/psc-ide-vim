@@ -152,7 +152,7 @@ SETTINGS                                *purs-settings*
 
   default is 0
 >
- g:psc_ide_server_port [ident]
+ g:psc_ide_server_port ident
 <Use an alternative port for 'purs ide server'. The default is 4242
 >
  g:psc_ide_check_output_dir [ident]
@@ -192,7 +192,7 @@ g:psc_ide_omnicompletion_prefix_filter [ident]
 
 g:psc_ide_server_runner [ident]
 <Allows using project-local or sandboxed versions of 'purs ide server' by supplying an alternative command for 'purs'. For
-example, 'yarn --silent purs' if using a project-dependent version + yarn. Default is ["purs"]
+example, ["yarn", "--silent", "purs"] if using a project-dependent version + yarn. Default is ["purs"]
 >
 
 g:psc_ide_filter_submodules [ident]
