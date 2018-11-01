@@ -47,6 +47,11 @@ if !exists('g:psc_ide_omnicompletion_sort_by')
   let g:psc_ide_omnicompletion_sort_by = "flex"
 endif
 
+if !exists('g:psc_ide_codegen')
+  " js / corefn / sourcemaps
+  let g:psc_ide_codegen = ['js']
+endif
+
 if !exists('g:psc_ide_import_on_completion')
   let g:psc_ide_import_on_completion = v:true
 endif
@@ -55,6 +60,10 @@ if !exists("g:psc_ide_omnicompletion_prefix_filter")
   " with this option will let purs ide filter by prefix (this disables flex
   " matching) (tip: use i^xu when searching for a command)
   let g:psc_ide_omnicompletion_prefix_filter = v:true
+endif
+
+if !exists('g:psc_ide_log_level')
+  let g:psc_ide_log_level = 0
 endif
 
 if !exists("g:psc_ide_prelude")
@@ -453,7 +462,7 @@ endfunction
 function! PSCIDErebuild(async, bang, ...)
 
   let filename = expand("%:p")
-  let input = {'command': 'rebuild', 'params': {'file': filename}}
+  let input = {'command': 'rebuild', 'params': {'file': filename, 'codegen': g:psc_ide_codegen}}
 
   if a:0 >= 1 && type(a:1) == v:t_func
     let CallBack = a:1
