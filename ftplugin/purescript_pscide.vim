@@ -219,13 +219,17 @@ function! PSCIDEstart(silent)
     return
   endif
 
-  let command = [ 
-	\ "purs", "ide", "server",
-	\ "-p", g:psc_ide_server_port,
-	\ "-d", dir,
-	\ "src/**/*.purs",
-	\ "bower_components/**/*.purs",
-	\ ]
+  if !exists('g:psc_ide_server_command')
+    let command = [
+         \ "purs", "ide", "server",
+         \ "-p", g:psc_ide_server_port,
+         \ "-d", dir,
+         \ "src/**/*.purs",
+         \ "bower_components/**/*.purs",
+         \ ]
+  else
+    let command = g:psc_ide_server_command
+  endif
 
   exe "lcd" dir
   call purescript#ide#utils#debug("PSCIDEstart: " . json_encode(command), 3)
