@@ -215,7 +215,7 @@ function! PSCIDEstart(silent)
 
   let dir = purescript#ide#utils#findRoot()
   if empty(dir)
-    echom "No psc-package.json or bower.json found, couldn't start `purs ide server`"
+    echom "No psc-package.json, bower.json or spago.dhall found, couldn't start `purs ide server`"
     return
   endif
 
@@ -286,7 +286,7 @@ function! s:projectProblems()
   let problems = []
 
   if empty(rootdir)
-    call add(problems, "Your project is missing a bower.json or psc-package.json file")
+    call add(problems, "Your project is missing a bower.json, psc-package.json or spago.dhall file")
   elseif g:psc_ide_check_output_dir == 1
     let outputcontent = s:globpath(rootdir, "output/*")
     if len(outputcontent) == 0
