@@ -218,20 +218,25 @@ function! PSCIDEstart(silent)
     echom "No psc-package.json, bower.json or spago.dhall found, couldn't start `purs ide server`"
     return
   endif
-
+  
   let command = [ 
 	\ "purs", "ide", "server",
 	\ "-p", g:psc_ide_server_port,
 	\ "-d", dir,
 	\ "src/**/*.purs",
 	\ "bower_components/**/*.purs",
-  \ ".spago/**/src/**/*.purs",
 	\ ]
 
+  if executable("spago")
+    let fullCommand = command + [ "$(spago source | cat)" ]
+  else
+    let fullCommand = command
+  endif
+
   exe "lcd" dir
-  call purescript#ide#utils#debug("PSCIDEstart: " . json_encode(command), 3)
+  call purescript#ide#utils#debug("PSCIDEstart: " . json_encode(fullCommand), 3)
   let jobid = purescript#job#start(
-	\ command,
+	\ fullCommand,
 	\ { "on_stderr": { ch, msg -> purescript#ide#utils#warn(purescript#ide#utils#toString(msg), v:true) }
 	\ , "on_stdout": { ch, msg -> type(msg) == v:t_string ? purescript#ide#utils#log(msg) : v:null }
 	\ , "on_exit": function("s:onServerExit")
