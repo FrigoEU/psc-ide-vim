@@ -228,7 +228,7 @@ function! PSCIDEstart(silent)
 	\ ]
 
   if executable("spago")
-    let fullCommand = command + [ "$(spago source | cat)" ]
+    let fullCommand = command + systemlist("spago sources") 
   else
     let fullCommand = command
   endif
