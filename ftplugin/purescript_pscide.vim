@@ -215,10 +215,10 @@ function! PSCIDEstart(silent)
 
   let dir = purescript#ide#utils#findRoot()
   if empty(dir)
-    echom "No psc-package.json or bower.json found, couldn't start `purs ide server`"
+    echom "No psc-package.json, bower.json or spago.dhall found, couldn't start `purs ide server`"
     return
   endif
-
+  
   let command = [ 
 	\ "purs", "ide", "server",
 	\ "-p", g:psc_ide_server_port,
@@ -227,10 +227,16 @@ function! PSCIDEstart(silent)
 	\ "bower_components/**/*.purs",
 	\ ]
 
+  if executable("spago")
+    let fullCommand = command + systemlist("spago sources") 
+  else
+    let fullCommand = command
+  endif
+
   exe "lcd" dir
-  call purescript#ide#utils#debug("PSCIDEstart: " . json_encode(command), 3)
+  call purescript#ide#utils#debug("PSCIDEstart: " . json_encode(fullCommand), 3)
   let jobid = purescript#job#start(
-	\ command,
+	\ fullCommand,
 	\ { "on_stderr": { ch, msg -> purescript#ide#utils#warn(purescript#ide#utils#toString(msg), v:true) }
 	\ , "on_stdout": { ch, msg -> type(msg) == v:t_string ? purescript#ide#utils#log(msg) : v:null }
 	\ , "on_exit": function("s:onServerExit")
@@ -286,7 +292,7 @@ function! s:projectProblems()
   let problems = []
 
   if empty(rootdir)
-    call add(problems, "Your project is missing a bower.json or psc-package.json file")
+    call add(problems, "Your project is missing a bower.json, psc-package.json or spago.dhall file")
   elseif g:psc_ide_check_output_dir == 1
     let outputcontent = s:globpath(rootdir, "output/*")
     if len(outputcontent) == 0

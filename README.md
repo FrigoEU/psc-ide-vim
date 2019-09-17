@@ -64,7 +64,7 @@ shows the types.
 * Vim version 8 or higher or NeoVim version 0.2.0 or higher.
 * purs installed and available on your path
 * [purescript-vim](https://github.com/raichoo/purescript-vim)
-* `bower.json` or `package.json` file in the root path of your project
+* `bower.json`, `psc-package.json` or `spago.dhall` file in the root path of your project
 
 ## Debugging
 Add the following to have psc-ide-vim spit out all logs:
