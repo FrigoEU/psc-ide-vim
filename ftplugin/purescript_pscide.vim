@@ -223,6 +223,7 @@ function! PSCIDEstart(silent)
 	\ "purs", "ide", "server",
 	\ "-p", g:psc_ide_server_port,
 	\ "-d", dir,
+	\ "--editor-mode",
 	\ "src/**/*.purs",
 	\ "bower_components/**/*.purs",
 	\ ]
