@@ -130,7 +130,7 @@ imports. If identifier is not given the word under the cursor is taken.
 						      *:Ptype*
 >
  :Ptype[!] [ident]
-<Find type of ident.  If ident is not given the wrod under the cursor is
+<Find type of ident.  If ident is not given the word under the cursor is
 taken.
 
 						      *:Psearch*
