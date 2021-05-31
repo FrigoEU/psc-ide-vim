@@ -72,12 +72,12 @@ fun! purescript#ide#callSync(input, errorm, isRetry)
     let cwdcommand = {'command': 'cwd'}
 
     call purescript#ide#utils#debug("purescript#ide#callSync: no server found", 1)
-    let cwdresp = system("purs ide client -p " . g:psc_ide_server_port, json_encode(cwdcommand))
+    let cwdresp = system("purs 2>/dev/null ide client -p " . g:psc_ide_server_port, json_encode(cwdcommand))
     return s:startFn(a:input, a:errorm, 0, cwdcommand, cwdresp)
   else
     call purescript#ide#utils#debug("purescript#ide#callSync: trying to reach server again", 1)
     let enc = json_encode(a:input)
-    let resp = system("purs ide client -p " . g:psc_ide_server_port, enc)
+    let resp = system("purs 2>/dev/null ide client -p " . g:psc_ide_server_port, enc)
     return s:callFn(a:input, a:errorm, a:isRetry, 0, resp)
   endif
 endfun
@@ -113,7 +113,7 @@ fun! s:startFn(input, errorm, cb, cwdcommand, cwdresp, ...)
   call purescript#ide#utils#debug("s:startFn: resending", 1)
   if (type(a:cb) == type(0) && !a:cb)
     let cwdresp = system(
-	  \ "purs ide client -p" . g:psc_ide_server_port,
+	  \ "purs 2>/dev/null ide client -p" . g:psc_ide_server_port,
 	  \ json_encode(a:cwdcommand)
 	  \ )
     call s:retryFn(a:input, a:errorm, 0, cwd, cwdresp)
@@ -161,7 +161,7 @@ fun! s:retryFn(input, errorm, cb, expectedCWD, cwdresp2, ...)
   let enc = json_encode(a:input)
   if (type(a:cb) == type(0))
     let resp = system(
-	  \ "purs ide client -p" . g:psc_ide_server_port,
+	  \ "purs 2>/dev/null ide client -p" . g:psc_ide_server_port,
 	  \ enc
 	  \ )
     return s:callFn(a:input, a:errorm, 1, 0, resp)
@@ -169,7 +169,7 @@ fun! s:retryFn(input, errorm, cb, expectedCWD, cwdresp2, ...)
 
   if (type(a:cb) == type(0) && !a:cb)
     let resp = system(
-	  \ "purs ide client -p" . g:psc_ide_server_port
+	  \ "purs 2>/dev/null ide client -p" . g:psc_ide_server_port
 	  \ enc
 	  \ )
     return s:callFn(a:input, a:errorm, 1, 0, resp)
